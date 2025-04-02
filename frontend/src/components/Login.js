@@ -8,16 +8,15 @@ import {
   Paper,
   IconButton,
   InputAdornment,
-  Stack,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 
-const Login: React.FC = () => {
+function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     // TODO: Implement login logic
     console.log('Login attempt with:', { email, password });
@@ -187,6 +186,6 @@ const Login: React.FC = () => {
       </Container>
     </Box>
   );
-};
+}
 
 export default Login; 
