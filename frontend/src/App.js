@@ -1,5 +1,6 @@
 import React from 'react';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 
@@ -82,10 +83,31 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Dashboard />
-      {/* <Login /> */}
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route 
+            path="/dashboard" 
+            element={
+              <RequireAuth>
+                <Dashboard />
+              </RequireAuth>
+            } 
+          />
+        </Routes>
+      </BrowserRouter>
     </ThemeProvider>
   );
+}
+
+function RequireAuth({ children }) {
+  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/" />;
+  }
+
+  return children;
 }
 
 export default App;

@@ -10,18 +10,26 @@ import {
   InputAdornment,
   AppBar,
   Toolbar,
+  Alert,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // TODO: Implement login logic
-    console.log('Login attempt with:', { email, password });
+    if (email === 'jason@gmail.com' && password === 'oldmonk') {
+      localStorage.setItem('isAuthenticated', 'true');
+      navigate('/dashboard');
+    } else {
+      setError('Invalid email or password');
+    }
   };
 
   return (
@@ -92,6 +100,11 @@ function Login() {
             <Typography component="h1" variant="h5" gutterBottom>
               Welcome Back
             </Typography>
+            {error && (
+              <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
+                {error}
+              </Alert>
+            )}
             <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
               <TextField
                 margin="normal"
