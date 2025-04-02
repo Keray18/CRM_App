@@ -6,14 +6,14 @@ const theme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#0C47A0', // Deep blue
+      main: '#0C47A0', 
     },
     secondary: {
-      main: '#000000', // Black
+      main: '#000000', 
     },
     background: {
-      default: '#000000', // Black background
-      paper: '#111111', // Slightly lighter black for cards
+      default: '#000000', 
+      paper: '#111111', 
     },
     text: {
       primary: '#FFFFFF',

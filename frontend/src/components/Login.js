@@ -8,6 +8,8 @@ import {
   Paper,
   IconButton,
   InputAdornment,
+  AppBar,
+  Toolbar,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 
@@ -31,25 +33,31 @@ function Login() {
         bgcolor: 'background.default',
       }}
     >
-      {/* Header */}
-      <Box
+      {/* Enhanced Header */}
+      <AppBar 
+        position="static" 
+        elevation={0}
         sx={{
-          p: 2,
-          display: 'flex',
-          justifyContent: 'flex-start',
-          alignItems: 'center',
+          background: 'linear-gradient(to right, #0C47A0, #000000)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
         }}
       >
-        <Typography
-          variant="h5"
-          sx={{
-            fontWeight: 'bold',
-            color: 'primary.main',
-          }}
-        >
-          Insured Hub
-        </Typography>
-      </Box>
+        <Toolbar sx={{ py: 1.5 }}>
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 700,
+              color: '#fff',
+              letterSpacing: '0.5px',
+              textShadow: '0px 2px 4px rgba(0,0,0,0.3)',
+              fontFamily: '"Poppins", "Roboto", "Arial", sans-serif',
+              ml: 2
+            }}
+          >
+            Insured Hub
+          </Typography>
+        </Toolbar>
+      </AppBar>
 
       {/* Main Content */}
       <Container component="main" maxWidth="lg" sx={{ flex: 1, py: 8 }}>
