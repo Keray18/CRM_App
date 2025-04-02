@@ -1,6 +1,7 @@
 import React from 'react';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import Login from './components/Login';
+import Dashboard from './components/Dashboard';
 
 const theme = createTheme({
   palette: {
@@ -81,7 +82,8 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Login />
+      <Dashboard />
+      {/* <Login /> */}
     </ThemeProvider>
   );
 }
