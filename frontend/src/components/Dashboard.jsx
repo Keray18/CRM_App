@@ -25,14 +25,15 @@ import {
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import PeopleIcon from "@mui/icons-material/People";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import GroupIcon from "@mui/icons-material/Group"; // For Customers
 import { styled } from "@mui/material/styles";
+import Leads from "./AdminDash/Leads";
+import Customers from "./AdminDash/Customers";
 
 const primaryColor = "#1976d2";
 const secondaryColor = "#f50057";
 const backgroundColor = "#f5f5f5";
-
-// Styled components using MUI's styled API
-// This component is responsible for styling the sidebar drawer
 
 const StyledDrawer = styled(Drawer)({
   "& .MuiDrawer-paper": {
@@ -43,14 +44,13 @@ const StyledDrawer = styled(Drawer)({
   },
 });
 
-// Sidebar component
-// This component is responsible for rendering the sidebar navigation menu
-
 const Sidebar = ({ section, setSection }) => {
   const menuItems = [
     { text: "Dashboard", icon: <DashboardIcon /> },
     { text: "Register Employee", icon: <PersonAddIcon /> },
     { text: "Manage Employees", icon: <PeopleIcon /> },
+    { text: "Leads", icon: <AssignmentIcon /> },
+    { text: "Customers", icon: <GroupIcon /> },
   ];
 
   return (
@@ -92,21 +92,15 @@ const Sidebar = ({ section, setSection }) => {
   );
 };
 
-// Password generation function
-// This function generates a random password for the employee
-// It uses Math.random() to create a random string of characters
 const generatePassword = () => {
   return Math.random().toString(36).slice(-8);
 };
 
-// Dashboard component
-// This component is responsible for rendering the main dashboard content
-// It includes sections for employee registration and management
-// It uses Material-UI components for styling and layout
-
 const Dashboard = () => {
   const [section, setSection] = useState("Dashboard");
   const [employees, setEmployees] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [leads, setLeads] = useState([]);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -154,6 +148,10 @@ const Dashboard = () => {
     setOpenModal(false);
   };
 
+  const addCustomer = (lead) => {
+    setCustomers([...customers, { ...lead, id: Date.now(), conversionDate: new Date().toISOString() }]);
+  };
+
   return (
     <Box
       sx={{
@@ -163,8 +161,7 @@ const Dashboard = () => {
       }}
     >
       <Sidebar section={section} setSection={setSection} />
-      <Box component="main" sx={{ flexGrow: 1, p: 4, pl: 35,backgroundColor:"black", color: "White" }}>
-        {/* <Typography variant="h4" fontWeight="bold" gutterBottom>Welcome to the Admin Panel</Typography> */}
+      <Box component="main" sx={{ flexGrow: 1, p: 4, pl: 35, backgroundColor: "black", color: "White" }}>
         {section === "Dashboard" && (
           <>
             <Typography variant="h4" fontWeight="bold" gutterBottom>
@@ -192,6 +189,48 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
               </Grid>
+              <Grid item xs={12} sm={6} md={4}>
+                <Card
+                  sx={{
+                    backgroundColor: secondaryColor,
+                    color: "#fff",
+                    borderRadius: 2,
+                    boxShadow: 3,
+                    transition: "transform 0.3s",
+                    "&:hover": { transform: "translateY(-5px)" },
+                  }}
+                >
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Active Leads
+                    </Typography>
+                    <Typography variant="h3" fontWeight="bold">
+                      {leads.length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={4}>
+                <Card
+                  sx={{
+                    backgroundColor: "#4caf50",
+                    color: "#fff",
+                    borderRadius: 2,
+                    boxShadow: 3,
+                    transition: "transform 0.3s",
+                    "&:hover": { transform: "translateY(-5px)" },
+                  }}
+                >
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Converted Customers
+                    </Typography>
+                    <Typography variant="h3" fontWeight="bold">
+                      {customers.length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
             </Grid>
           </>
         )}
@@ -209,11 +248,10 @@ const Dashboard = () => {
                 boxShadow: 2,
                 maxWidth: 600,
                 mx: "auto",
-                // border: "1px solid #ddd",
                 mt: 8,
                 display: "flex",
                 flexDirection: "column",
-                gap: 2, // Proper spacing between inputs
+                gap: 2,
               }}
             >
               <TextField
@@ -292,24 +330,20 @@ const Dashboard = () => {
               sx={{
                 borderRadius: 3,
                 boxShadow: 3,
-                "& .MuiTableHead-root": { bgcolor: "white", },
-                "& .MuiTableCell-root": { py: 2 ,color: "black"},
+                "& .MuiTableHead-root": { bgcolor: "white" },
+                "& .MuiTableCell-root": { py: 2, color: "black" },
               }}
             >
               <Table>
                 <TableHead>
-                  <TableRow >
+                  <TableRow>
                     <TableCell sx={{ fontWeight: "bold" }}>ID</TableCell>
                     <TableCell sx={{ fontWeight: "bold" }}>Name</TableCell>
                     <TableCell sx={{ fontWeight: "bold" }}>Phone</TableCell>
                     <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
                     <TableCell sx={{ fontWeight: "bold" }}>Position</TableCell>
-                    <TableCell sx={{ fontWeight: "bold" }}>
-                      Department
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: "bold" }}>
-                      Policy Number
-                    </TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Department</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Policy Number</TableCell>
                     <TableCell sx={{ fontWeight: "bold" }}>Password</TableCell>
                   </TableRow>
                 </TableHead>
@@ -318,8 +352,7 @@ const Dashboard = () => {
                     <TableRow
                       key={index}
                       sx={{
-                        backgroundColor: "white" ,
-                        // "&:hover": { backgroundColor: "#f5f5f5" },
+                        backgroundColor: "white",
                       }}
                     >
                       <TableCell>{index + 1}</TableCell>
@@ -347,6 +380,21 @@ const Dashboard = () => {
               </Table>
             </TableContainer>
           </>
+        )}
+
+        {section === "Leads" && (
+          <Leads 
+            leads={leads} 
+            setLeads={setLeads} 
+            addCustomer={addCustomer} 
+          />
+        )}
+
+        {section === "Customers" && (
+          <Customers 
+            customers={customers} 
+            setCustomers={setCustomers} 
+          />
         )}
       </Box>
       <Modal open={openModal} onClose={() => setOpenModal(false)}>
