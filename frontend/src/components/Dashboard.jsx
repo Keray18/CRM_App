@@ -34,11 +34,13 @@ import {
   Group as GroupIcon,
   AssignmentTurnedIn as TaskIcon,
   Search as SearchIcon,
+  Description as DocumentIcon,
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import Leads from "./AdminDash/Leads";
 import Customers from "./AdminDash/Customers";
 import AssignTask from "./AdminDash/AssignTask";
+import Documents from "./AdminDash/Documents";
 
 const primaryColor = "#1976d2";
 const secondaryColor = "#f50057";
@@ -61,6 +63,7 @@ const Sidebar = ({ section, setSection }) => {
     { text: "Task Assignments", icon: <TaskIcon /> },
     { text: "Leads", icon: <AssignmentIcon /> },
     { text: "Customers", icon: <GroupIcon /> },
+    { text: "Documents", icon: <DocumentIcon /> },
   ];
 
   return (
@@ -110,6 +113,8 @@ const Dashboard = () => {
   const [customers, setCustomers] = useState([]);
   const [leads, setLeads] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [documents, setDocuments] = useState([]);
+  const [documentFiles, setDocumentFiles] = useState({});
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -140,6 +145,11 @@ const Dashboard = () => {
     "Training",
     "Other",
   ];
+
+  // Filter leads to show only active leads (not converted or deleted)
+  const activeLeads = leads.filter(lead => 
+    !lead.isDeleted && !lead.isConverted
+  );
 
   // Employee management handlers
   const handleEmployeeChange = (e) => {
@@ -186,9 +196,48 @@ const Dashboard = () => {
   };
 
   const addCustomer = (lead) => {
+    // Update the lead to mark it as converted
+    setLeads(prevLeads => 
+      prevLeads.map(l => 
+        l.id === lead.id 
+          ? { ...l, isConverted: true }
+          : l
+      )
+    );
+
+    // Add the lead as a customer
     setCustomers([
       ...customers,
-      { ...lead, id: Date.now(), conversionDate: new Date().toISOString() },
+      { 
+        ...lead, 
+        id: Date.now(),
+        leadId: lead.id,
+        conversionDate: new Date().toISOString() 
+      },
+    ]);
+  };
+
+  const handleDeleteLead = (leadId) => {
+    // Mark the lead as deleted instead of removing it
+    setLeads(prevLeads => 
+      prevLeads.map(lead => 
+        lead.id === leadId 
+          ? { ...lead, isDeleted: true }
+          : lead
+      )
+    );
+  };
+
+  const handleAddLead = (newLead) => {
+    // Add isConverted and isDeleted flags to new leads
+    setLeads([
+      ...leads,
+      {
+        ...newLead,
+        id: Date.now(),
+        isConverted: false,
+        isDeleted: false
+      }
     ]);
   };
 
@@ -255,7 +304,7 @@ const Dashboard = () => {
                 <Card sx={{ bgcolor: secondaryColor, color: "white", p: 2 }}>
                   <CardContent>
                     <Typography variant="h6">Active Leads</Typography>
-                    <Typography variant="h3">{leads.length}</Typography>
+                    <Typography variant="h3">{activeLeads.length}</Typography>
                   </CardContent>
                 </Card>
               </Grid>
@@ -530,10 +579,27 @@ const Dashboard = () => {
         {/* Other Sections */}
         {section === "Task Assignments" && <AssignTask tasks={tasks} />}
         {section === "Leads" && (
-          <Leads leads={leads} setLeads={setLeads} addCustomer={addCustomer} />
+          <Leads 
+            leads={activeLeads} 
+            setLeads={setLeads}
+            addCustomer={addCustomer}
+            onDeleteLead={handleDeleteLead}
+            onAddLead={handleAddLead}
+          />
         )}
         {section === "Customers" && (
           <Customers customers={customers} setCustomers={setCustomers} />
+        )}
+
+        {/* Documents */}
+        {section === "Documents" && (
+          <Documents 
+            customers={customers} 
+            documents={documents}
+            setDocuments={setDocuments}
+            documentFiles={documentFiles}
+            setDocumentFiles={setDocumentFiles}
+          />
         )}
 
         {/* Password Reset Modal */}

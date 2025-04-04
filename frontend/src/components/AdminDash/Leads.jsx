@@ -10,8 +10,7 @@ import {
   TableContainer, 
   TableHead, 
   TableRow, 
-  Paper, 
-  Modal,
+  Paper,
   IconButton,
   Tooltip,
   Snackbar,
@@ -31,28 +30,42 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
     date: dayjs().format('YYYY-MM-DD'),
     status: "New"
   });
-  const [openConvertModal, setOpenConvertModal] = useState(false);
-  const [openDeleteModal, setOpenDeleteModal] = useState(false);
-  const [selectedLead, setSelectedLead] = useState(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
 
-  const handleLeadChange = (e) => {
-    setLeadData({ ...leadData, [e.target.name]: e.target.value });
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success"
+  });
+
+  const handleLeadChange = (event) => {
+    const { name, value } = event.target;
+    setLeadData({ ...leadData, [name]: value });
   };
 
-  const validateLead = () => {
+  const handleSubmit = () => {
+    // Validate required fields
     if (!leadData.name || !leadData.phone) {
-      setSnackbar({ open: true, message: "Name and phone are required", severity: "error" });
-      return false;
+      setSnackbar({
+        open: true,
+        message: "Name and Phone are required fields",
+        severity: "error"
+      });
+      return;
     }
-    return true;
-  };
 
-  const handleAddLead = () => {
-    if (!validateLead()) return;
+    // Create new lead
+    const newLead = {
+      id: Date.now(),
+      ...leadData,
+      createdAt: new Date().toISOString(),
+      isConverted: false,
+      isDeleted: false
+    };
+
+    // Add to leads list
+    setLeads(prevLeads => [...prevLeads, newLead]);
     
-    const newLead = { ...leadData, id: Date.now() };
-    setLeads([...leads, newLead]);
+    // Reset form
     setLeadData({ 
       name: "", 
       phone: "", 
@@ -62,31 +75,67 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
       date: dayjs().format('YYYY-MM-DD'),
       status: "New"
     });
-    setSnackbar({ open: true, message: "Lead added successfully", severity: "success" });
+
+    setSnackbar({
+      open: true,
+      message: "Lead created successfully",
+      severity: "success"
+    });
   };
 
-  const handleConvertLead = (lead) => {
-    setSelectedLead(lead);
-    setOpenConvertModal(true);
+  const handleAcceptLead = (lead) => {
+    // Convert lead to customer
+    const newCustomer = {
+      id: Date.now(),
+      leadId: lead.id,
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email,
+      policyInterested: lead.policy,
+      status: "Active",
+      createdFrom: "Lead",
+      createdAt: new Date().toISOString(),
+      conversionDate: new Date().toISOString()
+    };
+
+    // Mark lead as converted
+    setLeads(prevLeads => 
+      prevLeads.map(l => 
+        l.id === lead.id 
+          ? { ...l, isConverted: true } 
+          : l
+      )
+    );
+
+    // Add customer
+    addCustomer(newCustomer);
+
+    setSnackbar({
+      open: true,
+      message: "Lead successfully converted to customer",
+      severity: "success"
+    });
   };
 
-  const handleDeleteLead = (lead) => {
-    setSelectedLead(lead);
-    setOpenDeleteModal(true);
+  const handleDeleteLead = (leadId) => {
+    // Mark lead as deleted
+    setLeads(prevLeads => 
+      prevLeads.map(lead => 
+        lead.id === leadId 
+          ? { ...lead, isDeleted: true } 
+          : lead
+      )
+    );
+
+    setSnackbar({
+      open: true,
+      message: "Lead deleted successfully",
+      severity: "info"
+    });
   };
 
-  const confirmLeadConversion = () => {
-    addCustomer(selectedLead);
-    setLeads(leads.filter(l => l.id !== selectedLead.id));
-    setOpenConvertModal(false);
-    setSnackbar({ open: true, message: "Lead converted to customer successfully", severity: "success" });
-  };
-
-  const confirmLeadDeletion = () => {
-    setLeads(leads.filter(l => l.id !== selectedLead.id));
-    setOpenDeleteModal(false);
-    setSnackbar({ open: true, message: "Lead deleted successfully", severity: "info" });
-  };
+  // Filter active leads (not converted and not deleted)
+  const activeLeads = leads.filter(lead => !lead.isConverted && !lead.isDeleted);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -106,8 +155,8 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
             sx={{ 
               backgroundColor: "white",
               borderRadius: 1,
-              "& .MuiInputLabel-root": { color: "black" }, // Label color
-              "& .MuiOutlinedInput-root": { color: "black" } // Text color
+              "& .MuiInputLabel-root": { color: "black" },
+              "& .MuiOutlinedInput-root": { color: "black" }
             }}
           />
           <TextField 
@@ -119,8 +168,8 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
             sx={{ 
               backgroundColor: "white",
               borderRadius: 1,
-              "& .MuiInputLabel-root": { color: "black" }, // Label color
-              "& .MuiOutlinedInput-root": { color: "black" } // Text color
+              "& .MuiInputLabel-root": { color: "black" },
+              "& .MuiOutlinedInput-root": { color: "black" }
             }}
           />
           <TextField 
@@ -132,8 +181,8 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
             sx={{ 
               backgroundColor: "white",
               borderRadius: 1,
-              "& .MuiInputLabel-root": { color: "black" }, // Label color
-              "& .MuiOutlinedInput-root": { color: "black" } // Text color
+              "& .MuiInputLabel-root": { color: "black" },
+              "& .MuiOutlinedInput-root": { color: "black" }
             }}
           />
           <TextField 
@@ -144,88 +193,113 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
             sx={{ 
               backgroundColor: "white",
               borderRadius: 1,
-              "& .MuiInputLabel-root": { color: "black" }, // Label color
-              "& .MuiOutlinedInput-root": { color: "black" } // Text color
+              "& .MuiInputLabel-root": { color: "black" },
+              "& .MuiOutlinedInput-root": { color: "black" }
+            }}
+          />
+          <TextField 
+            name="date" 
+            label="Date" 
+            type="date"
+            value={leadData.date} 
+            onChange={handleLeadChange}
+            sx={{ 
+              backgroundColor: "white",
+              borderRadius: 1,
+              "& .MuiInputLabel-root": { color: "black" },
+              "& .MuiOutlinedInput-root": { color: "black" }
+            }}
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+          <TextField 
+            name="remarks" 
+            label="Remarks" 
+            multiline
+            rows={2}
+            value={leadData.remarks} 
+            onChange={handleLeadChange}
+            sx={{ 
+              backgroundColor: "white",
+              borderRadius: 1,
+              "& .MuiInputLabel-root": { color: "black" },
+              "& .MuiOutlinedInput-root": { color: "black" }
             }}
           />
         </Box>
-        <TextField 
-          fullWidth 
-          name="remarks" 
-          label="Remarks" 
-          multiline 
-          rows={3} 
-          sx={{ 
-            mt: 2,
-            backgroundColor: "white",
-            borderRadius: 1,
-            "& .MuiInputLabel-root": { color: "black" }, // Label color
-            "& .MuiOutlinedInput-root": { color: "black" } // Text color
-          }}
-          value={leadData.remarks} 
-          onChange={handleLeadChange} 
-        />
-        <Button 
-          variant="contained" 
-          color="primary" 
-          sx={{ mt: 2 }} 
-          onClick={handleAddLead}
-        >
-          Add Lead
-        </Button>
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <Button 
+            variant="contained" 
+            onClick={handleSubmit}
+            sx={{ 
+              backgroundColor: "#0C47A0",
+              color: "white",
+              "&:hover": {
+                backgroundColor: "#1565c0"
+              }
+            }}
+          >
+            Create Lead
+          </Button>
+        </Box>
       </Box>
 
-      <TableContainer component={Paper}>
+      {/* Active Leads Table */}
+      <TableContainer component={Paper} sx={{ mt: 3 }}>
         <Table>
-          <TableHead sx={{ backgroundColor: "primary.light" }}>
+          <TableHead sx={{ backgroundColor: "primary.main" }}>
             <TableRow>
-              <TableCell>Date</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Contact</TableCell>
-              <TableCell>Policy</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Remarks</TableCell>
-              <TableCell>Actions</TableCell>
+              <TableCell sx={{ color: "white" }}>Lead Name</TableCell>
+              <TableCell sx={{ color: "white" }}>Contact</TableCell>
+              <TableCell sx={{ color: "white" }}>Policy Interest</TableCell>
+              <TableCell sx={{ color: "white" }}>Date</TableCell>
+              <TableCell sx={{ color: "white" }}>Status</TableCell>
+              <TableCell sx={{ color: "white" }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {leads.length === 0 ? (
+            {activeLeads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">No leads found</TableCell>
+                <TableCell colSpan={6} align="center">No active leads</TableCell>
               </TableRow>
             ) : (
-              leads.map((lead) => (
+              activeLeads.map((lead) => (
                 <TableRow key={lead.id} hover>
-                  <TableCell>{lead.date}</TableCell>
                   <TableCell>{lead.name}</TableCell>
                   <TableCell>
                     <Box>
-                      <div>{lead.phone}</div>
-                      {lead.email && <div style={{ fontSize: '0.8rem', color: '#666' }}>{lead.email}</div>}
+                      <Typography>{lead.phone}</Typography>
+                      {lead.email && (
+                        <Typography variant="body2" color="textSecondary">
+                          {lead.email}
+                        </Typography>
+                      )}
                     </Box>
                   </TableCell>
                   <TableCell>{lead.policy || '-'}</TableCell>
+                  <TableCell>{lead.date}</TableCell>
                   <TableCell>
                     <Chip 
-                      label={lead.status} 
-                      color={
-                        lead.status === "New" ? "primary" : 
-                        lead.status === "Contacted" ? "warning" : 
-                        "success"
-                      }
+                      label={lead.status}
+                      color="primary"
+                      size="small"
                     />
                   </TableCell>
-                  <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {lead.remarks || '-'}
-                  </TableCell>
                   <TableCell>
-                    <Tooltip title="Convert to customer">
-                      <IconButton color="success" onClick={() => handleConvertLead(lead)}>
+                    <Tooltip title="Convert to Customer">
+                      <IconButton 
+                        color="primary" 
+                        onClick={() => handleAcceptLead(lead)}
+                      >
                         <CheckCircle />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Delete lead">
-                      <IconButton color="error" onClick={() => handleDeleteLead(lead)}>
+                    <Tooltip title="Delete Lead">
+                      <IconButton 
+                        color="error"
+                        onClick={() => handleDeleteLead(lead.id)}
+                      >
                         <Delete />
                       </IconButton>
                     </Tooltip>
@@ -237,68 +311,17 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
         </Table>
       </TableContainer>
 
-      {/* Convert Lead Modal */}
-      <Modal open={openConvertModal} onClose={() => setOpenConvertModal(false)}>
-        <Box sx={{ 
-          p: 4, 
-          backgroundColor: "background.paper", 
-          margin: "auto", 
-          mt: 10, 
-          maxWidth: 400, 
-          textAlign: "center", 
-          borderRadius: 2, 
-          boxShadow: 3 
-        }}>
-          <Typography variant="h5" fontWeight="bold" gutterBottom>Convert Lead</Typography>
-          <Typography variant="body1" sx={{ mt: 2 }}>
-            Convert <strong>{selectedLead?.name}</strong> to a customer?
-          </Typography>
-          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center', gap: 2 }}>
-            <Button variant="contained" color="primary" onClick={confirmLeadConversion}>
-              Confirm Conversion
-            </Button>
-            <Button variant="outlined" onClick={() => setOpenConvertModal(false)}>
-              Cancel
-            </Button>
-          </Box>
-        </Box>
-      </Modal>
-
-      {/* Delete Lead Modal */}
-      <Modal open={openDeleteModal} onClose={() => setOpenDeleteModal(false)}>
-        <Box sx={{ 
-          p: 4, 
-          backgroundColor: "background.paper", 
-          margin: "auto", 
-          mt: 10, 
-          maxWidth: 400, 
-          textAlign: "center", 
-          borderRadius: 2, 
-          boxShadow: 3 
-        }}>
-          <Typography variant="h5" fontWeight="bold" gutterBottom>Delete Lead</Typography>
-          <Typography variant="body1" sx={{ mt: 2 }}>
-            Are you sure you want to delete <strong>{selectedLead?.name}</strong>?
-          </Typography>
-          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center', gap: 2 }}>
-            <Button variant="contained" color="error" onClick={confirmLeadDeletion}>
-              Delete
-            </Button>
-            <Button variant="outlined" onClick={() => setOpenDeleteModal(false)}>
-              Cancel
-            </Button>
-          </Box>
-        </Box>
-      </Modal>
-
       {/* Snackbar for notifications */}
-      <Snackbar 
-        open={snackbar.open} 
-        autoHideDuration={6000} 
-        onClose={() => setSnackbar({...snackbar, open: false})}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
-        <Alert onClose={() => setSnackbar({...snackbar, open: false})} severity={snackbar.severity}>
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
           {snackbar.message}
         </Alert>
       </Snackbar>
