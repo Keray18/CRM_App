@@ -14,6 +14,7 @@ import {
 } from "@mui/material";
 import { Assignment as TaskIcon } from "@mui/icons-material";
 
+// This component is used to assign tasks to employees
 const AssignTask = ({ tasks }) => {
   return (
     <Box sx={{ p: 3 }}>
