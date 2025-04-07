@@ -25,7 +25,6 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
     name: "", 
     phone: "", 
     email: "",
-    policy: "", 
     remarks: "",
     date: dayjs().format('YYYY-MM-DD'),
     status: "New"
@@ -70,7 +69,6 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
       name: "", 
       phone: "", 
       email: "",
-      policy: "", 
       remarks: "",
       date: dayjs().format('YYYY-MM-DD'),
       status: "New"
@@ -186,20 +184,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
             }}
           />
           <TextField 
-            name="policy" 
-            label="Policy Interested In" 
-            value={leadData.policy} 
-            onChange={handleLeadChange}
-            sx={{ 
-              backgroundColor: "white",
-              borderRadius: 1,
-              "& .MuiInputLabel-root": { color: "black" },
-              "& .MuiOutlinedInput-root": { color: "black" }
-            }}
-          />
-          <TextField 
             name="date" 
-            label="Date" 
             type="date"
             value={leadData.date} 
             onChange={handleLeadChange}
@@ -209,8 +194,8 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
               "& .MuiInputLabel-root": { color: "black" },
               "& .MuiOutlinedInput-root": { color: "black" }
             }}
-            InputLabelProps={{
-              shrink: true,
+            inputProps={{
+              placeholder: "dd-mm-yy"
             }}
           />
           <TextField 
@@ -252,7 +237,6 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
             <TableRow>
               <TableCell sx={{ color: "white" }}>Lead Name</TableCell>
               <TableCell sx={{ color: "white" }}>Contact</TableCell>
-              <TableCell sx={{ color: "white" }}>Policy Interest</TableCell>
               <TableCell sx={{ color: "white" }}>Date</TableCell>
               <TableCell sx={{ color: "white" }}>Status</TableCell>
               <TableCell sx={{ color: "white" }}>Actions</TableCell>
@@ -261,7 +245,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
           <TableBody>
             {activeLeads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">No active leads</TableCell>
+                <TableCell colSpan={5} align="center">No active leads</TableCell>
               </TableRow>
             ) : (
               activeLeads.map((lead) => (
@@ -277,7 +261,6 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
                       )}
                     </Box>
                   </TableCell>
-                  <TableCell>{lead.policy || '-'}</TableCell>
                   <TableCell>{lead.date}</TableCell>
                   <TableCell>
                     <Chip 

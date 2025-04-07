@@ -1,13 +1,13 @@
-import React,{useState} from "react";
-import { 
-  Typography, 
-  Box, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
+import React, { useState } from "react";
+import {
+  Typography,
+  Box,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Paper,
   IconButton,
   Tooltip,
@@ -78,13 +78,13 @@ const Customers = ({ customers, setCustomers }) => {
           InputProps={{ startAdornment: <Search sx={{ mr: 1 }} /> }}
           value={searchTerm}
           onChange={handleSearchChange}
-          sx={{ 
+          sx={{
             minWidth: 200,
             flexGrow: 1,
             backgroundColor: "white",
             borderRadius: 1,
-            "& .MuiInputLabel-root": { color: "black" }, // Label color
-            "& .MuiOutlinedInput-root": { color: "black" } // Text color
+            "& .MuiInputLabel-root": { color: "black" },
+            "& .MuiOutlinedInput-root": { color: "black" }
           }}
         />
         <TextField
@@ -93,12 +93,12 @@ const Customers = ({ customers, setCustomers }) => {
           label="Filter by Policy"
           value={filterPolicy}
           onChange={handleFilterChange}
-          sx={{ 
+          sx={{
             minWidth: 200,
             backgroundColor: "white",
             borderRadius: 1,
-            "& .MuiInputLabel-root": { color: "black" }, // Label color
-            "& .MuiOutlinedInput-root": { color: "black" } // Text color
+            "& .MuiInputLabel-root": { color: "black" },
+            "& .MuiOutlinedInput-root": { color: "black" }
           }}
           InputProps={{ startAdornment: <FilterList sx={{ mr: 1 }} /> }}
         >
@@ -189,7 +189,7 @@ const Customers = ({ customers, setCustomers }) => {
                   <TableCell>
                     <Chip 
                       label="Active" 
-                      color="success" 
+                      color="success"
                       size="small"
                       sx={{ color: 'white' }}
                     />
