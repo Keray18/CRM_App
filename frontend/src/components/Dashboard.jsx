@@ -45,6 +45,7 @@ import Customers from "./AdminDash/Customers";
 import AssignTask from "./AdminDash/AssignTask";
 import Documents from "./AdminDash/Documents";
 import PolicyStatus from "./AdminDash/PolicyStatus";
+import PolicyManagement from './AdminDash/PolicyManagement';
 
 const primaryColor = "#1976d2";
 const secondaryColor = "#f50057";
@@ -67,8 +68,9 @@ const Sidebar = ({ section, setSection }) => {
     { text: "Task Assignments", icon: <TaskIcon /> },
     { text: "Leads", icon: <AssignmentIcon /> },
     { text: "Customers", icon: <GroupIcon /> },
-    { text: "Policy Status", icon: <PolicyIcon /> },
-    { text: "Documents", icon: <DocumentIcon /> },
+    { text: "Policy Status", icon: <PolicyIcon />, section: "Policy Status" },
+    { text: "Policy Management", icon: <PolicyIcon />, section: "Policy Management" },
+    { text: "Documents", icon: <DocumentIcon />, section: "Documents" },
   ];
 
   return (
@@ -621,6 +623,9 @@ const Dashboard = () => {
 
         {/* Policy Status */}
         {section === "Policy Status" && <PolicyStatus />}
+
+        {/* Policy Management */}
+        {section === "Policy Management" && <PolicyManagement />}
 
         {/* Documents */}
         {section === "Documents" && (
