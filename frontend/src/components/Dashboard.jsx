@@ -25,6 +25,8 @@ import {
   Chip,
   MenuItem,
   InputAdornment,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import {
   Dashboard as DashboardIcon,
@@ -35,12 +37,15 @@ import {
   AssignmentTurnedIn as TaskIcon,
   Search as SearchIcon,
   Description as DocumentIcon,
+  Policy as PolicyIcon
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import Leads from "./AdminDash/Leads";
 import Customers from "./AdminDash/Customers";
 import AssignTask from "./AdminDash/AssignTask";
 import Documents from "./AdminDash/Documents";
+import PolicyStatus from "./AdminDash/PolicyStatus";
+import PolicyManagement from './AdminDash/PolicyManagement';
 
 const primaryColor = "#1976d2";
 const secondaryColor = "#f50057";
@@ -63,7 +68,9 @@ const Sidebar = ({ section, setSection }) => {
     { text: "Task Assignments", icon: <TaskIcon /> },
     { text: "Leads", icon: <AssignmentIcon /> },
     { text: "Customers", icon: <GroupIcon /> },
-    { text: "Documents", icon: <DocumentIcon /> },
+    { text: "Policy Status", icon: <PolicyIcon />, section: "Policy Status" },
+    { text: "Policy Management", icon: <PolicyIcon />, section: "Policy Management" },
+    { text: "Documents", icon: <DocumentIcon />, section: "Documents" },
   ];
 
   return (
@@ -135,6 +142,11 @@ const Dashboard = () => {
   const [openTaskModal, setOpenTaskModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success"
+  });
   const theme = useTheme();
 
   const departments = ["Sales", "Support", "Development", "Marketing", "HR"];
@@ -170,6 +182,11 @@ const Dashboard = () => {
       position: "",
       department: "",
       policyNumber: "",
+    });
+    setSnackbar({
+      open: true,
+      message: "Employee registered successfully",
+      severity: "success"
     });
   };
 
@@ -433,6 +450,7 @@ const Dashboard = () => {
                       "Contact",
                       "Department",
                       "Position",
+                      "Password",
                       "Actions",
                     ].map((header) => (
                       <TableCell
@@ -469,6 +487,11 @@ const Dashboard = () => {
                         />
                       </TableCell>
                       <TableCell>{emp.position}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                          {emp.password}
+                        </Typography>
+                      </TableCell>
                       <TableCell>
                         <Button
                           variant="outlined"
@@ -536,12 +559,19 @@ const Dashboard = () => {
                 <TextField
                   fullWidth
                   type="date"
-                  label="Due Date"
-                  InputLabelProps={{ shrink: true }}
                   value={taskForm.dueDate}
                   onChange={(e) =>
                     setTaskForm({ ...taskForm, dueDate: e.target.value })
                   }
+                  sx={{ 
+                    backgroundColor: "white",
+                    borderRadius: 1,
+                    "& .MuiInputLabel-root": { color: "black" },
+                    "& .MuiOutlinedInput-root": { color: "black" }
+                  }}
+                  inputProps={{
+                    min: new Date().toISOString().split('T')[0]
+                  }}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -566,7 +596,7 @@ const Dashboard = () => {
                   <Button
                     variant="contained"
                     onClick={handleTaskSubmit}
-                    disabled={!taskForm.taskType || !taskForm.description}
+                    disabled={!taskForm.taskType || !taskForm.description || !taskForm.dueDate}
                   >
                     Assign Task
                   </Button>
@@ -590,6 +620,12 @@ const Dashboard = () => {
         {section === "Customers" && (
           <Customers customers={customers} setCustomers={setCustomers} />
         )}
+
+        {/* Policy Status */}
+        {section === "Policy Status" && <PolicyStatus />}
+
+        {/* Policy Management */}
+        {section === "Policy Management" && <PolicyManagement />}
 
         {/* Documents */}
         {section === "Documents" && (
@@ -633,6 +669,21 @@ const Dashboard = () => {
           </Box>
         </Modal>
       </Box>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
