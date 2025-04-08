@@ -32,7 +32,13 @@ import {
   CardContent,
   LinearProgress,
   Snackbar,
-  Alert
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  InputLabel
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -78,6 +84,9 @@ const PolicyStatus = () => {
     message: '',
     severity: 'success'
   });
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Insurance companies
   const insuranceCompanies = [
@@ -167,7 +176,6 @@ const PolicyStatus = () => {
 
   const handleMenuClose = () => {
     setAnchorEl(null);
-    setSelectedPolicy(null);
   };
 
   const handleFileUpload = (event) => {
@@ -198,11 +206,41 @@ const PolicyStatus = () => {
       return;
     }
 
-    // Create new policy object
+    // Create new policy object with all the fields
     const policyToAdd = {
       id: `P${Date.now()}`, // Generate unique ID
-      ...newPolicy,
-      status: 'Live Policy' // Set default status
+      policyNumber: newPolicy.policyNumber,
+      insuredName: newPolicy.insuredName,
+      clientName: newPolicy.clientName,
+      mobile: newPolicy.mobile || '',
+      email: newPolicy.email || '',
+      startDate: newPolicy.startDate || '',
+      endDate: newPolicy.endDate,
+      company: newPolicy.company,
+      business: newPolicy.business,
+      type: insuranceType, // Add the insurance type
+      status: 'Live Policy',
+      premium: newPolicy.premium || '',
+      nominee: newPolicy.nominee || '',
+      documents: uploadedFiles.map(file => file.name),
+
+      // Vehicle specific fields
+      vehicleType: insuranceType === 'vehicle' ? newPolicy.vehicleType : '',
+      vehicleNumber: insuranceType === 'vehicle' ? newPolicy.vehicleNumber : '',
+      make: insuranceType === 'vehicle' ? newPolicy.make : '',
+      model: insuranceType === 'vehicle' ? newPolicy.model : '',
+      year: insuranceType === 'vehicle' ? newPolicy.year : '',
+
+      // Health specific fields
+      healthPlan: insuranceType === 'health' ? newPolicy.healthPlan : '',
+      sumInsured: insuranceType === 'health' ? newPolicy.sumInsured : '',
+      age: insuranceType === 'health' ? newPolicy.age : '',
+      preExisting: insuranceType === 'health' ? newPolicy.preExisting : '',
+
+      // Travel specific fields
+      travelType: insuranceType === 'travel' ? newPolicy.travelType : '',
+      destination: insuranceType === 'travel' ? newPolicy.destination : '',
+      tripDuration: insuranceType === 'travel' ? newPolicy.tripDuration : ''
     };
 
     // Add new policy to the list
@@ -221,6 +259,9 @@ const PolicyStatus = () => {
       policyNumber: '',
       insuredName: '',
       clientName: '',
+      mobile: '',
+      email: '',
+      startDate: '',
       endDate: '',
       company: '',
       business: 'New',
@@ -242,6 +283,7 @@ const PolicyStatus = () => {
       documents: []
     });
     setUploadedFiles([]);
+    setInsuranceType('vehicle');
   };
 
   const resetForm = () => {
@@ -303,6 +345,99 @@ const PolicyStatus = () => {
       case 'travel': return <TravelIcon fontSize="small" />;
       default: return <PolicyIcon fontSize="small" />;
     }
+  };
+
+  // Handle View Details
+  const handleViewDetails = (policy) => {
+    setSelectedPolicy(policy);
+    setViewModalOpen(true);
+    handleMenuClose();
+  };
+
+  // Handle Edit
+  const handleEdit = (policy) => {
+    setSelectedPolicy(policy);
+    setNewPolicy(policy); // Set form data with selected policy
+    setEditModalOpen(true);
+    handleMenuClose();
+  };
+
+  // Handle Delete
+  const handleDelete = (policy) => {
+    setSelectedPolicy(policy);
+    setDeleteDialogOpen(true);
+    handleMenuClose();
+  };
+
+  // Confirm Delete
+  const handleConfirmDelete = () => {
+    if (!selectedPolicy) return;
+    
+    setPolicies(prevPolicies => prevPolicies.filter(p => p.id !== selectedPolicy.id));
+    setDeleteDialogOpen(false);
+    setSelectedPolicy(null); // Clear selected policy after deletion
+    setSnackbar({
+      open: true,
+      message: 'Policy deleted successfully',
+      severity: 'success'
+    });
+  };
+
+  // Handle Update Policy
+  const handleUpdatePolicy = () => {
+    if (!newPolicy.policyNumber || !newPolicy.insuredName || !newPolicy.clientName || 
+        !newPolicy.endDate || !newPolicy.company || !newPolicy.business) {
+      setSnackbar({
+        open: true,
+        message: 'Please fill in all required fields',
+        severity: 'error'
+      });
+      return;
+    }
+
+    setPolicies(prevPolicies => 
+      prevPolicies.map(policy => 
+        policy.id === selectedPolicy.id ? { ...newPolicy, id: policy.id } : policy
+      )
+    );
+
+    setSnackbar({
+      open: true,
+      message: 'Policy updated successfully',
+      severity: 'success'
+    });
+
+    setEditModalOpen(false);
+    setNewPolicy({
+      policyNumber: '',
+      insuredName: '',
+      clientName: '',
+      endDate: '',
+      company: '',
+      business: 'New',
+      type: 'vehicle',
+      vehicleType: '',
+      vehicleNumber: '',
+      make: '',
+      model: '',
+      year: '',
+      healthPlan: '',
+      sumInsured: '',
+      age: '',
+      preExisting: 'No',
+      travelType: '',
+      destination: '',
+      tripDuration: '',
+      premium: '',
+      nominee: '',
+      documents: []
+    });
+  };
+
+  // Add cleanup for modal closes
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setSelectedPolicy(null);
   };
 
   return (
@@ -491,13 +626,13 @@ const PolicyStatus = () => {
                     open={Boolean(anchorEl) && selectedPolicy?.id === policy.id}
                     onClose={handleMenuClose}
                   >
-                    <MenuItem onClick={handleMenuClose}>
+                    <MenuItem onClick={() => handleViewDetails(policy)}>
                       <ViewIcon sx={{ mr: 1 }} /> View Details
                     </MenuItem>
-                    <MenuItem onClick={handleMenuClose}>
+                    <MenuItem onClick={() => handleEdit(policy)}>
                       <EditIcon sx={{ mr: 1 }} /> Edit
                     </MenuItem>
-                    <MenuItem onClick={handleMenuClose}>
+                    <MenuItem onClick={() => handleDelete(policy)} sx={{ color: 'error.main' }}>
                       <DeleteIcon sx={{ mr: 1 }} /> Delete
                     </MenuItem>
                   </Menu>
@@ -673,30 +808,106 @@ const PolicyStatus = () => {
                 />
               </Grid>
               <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Start Date"
-                  type="date"
-                  value={newPolicy.startDate}
-                  onChange={handleNewPolicyChange('startDate')}
-                  required
-                  InputLabelProps={{
-                    shrink: true,
-                  }}
-                />
+                <FormControl fullWidth>
+                  <Typography 
+                    variant="caption" 
+                    sx={{ 
+                      mb: 1, 
+                      color: 'text.secondary',
+                      position: 'relative',
+                      fontSize: '0.75rem'
+                    }}
+                  >
+                    Start Date *
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    type="date"
+                    value={newPolicy.startDate}
+                    onChange={handleNewPolicyChange('startDate')}
+                    required
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        height: '40px',
+                        backgroundColor: 'white',
+                        '& fieldset': {
+                          borderColor: 'rgba(0, 0, 0, 0.23)',
+                          borderRadius: 1
+                        },
+                        '&:hover fieldset': {
+                          borderColor: 'primary.main'
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: 'primary.main'
+                        }
+                      },
+                      '& .MuiInputBase-input': {
+                        color: 'black',
+                        fontSize: '0.875rem',
+                        padding: '10px 14px',
+                        cursor: 'pointer'
+                      },
+                      '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                        cursor: 'pointer',
+                        filter: 'invert(0.5)'
+                      }
+                    }}
+                    inputProps={{
+                      min: new Date().toISOString().split('T')[0]
+                    }}
+                  />
+                </FormControl>
               </Grid>
               <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="End Date"
-                  type="date"
-                  value={newPolicy.endDate}
-                  onChange={handleNewPolicyChange('endDate')}
-                  required
-                  InputLabelProps={{
-                    shrink: true,
-                  }}
-                />
+                <FormControl fullWidth>
+                  <Typography 
+                    variant="caption" 
+                    sx={{ 
+                      mb: 1, 
+                      color: 'text.secondary',
+                      position: 'relative',
+                      fontSize: '0.75rem'
+                    }}
+                  >
+                    End Date *
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    type="date"
+                    value={newPolicy.endDate}
+                    onChange={handleNewPolicyChange('endDate')}
+                    required
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        height: '40px',
+                        backgroundColor: 'white',
+                        '& fieldset': {
+                          borderColor: 'rgba(0, 0, 0, 0.23)',
+                          borderRadius: 1
+                        },
+                        '&:hover fieldset': {
+                          borderColor: 'primary.main'
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: 'primary.main'
+                        }
+                      },
+                      '& .MuiInputBase-input': {
+                        color: 'black',
+                        fontSize: '0.875rem',
+                        padding: '10px 14px',
+                        cursor: 'pointer'
+                      },
+                      '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                        cursor: 'pointer',
+                        filter: 'invert(0.5)'
+                      }
+                    }}
+                    inputProps={{
+                      min: newPolicy.startDate || new Date().toISOString().split('T')[0]
+                    }}
+                  />
+                </FormControl>
               </Grid>
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
@@ -971,6 +1182,361 @@ const PolicyStatus = () => {
           </Box>
         </Box>
       </Modal>
+
+      {/* View Details Modal */}
+      <Modal
+        open={viewModalOpen}
+        onClose={() => setViewModalOpen(false)}
+        aria-labelledby="view-policy-modal"
+      >
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 800,
+          bgcolor: 'background.paper',
+          boxShadow: 24,
+          p: 4,
+          borderRadius: 1,
+          maxHeight: '90vh',
+          overflow: 'auto'
+        }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h6">Policy Details</Typography>
+            <IconButton onClick={() => setViewModalOpen(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          {selectedPolicy && (
+            <>
+              <Grid container spacing={3}>
+                {/* Basic Information */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" sx={{ mb: 2, color: 'primary.main', fontWeight: 'bold' }}>
+                    Basic Information
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">Policy Number</Typography>
+                        <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.policyNumber}</Typography>
+                      </Box>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">Insured Name</Typography>
+                        <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.insuredName}</Typography>
+                      </Box>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">Client Name</Typography>
+                        <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.clientName}</Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">Mobile Number</Typography>
+                        <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.mobile || 'N/A'}</Typography>
+                      </Box>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">Email</Typography>
+                        <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.email || 'N/A'}</Typography>
+                      </Box>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">Nominee</Typography>
+                        <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.nominee || 'N/A'}</Typography>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </Grid>
+
+                {/* Policy Details */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" sx={{ mb: 2, color: 'primary.main', fontWeight: 'bold' }}>
+                    Policy Details
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">Insurance Company</Typography>
+                        <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.company}</Typography>
+                      </Box>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">Start Date</Typography>
+                        <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.startDate || 'N/A'}</Typography>
+                      </Box>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">End Date</Typography>
+                        <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.endDate}</Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">Business Type</Typography>
+                        <Chip 
+                          label={selectedPolicy.business} 
+                          size="small"
+                          color={selectedPolicy.business === 'New' ? 'primary' : 'default'}
+                          sx={{ mt: 0.5 }}
+                        />
+                      </Box>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">Premium Amount</Typography>
+                        <Typography variant="body1" sx={{ mt: 0.5 }}>
+                          {selectedPolicy.premium ? `₹${selectedPolicy.premium}` : 'N/A'}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">Status</Typography>
+                        <Chip 
+                          label={selectedPolicy.status} 
+                          size="small"
+                          color={
+                            selectedPolicy.status === 'Live Policy' ? 'success' :
+                            selectedPolicy.status === 'Quotation' ? 'warning' :
+                            'error'
+                          }
+                          sx={{ mt: 0.5 }}
+                        />
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </Grid>
+
+                {/* Type Specific Details */}
+                {selectedPolicy.type === 'vehicle' && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle1" sx={{ mb: 2, color: 'primary.main', fontWeight: 'bold' }}>
+                      Vehicle Details
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Vehicle Type</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.vehicleType || 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Vehicle Number</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.vehicleNumber || 'N/A'}</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Make & Model</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>
+                            {selectedPolicy.make && selectedPolicy.model ? 
+                              `${selectedPolicy.make} ${selectedPolicy.model}` : 'N/A'}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Manufacturing Year</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.year || 'N/A'}</Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </Grid>
+                )}
+
+                {selectedPolicy.type === 'health' && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle1" sx={{ mb: 2, color: 'primary.main', fontWeight: 'bold' }}>
+                      Health Insurance Details
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Health Plan</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.healthPlan || 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Sum Insured</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>
+                            {selectedPolicy.sumInsured ? `₹${selectedPolicy.sumInsured}` : 'N/A'}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Age</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.age || 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Pre-existing Conditions</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.preExisting || 'N/A'}</Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </Grid>
+                )}
+
+                {selectedPolicy.type === 'travel' && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle1" sx={{ mb: 2, color: 'primary.main', fontWeight: 'bold' }}>
+                      Travel Insurance Details
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Travel Type</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.travelType || 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Destination</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.destination || 'N/A'}</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Trip Duration</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>
+                            {selectedPolicy.tripDuration ? `${selectedPolicy.tripDuration} Days` : 'N/A'}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </Grid>
+                )}
+
+                {/* Documents Section */}
+                {selectedPolicy.documents && selectedPolicy.documents.length > 0 && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle1" sx={{ mb: 2, color: 'primary.main', fontWeight: 'bold' }}>
+                      Documents
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {selectedPolicy.documents.map((doc, index) => (
+                        <Chip
+                          key={index}
+                          label={doc}
+                          variant="outlined"
+                          size="small"
+                          icon={<DownloadIcon />}
+                          onClick={() => {/* Handle document download */}}
+                        />
+                      ))}
+                    </Box>
+                  </Grid>
+                )}
+              </Grid>
+            </>
+          )}
+        </Box>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        aria-labelledby="edit-policy-modal"
+      >
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 800,
+          bgcolor: 'background.paper',
+          boxShadow: 24,
+          p: 4,
+          borderRadius: 1,
+          maxHeight: '90vh',
+          overflow: 'auto'
+        }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">Edit Policy</Typography>
+            <IconButton onClick={() => setEditModalOpen(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          <Grid container spacing={2}>
+            {/* Reuse the same form fields as in the Add New Policy modal */}
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="Policy Number"
+                value={newPolicy.policyNumber}
+                onChange={(e) => setNewPolicy({ ...newPolicy, policyNumber: e.target.value })}
+                required
+                sx={{ mb: 2 }}
+              />
+              <TextField
+                fullWidth
+                label="Insured Name"
+                value={newPolicy.insuredName}
+                onChange={(e) => setNewPolicy({ ...newPolicy, insuredName: e.target.value })}
+                required
+                sx={{ mb: 2 }}
+              />
+              <TextField
+                fullWidth
+                label="Client Name"
+                value={newPolicy.clientName}
+                onChange={(e) => setNewPolicy({ ...newPolicy, clientName: e.target.value })}
+                required
+                sx={{ mb: 2 }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="End Date"
+                type="date"
+                value={newPolicy.endDate}
+                onChange={(e) => setNewPolicy({ ...newPolicy, endDate: e.target.value })}
+                required
+                InputLabelProps={{ shrink: true }}
+                sx={{ mb: 2 }}
+              />
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Company</InputLabel>
+                <Select
+                  value={newPolicy.company}
+                  onChange={(e) => setNewPolicy({ ...newPolicy, company: e.target.value })}
+                  label="Company"
+                  required
+                >
+                  {insuranceCompanies.map((company) => (
+                    <MenuItem key={company} value={company}>{company}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Business</InputLabel>
+                <Select
+                  value={newPolicy.business}
+                  onChange={(e) => setNewPolicy({ ...newPolicy, business: e.target.value })}
+                  label="Business"
+                  required
+                >
+                  <MenuItem value="New">New</MenuItem>
+                  <MenuItem value="Renewal">Renewal</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
+            <Button onClick={() => setEditModalOpen(false)}>Cancel</Button>
+            <Button variant="contained" onClick={handleUpdatePolicy}>Update Policy</Button>
+          </Box>
+        </Box>
+      </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleCloseDeleteDialog}
+      >
+        <DialogTitle>Delete Policy</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this policy? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog}>Cancel</Button>
+          <Button onClick={handleConfirmDelete} color="error" variant="contained">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Snackbar for notifications */}
       <Snackbar
