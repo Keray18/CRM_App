@@ -540,6 +540,7 @@ const PolicyStatus = () => {
 
           <Box sx={{ p: 3 }}>
             {/* Insurance Type Selection */}
+
             <FormControl component="fieldset" sx={{ mb: 3 }}>
               <FormLabel component="legend">Insurance Type</FormLabel>
               <RadioGroup
@@ -595,7 +596,50 @@ const PolicyStatus = () => {
                 </Card>
               </RadioGroup>
             </FormControl>
-
+<Grid item xs={12}>
+                <Typography variant="subtitle1" gutterBottom sx={{ mt: 1 }}>
+                  Upload Documents
+                </Typography>
+                <Divider />
+                <Box sx={{ mt: 2 }}>
+                  <Button
+                    component="label"
+                    variant="outlined"
+                    startIcon={<UploadIcon />}
+                    sx={{ mr: 2 }}
+                  >
+                    Upload Documents
+                    <VisuallyHiddenInput 
+                      type="file" 
+                      onChange={handleFileUpload}
+                      multiple
+                      accept=".pdf,.doc,.docx,.jpg,.png"
+                    />
+                  </Button>
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                    Accepted formats: PDF, DOC, JPG, PNG (Max 10MB each)
+                  </Typography>
+                  
+                  {uploadedFiles.length > 0 && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2">Selected Files:</Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                        {uploadedFiles.map((file, index) => (
+                          <Chip
+                            key={index}
+                            label={file.name}
+                            onDelete={() => removeFile(index)}
+                            variant="outlined"
+                            size="small"
+                            sx={{ maxWidth: 200 }}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+                </Box>
+              </Grid>
+            <Divider/>
             <Grid container spacing={3}>
               {/* Common Fields */}
               <Grid item xs={12} md={6}>
@@ -885,49 +929,7 @@ const PolicyStatus = () => {
               )}
 
               {/* Document Upload */}
-              <Grid item xs={12}>
-                <Typography variant="subtitle1" gutterBottom sx={{ mt: 1 }}>
-                  Upload Documents
-                </Typography>
-                <Divider />
-                <Box sx={{ mt: 2 }}>
-                  <Button
-                    component="label"
-                    variant="outlined"
-                    startIcon={<UploadIcon />}
-                    sx={{ mr: 2 }}
-                  >
-                    Upload Documents
-                    <VisuallyHiddenInput 
-                      type="file" 
-                      onChange={handleFileUpload}
-                      multiple
-                      accept=".pdf,.doc,.docx,.jpg,.png"
-                    />
-                  </Button>
-                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                    Accepted formats: PDF, DOC, JPG, PNG (Max 10MB each)
-                  </Typography>
-                  
-                  {uploadedFiles.length > 0 && (
-                    <Box sx={{ mt: 2 }}>
-                      <Typography variant="subtitle2">Selected Files:</Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                        {uploadedFiles.map((file, index) => (
-                          <Chip
-                            key={index}
-                            label={file.name}
-                            onDelete={() => removeFile(index)}
-                            variant="outlined"
-                            size="small"
-                            sx={{ maxWidth: 200 }}
-                          />
-                        ))}
-                      </Box>
-                    </Box>
-                  )}
-                </Box>
-              </Grid>
+              
             </Grid>
 
             {isSubmitting && <LinearProgress sx={{ mt: 2 }} />}
