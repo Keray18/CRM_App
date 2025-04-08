@@ -30,7 +30,9 @@ import {
   Radio,
   Card,
   CardContent,
-  LinearProgress
+  LinearProgress,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -71,6 +73,11 @@ const PolicyStatus = () => {
   const [insuranceType, setInsuranceType] = useState('vehicle');
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   // Insurance companies
   const insuranceCompanies = [
@@ -113,48 +120,8 @@ const PolicyStatus = () => {
     'Senior Citizen'
   ];
 
-  // Sample policy data
-  const policies = [
-    {
-      id: 'E202304T170000',
-      insuredName: 'Lalit Kumar',
-      clientName: 'Lalit Kumar',
-      endDate: '10/09/2023',
-      company: 'TATA AIG GIC',
-      business: 'New',
-      status: 'active',
-      type: 'vehicle',
-      premium: '₹8,750',
-      startDate: '10/09/2022',
-      vehicleNumber: 'DL5CAB1234'
-    },
-    {
-      id: 'C202304T180000',
-      insuredName: 'Suryakant Gupta',
-      clientName: 'Suryakant Gupta',
-      endDate: '15/11/2023',
-      company: 'ICICI Lombard GIC',
-      business: 'Renewal',
-      status: 'active',
-      type: 'health',
-      premium: '₹12,500',
-      startDate: '15/11/2022',
-      sumInsured: '₹5,00,000'
-    },
-    {
-      id: 'T202305T190000',
-      insuredName: 'Priya Sharma',
-      clientName: 'Priya Sharma',
-      endDate: '20/12/2023',
-      company: 'HDFC ERGO',
-      business: 'New',
-      status: 'lapsed',
-      type: 'travel',
-      premium: '₹2,300',
-      startDate: '20/12/2022',
-      destination: 'USA'
-    }
-  ];
+  // Remove dummy data
+  const [policies, setPolicies] = useState([]);
 
   // New policy form state
   const [newPolicy, setNewPolicy] = useState({
@@ -220,21 +187,61 @@ const PolicyStatus = () => {
   };
 
   const handleAddPolicy = () => {
-    setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
-      const newPolicyWithId = {
-        ...newPolicy,
-        id: `P${Date.now()}`,
-        status: 'active',
-        documents: uploadedFiles.map(file => file.name)
-      };
-      
-      console.log('New Policy:', newPolicyWithId);
-      setIsSubmitting(false);
-      setOpenNewPolicy(false);
-      resetForm();
-    }, 2000);
+    // Validate required fields
+    if (!newPolicy.policyNumber || !newPolicy.insuredName || !newPolicy.clientName || 
+        !newPolicy.endDate || !newPolicy.company || !newPolicy.business) {
+      setSnackbar({
+        open: true,
+        message: 'Please fill in all required fields',
+        severity: 'error'
+      });
+      return;
+    }
+
+    // Create new policy object
+    const policyToAdd = {
+      id: `P${Date.now()}`, // Generate unique ID
+      ...newPolicy,
+      status: 'Live Policy' // Set default status
+    };
+
+    // Add new policy to the list
+    setPolicies(prevPolicies => [...prevPolicies, policyToAdd]);
+
+    // Show success message
+    setSnackbar({
+      open: true,
+      message: 'Policy created successfully',
+      severity: 'success'
+    });
+
+    // Close modal and reset form
+    setOpenNewPolicy(false);
+    setNewPolicy({
+      policyNumber: '',
+      insuredName: '',
+      clientName: '',
+      endDate: '',
+      company: '',
+      business: 'New',
+      type: 'vehicle',
+      vehicleType: '',
+      vehicleNumber: '',
+      make: '',
+      model: '',
+      year: '',
+      healthPlan: '',
+      sumInsured: '',
+      age: '',
+      preExisting: 'No',
+      travelType: '',
+      destination: '',
+      tripDuration: '',
+      premium: '',
+      nominee: '',
+      documents: []
+    });
+    setUploadedFiles([]);
   };
 
   const resetForm = () => {
@@ -332,49 +339,77 @@ const PolicyStatus = () => {
       </Box>
 
       {/* Search and Filter Section */}
-      <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
-        {/* Current Month Filter */}
-        <FormControl sx={{ minWidth: 180 }}>
-          <Select
-            value={currentMonth}
-            onChange={(e) => setCurrentMonth(e.target.value)}
-            displayEmpty
+      <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center', justifyContent: 'space-between' }}>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flex: 1 }}>
+          {/* All Time Period Filter */}
+          <FormControl sx={{ minWidth: 180 }}>
+            <Select
+              value={currentMonth}
+              onChange={(e) => setCurrentMonth(e.target.value)}
+              displayEmpty
+              sx={{
+                height: '40px',
+                backgroundColor: 'white',
+                borderRadius: 1,
+                '& .MuiSelect-select': {
+                  paddingTop: '8px',
+                  paddingBottom: '8px',
+                  color: 'black'
+                },
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(0, 0, 0, 0.23)'
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'primary.main'
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'primary.main'
+                },
+                '& .MuiSelect-icon': {
+                  color: 'primary.main'
+                }
+              }}
+            >
+              <MenuItem value="All">All Time Period</MenuItem>
+              <MenuItem value="January">January</MenuItem>
+              <MenuItem value="February">February</MenuItem>
+              <MenuItem value="March">March</MenuItem>
+            </Select>
+          </FormControl>
+
+          <TextField
+            placeholder="Search Policy..."
+            variant="outlined"
+            size="small"
+            fullWidth
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             sx={{
-              height: '40px',
-              '& .MuiSelect-select': {
-                paddingTop: '8px',
-                paddingBottom: '8px',
+              backgroundColor: 'white',
+              borderRadius: 1,
+              '& .MuiOutlinedInput-root': {
+                height: '40px',
+                color: 'black',
+                '& fieldset': {
+                  borderColor: 'rgba(0, 0, 0, 0.23)'
+                },
+                '&:hover fieldset': {
+                  borderColor: 'primary.main'
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: 'primary.main'
+                }
               }
             }}
-          >
-            <MenuItem value="All">All Time Periods</MenuItem>
-            <MenuItem value="This Month">This Month</MenuItem>
-            <MenuItem value="Last Month">Last Month</MenuItem>
-            <MenuItem value="This Quarter">This Quarter</MenuItem>
-            <MenuItem value="This Year">This Year</MenuItem>
-          </Select>
-        </FormControl>
-
-        <TextField
-          placeholder="Search policies..."
-          variant="outlined"
-          size="small"
-          fullWidth
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          sx={{
-            '& .MuiOutlinedInput-root': {
-              height: '40px',
-            }
-          }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon sx={{ color: 'gray' }} />
-              </InputAdornment>
-            ),
-          }}
-        />
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: 'gray' }} />
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Box>
 
         {/* Add New Policy Button */}
         <Button
@@ -383,10 +418,10 @@ const PolicyStatus = () => {
           onClick={() => setOpenNewPolicy(true)}
           sx={{
             height: '40px',
-            backgroundColor: "#0C47A0",
             textTransform: 'none',
+            backgroundColor: 'primary.main',
             '&:hover': {
-              backgroundColor: "#1565C0"
+              backgroundColor: 'primary.dark'
             }
           }}
         >
@@ -395,108 +430,83 @@ const PolicyStatus = () => {
       </Box>
 
       {/* Policies Table */}
-      <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid #e0e0e0' }}>
+      <TableContainer component={Paper} sx={{ boxShadow: 'none' }}>
         <Table>
-          <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
-            <TableRow>
-              <TableCell>Policy Details</TableCell>
-              <TableCell>Client Information</TableCell>
-              <TableCell>Dates</TableCell>
-              <TableCell>Insurance Details</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
+          <TableHead>
+            <TableRow sx={{ backgroundColor: 'primary.light' }}>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Policy Number</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Insured Name</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Client Name</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>End Date</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Company</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Business</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Status</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredPolicies.length > 0 ? (
-              filteredPolicies.map((policy) => (
-                <TableRow key={policy.id} hover>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      {getTypeIcon(policy.type)}
-                      <Box>
-                        <Typography fontWeight="500">{policy.id}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {policy.company}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Avatar sx={{ width: 32, height: 32, bgcolor: '#0C47A0' }}>
-                        {policy.insuredName.charAt(0)}
-                      </Avatar>
-                      <Box>
-                        <Typography fontWeight="500">{policy.insuredName}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {policy.clientName}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box>
-                      <Typography variant="body2">Start: {policy.startDate}</Typography>
-                      <Typography variant="body2">End: {policy.endDate}</Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box>
-                      <Typography variant="body2">
-                        {policy.type === 'vehicle' && `Vehicle: ${policy.vehicleNumber}`}
-                        {policy.type === 'health' && `Sum Insured: ${policy.sumInsured}`}
-                        {policy.type === 'travel' && `Destination: ${policy.destination}`}
-                      </Typography>
-                      <Typography variant="body2">Premium: {policy.premium}</Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Chip 
-                      label={policy.status === 'active' ? 'Active' : policy.status === 'lapsed' ? 'Lapsed' : 'Pending'}
-                      color={getStatusColor(policy.status)}
-                      size="small"
-                      sx={{ textTransform: 'capitalize' }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <IconButton onClick={(e) => handleMenuClick(e, policy)}>
-                      <MoreVertIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                  <Typography color="text.secondary">No policies found</Typography>
+            {filteredPolicies.map((policy) => (
+              <TableRow key={policy.id} hover>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <PolicyIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+                    <Typography>{policy.id}</Typography>
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Avatar sx={{ width: 24, height: 24, bgcolor: 'primary.main', fontSize: '0.875rem' }}>
+                      {policy.insuredName.charAt(0)}
+                    </Avatar>
+                    <Typography>{policy.insuredName}</Typography>
+                  </Box>
+                </TableCell>
+                <TableCell>{policy.clientName}</TableCell>
+                <TableCell>{policy.endDate}</TableCell>
+                <TableCell>{policy.company}</TableCell>
+                <TableCell>
+                  <Chip 
+                    label={policy.business} 
+                    size="small"
+                    color={policy.business === 'New' ? 'primary' : 'default'}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Chip 
+                    label={policy.status} 
+                    size="small"
+                    color={
+                      policy.status === 'Live Policy' ? 'success' :
+                      policy.status === 'Quotation' ? 'warning' :
+                      'error'
+                    }
+                  />
+                </TableCell>
+                <TableCell>
+                  <IconButton onClick={(e) => handleMenuClick(e, policy)}>
+                    <MoreVertIcon />
+                  </IconButton>
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl) && selectedPolicy?.id === policy.id}
+                    onClose={handleMenuClose}
+                  >
+                    <MenuItem onClick={handleMenuClose}>
+                      <ViewIcon sx={{ mr: 1 }} /> View Details
+                    </MenuItem>
+                    <MenuItem onClick={handleMenuClose}>
+                      <EditIcon sx={{ mr: 1 }} /> Edit
+                    </MenuItem>
+                    <MenuItem onClick={handleMenuClose}>
+                      <DeleteIcon sx={{ mr: 1 }} /> Delete
+                    </MenuItem>
+                  </Menu>
                 </TableCell>
               </TableRow>
-            )}
+            ))}
           </TableBody>
         </Table>
       </TableContainer>
-
-      {/* Actions Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-      >
-        <MenuItem onClick={handleMenuClose}>
-          <ViewIcon sx={{ mr: 1, fontSize: 20 }} /> View Details
-        </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
-          <DownloadIcon sx={{ mr: 1, fontSize: 20 }} /> Download Policy
-        </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
-          <EditIcon sx={{ mr: 1, fontSize: 20 }} /> Edit Policy
-        </MenuItem>
-        <Divider />
-        <MenuItem onClick={handleMenuClose} sx={{ color: 'error.main' }}>
-          <DeleteIcon sx={{ mr: 1, fontSize: 20 }} /> Delete Policy
-        </MenuItem>
-      </Menu>
 
       {/* New Policy Modal */}
       <Modal
@@ -961,6 +971,22 @@ const PolicyStatus = () => {
           </Box>
         </Box>
       </Modal>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
