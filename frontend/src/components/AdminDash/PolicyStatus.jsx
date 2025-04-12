@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -38,7 +38,10 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
-  InputLabel
+  InputLabel,
+  Stepper,
+  Step,
+  StepLabel
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -53,7 +56,11 @@ import {
   Delete as DeleteIcon,
   DirectionsCar as VehicleIcon,
   LocalHospital as HealthIcon,
-  Flight as TravelIcon
+  Flight as TravelIcon,
+  Phone as PhoneIcon,
+  Email as EmailIcon,
+  CalendarToday as CalendarTodayIcon,
+  Info as InfoIcon
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 
@@ -87,6 +94,17 @@ const PolicyStatus = () => {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [activeStep, setActiveStep] = useState(0);
+  const [steps, setSteps] = useState({
+    vehicle: ['Vehicle & Customer Details', 'Premium Details', 'Commission Details'],
+    health: ['Health Insurance Details', 'Commission Details'],
+    travel: ['Travel Insurance Details', 'Commission Details']
+  });
+  const [leads, setLeads] = useState([]);
+  const [leadSearchTerm, setLeadSearchTerm] = useState('');
+  const [filteredLeads, setFilteredLeads] = useState([]);
+  const [selectedLead, setSelectedLead] = useState(null);
+  const [policies, setPolicies] = useState([]);
 
   // Insurance companies
   const insuranceCompanies = [
@@ -129,9 +147,6 @@ const PolicyStatus = () => {
     'Senior Citizen'
   ];
 
-  // Remove dummy data
-  const [policies, setPolicies] = useState([]);
-
   // New policy form state
   const [newPolicy, setNewPolicy] = useState({
     policyNumber: '',
@@ -150,6 +165,16 @@ const PolicyStatus = () => {
     make: '',
     model: '',
     year: '',
+    // Premium details
+    basicPremium: '',
+    odPremium: '',
+    tpPremium: '',
+    ncbDiscount: '',
+    addonPremium: '',
+    gst: '',
+    totalPremium: '',
+    paymentMode: '',
+    paymentReference: '',
     // Health specific
     healthPlan: '',
     sumInsured: '',
@@ -162,8 +187,117 @@ const PolicyStatus = () => {
     // Common
     premium: '',
     nominee: '',
-    documents: []
+    documents: [],
+    // Add commission fields
+    commissionAmount: '',
+    commissionPercentage: '',
   });
+
+  // Add useEffect to fetch leads
+  useEffect(() => {
+    // Dummy leads data
+    const dummyLeads = [
+      {
+        _id: 1,
+        name: "Rahul Sharma",
+        phone: "9876543210",
+        email: "rahul@example.com",
+        date: "2024-03-20",
+        status: "New",
+        policyInterested: "vehicle",
+        remarks: "Interested in car insurance"
+      },
+      {
+        _id: 2,
+        name: "Priya Patel",
+        phone: "8765432109",
+        email: "priya@example.com",
+        date: "2024-03-19",
+        status: "New",
+        policyInterested: "health",
+        remarks: "Looking for family health insurance"
+      },
+      {
+        _id: 3,
+        name: "Amit Kumar",
+        phone: "7654321098",
+        email: "amit@example.com",
+        date: "2024-03-18",
+        status: "New",
+        policyInterested: "travel",
+        remarks: "Planning international trip"
+      },
+      {
+        _id: 4,
+        name: "Sneha Gupta",
+        phone: "6543210987",
+        email: "sneha@example.com",
+        date: "2024-03-17",
+        status: "New",
+        policyInterested: "vehicle",
+        remarks: "New bike insurance required"
+      }
+    ];
+    setLeads(dummyLeads);
+  }, []);
+
+  // Add useEffect to initialize policies
+  useEffect(() => {
+    // Initialize with some dummy policies for testing
+    const initialPolicies = [
+      {
+        id: 'P1',
+        policyNumber: 'POL001',
+        insuredName: 'Test User',
+        clientName: 'Test Client',
+        mobile: '9876543210',
+        email: 'test@example.com',
+        startDate: '2024-03-01',
+        endDate: '2025-03-01',
+        company: 'TATA AIG GIC',
+        business: 'New',
+        type: 'vehicle',
+        status: 'Live Policy',
+        vehicleType: 'Private Car',
+        vehicleNumber: 'MH01AB1234'
+      }
+    ];
+    setPolicies(initialPolicies);
+  }, []);
+
+  // Add lead search handler
+  const handleLeadSearch = (event) => {
+    const searchTerm = event.target.value;
+    setLeadSearchTerm(searchTerm);
+    
+    if (searchTerm.trim() === '') {
+      setFilteredLeads([]);
+      return;
+    }
+
+    const filtered = leads.filter(lead => 
+      lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.phone.includes(searchTerm) ||
+      lead.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredLeads(filtered);
+  };
+
+  // Add lead selection handler
+  const handleLeadSelect = (lead) => {
+    setSelectedLead(lead);
+    setNewPolicy(prev => ({
+      ...prev,
+      insuredName: lead.name,
+      clientName: lead.name,
+      mobile: lead.phone,
+      email: lead.email,
+      type: lead.policyInterested || 'vehicle'
+    }));
+    setInsuranceType(lead.policyInterested || 'vehicle');
+    setFilteredLeads([]);
+    setLeadSearchTerm('');
+  };
 
   const handleTabChange = (event, newValue) => {
     setCurrentTab(newValue);
@@ -188,19 +322,54 @@ const PolicyStatus = () => {
   };
 
   const handleNewPolicyChange = (field) => (event) => {
-    setNewPolicy({
-      ...newPolicy,
-      [field]: event.target.value
+    console.log(`Updating ${field}:`, event.target.value);
+    setNewPolicy(prev => {
+      const updated = {
+        ...prev,
+        [field]: event.target.value
+      };
+      console.log('Updated newPolicy:', updated);
+      return updated;
     });
   };
 
   const handleAddPolicy = () => {
-    // Validate required fields
-    if (!newPolicy.policyNumber || !newPolicy.insuredName || !newPolicy.clientName || 
-        !newPolicy.endDate || !newPolicy.company || !newPolicy.business) {
+    console.log('handleAddPolicy called');
+    console.log('Current newPolicy state:', newPolicy);
+    console.log('Current insuranceType:', insuranceType);
+
+    // Validate required fields based on insurance type
+    let isValid = true;
+    let errorMessage = '';
+
+    if (insuranceType === 'vehicle') {
+      if (!newPolicy.policyNumber || !newPolicy.insuredName || !newPolicy.clientName || 
+          !newPolicy.endDate || !newPolicy.company || !newPolicy.business ||
+          !newPolicy.vehicleType || !newPolicy.vehicleNumber) {
+        isValid = false;
+        errorMessage = 'Please fill in all required vehicle policy fields';
+      }
+    } else if (insuranceType === 'health') {
+      if (!newPolicy.policyNumber || !newPolicy.insuredName || !newPolicy.clientName || 
+          !newPolicy.endDate || !newPolicy.company || !newPolicy.business ||
+          !newPolicy.healthPlan || !newPolicy.sumInsured || !newPolicy.age) {
+        isValid = false;
+        errorMessage = 'Please fill in all required health policy fields';
+      }
+    } else if (insuranceType === 'travel') {
+      if (!newPolicy.policyNumber || !newPolicy.insuredName || !newPolicy.clientName || 
+          !newPolicy.endDate || !newPolicy.company || !newPolicy.business ||
+          !newPolicy.travelType || !newPolicy.destination || !newPolicy.tripDuration) {
+        isValid = false;
+        errorMessage = 'Please fill in all required travel policy fields';
+      }
+    }
+
+    if (!isValid) {
+      console.log('Validation failed:', errorMessage);
       setSnackbar({
         open: true,
-        message: 'Please fill in all required fields',
+        message: errorMessage,
         severity: 'error'
       });
       return;
@@ -214,11 +383,11 @@ const PolicyStatus = () => {
       clientName: newPolicy.clientName,
       mobile: newPolicy.mobile || '',
       email: newPolicy.email || '',
-      startDate: newPolicy.startDate || '',
+      startDate: newPolicy.startDate || new Date().toISOString().split('T')[0],
       endDate: newPolicy.endDate,
       company: newPolicy.company,
       business: newPolicy.business,
-      type: insuranceType, // Add the insurance type
+      type: insuranceType,
       status: 'Live Policy',
       premium: newPolicy.premium || '',
       nominee: newPolicy.nominee || '',
@@ -230,6 +399,15 @@ const PolicyStatus = () => {
       make: insuranceType === 'vehicle' ? newPolicy.make : '',
       model: insuranceType === 'vehicle' ? newPolicy.model : '',
       year: insuranceType === 'vehicle' ? newPolicy.year : '',
+      basicPremium: insuranceType === 'vehicle' ? newPolicy.basicPremium : '',
+      odPremium: insuranceType === 'vehicle' ? newPolicy.odPremium : '',
+      tpPremium: insuranceType === 'vehicle' ? newPolicy.tpPremium : '',
+      ncbDiscount: insuranceType === 'vehicle' ? newPolicy.ncbDiscount : '',
+      addonPremium: insuranceType === 'vehicle' ? newPolicy.addonPremium : '',
+      gst: insuranceType === 'vehicle' ? newPolicy.gst : '',
+      totalPremium: insuranceType === 'vehicle' ? newPolicy.totalPremium : '',
+      paymentMode: insuranceType === 'vehicle' ? newPolicy.paymentMode : '',
+      paymentReference: insuranceType === 'vehicle' ? newPolicy.paymentReference : '',
 
       // Health specific fields
       healthPlan: insuranceType === 'health' ? newPolicy.healthPlan : '',
@@ -240,11 +418,22 @@ const PolicyStatus = () => {
       // Travel specific fields
       travelType: insuranceType === 'travel' ? newPolicy.travelType : '',
       destination: insuranceType === 'travel' ? newPolicy.destination : '',
-      tripDuration: insuranceType === 'travel' ? newPolicy.tripDuration : ''
+      tripDuration: insuranceType === 'travel' ? newPolicy.tripDuration : '',
+
+      // Commission fields
+      commissionAmount: newPolicy.commissionAmount || '',
+      commissionPercentage: newPolicy.commissionPercentage || '',
     };
 
+    console.log('New policy to add:', policyToAdd);
+
     // Add new policy to the list
-    setPolicies(prevPolicies => [...prevPolicies, policyToAdd]);
+    setPolicies(prevPolicies => {
+      console.log('Previous policies:', prevPolicies);
+      const updatedPolicies = [...prevPolicies, policyToAdd];
+      console.log('Updated policies:', updatedPolicies);
+      return updatedPolicies;
+    });
 
     // Show success message
     setSnackbar({
@@ -255,35 +444,9 @@ const PolicyStatus = () => {
 
     // Close modal and reset form
     setOpenNewPolicy(false);
-    setNewPolicy({
-      policyNumber: '',
-      insuredName: '',
-      clientName: '',
-      mobile: '',
-      email: '',
-      startDate: '',
-      endDate: '',
-      company: '',
-      business: 'New',
-      type: 'vehicle',
-      vehicleType: '',
-      vehicleNumber: '',
-      make: '',
-      model: '',
-      year: '',
-      healthPlan: '',
-      sumInsured: '',
-      age: '',
-      preExisting: 'No',
-      travelType: '',
-      destination: '',
-      tripDuration: '',
-      premium: '',
-      nominee: '',
-      documents: []
-    });
-    setUploadedFiles([]);
-    setInsuranceType('vehicle');
+    resetForm();
+    handleReset();
+    setSelectedLead(null);
   };
 
   const resetForm = () => {
@@ -312,9 +475,24 @@ const PolicyStatus = () => {
       tripDuration: '',
       premium: '',
       nominee: '',
-      documents: []
+      documents: [],
+      commissionAmount: '',
+      commissionPercentage: '',
     });
     setUploadedFiles([]);
+    setInsuranceType('vehicle');
+  };
+
+  const handleNext = () => {
+    setActiveStep((prevStep) => prevStep + 1);
+  };
+
+  const handleBack = () => {
+    setActiveStep((prevStep) => prevStep - 1);
+  };
+
+  const handleReset = () => {
+    setActiveStep(0);
   };
 
   const filteredPolicies = policies.filter(policy => {
@@ -430,7 +608,9 @@ const PolicyStatus = () => {
       tripDuration: '',
       premium: '',
       nominee: '',
-      documents: []
+      documents: [],
+      commissionAmount: '',
+      commissionPercentage: '',
     });
   };
 
@@ -565,7 +745,7 @@ const PolicyStatus = () => {
       </Box>
 
       {/* Policies Table */}
-      <TableContainer component={Paper} sx={{ boxShadow: 'none' }}>
+      <TableContainer component={Paper} sx={{ boxShadow: 'none', mt: 3 }}>
         <Table>
           <TableHead>
             <TableRow sx={{ backgroundColor: 'primary.light' }}>
@@ -580,12 +760,12 @@ const PolicyStatus = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredPolicies.map((policy) => (
+            {policies.map((policy) => (
               <TableRow key={policy.id} hover>
                 <TableCell>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <PolicyIcon sx={{ color: 'primary.main', fontSize: 20 }} />
-                    <Typography>{policy.id}</Typography>
+                    <Typography>{policy.policyNumber}</Typography>
                   </Box>
                 </TableCell>
                 <TableCell>
@@ -621,21 +801,6 @@ const PolicyStatus = () => {
                   <IconButton onClick={(e) => handleMenuClick(e, policy)}>
                     <MoreVertIcon />
                   </IconButton>
-                  <Menu
-                    anchorEl={anchorEl}
-                    open={Boolean(anchorEl) && selectedPolicy?.id === policy.id}
-                    onClose={handleMenuClose}
-                  >
-                    <MenuItem onClick={() => handleViewDetails(policy)}>
-                      <ViewIcon sx={{ mr: 1 }} /> View Details
-                    </MenuItem>
-                    <MenuItem onClick={() => handleEdit(policy)}>
-                      <EditIcon sx={{ mr: 1 }} /> Edit
-                    </MenuItem>
-                    <MenuItem onClick={() => handleDelete(policy)} sx={{ color: 'error.main' }}>
-                      <DeleteIcon sx={{ mr: 1 }} /> Delete
-                    </MenuItem>
-                  </Menu>
                 </TableCell>
               </TableRow>
             ))}
@@ -646,7 +811,12 @@ const PolicyStatus = () => {
       {/* New Policy Modal */}
       <Modal
         open={openNewPolicy}
-        onClose={() => setOpenNewPolicy(false)}
+        onClose={() => {
+          setOpenNewPolicy(false);
+          resetForm();
+          handleReset();
+          setSelectedLead(null);
+        }}
         aria-labelledby="new-policy-modal"
       >
         <Box sx={{
@@ -654,7 +824,7 @@ const PolicyStatus = () => {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: { xs: '90%', md: '800px' },
+          width: { xs: '95%', md: '800px' },
           maxHeight: '90vh',
           bgcolor: 'background.paper',
           boxShadow: 24,
@@ -678,14 +848,159 @@ const PolicyStatus = () => {
             <IconButton onClick={() => {
               setOpenNewPolicy(false);
               resetForm();
+              handleReset();
+              setSelectedLead(null);
             }} size="small">
               <CloseIcon />
             </IconButton>
           </Box>
 
           <Box sx={{ p: 3 }}>
-            {/* Insurance Type Selection */}
+            {/* Lead Search Section */}
+            <Box sx={{ 
+              mb: 3, 
+              p: 2, 
+              backgroundColor: '#f0f7ff', 
+              borderRadius: 2,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              border: '2px solid #1976d2'
+            }}>
+              <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', fontWeight: 'bold', mb: 2 }}>
+                Search Lead
+              </Typography>
+              <TextField
+                fullWidth
+                placeholder="Search by name, phone, or email"
+                value={leadSearchTerm}
+                onChange={handleLeadSearch}
+                sx={{
+                  backgroundColor: 'white',
+                  borderRadius: 1,
+                  mb: 2,
+                  '& .MuiOutlinedInput-root': {
+                    height: '40px',
+                    '&:hover fieldset': {
+                      borderColor: '#1976d2',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#1976d2',
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: 'black',
+                  },
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: '#1976d2', fontSize: 20 }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              {filteredLeads.length > 0 && (
+                <Box sx={{ 
+                  mt: 2, 
+                  maxHeight: 300, 
+                  overflow: 'auto',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: 1,
+                  backgroundColor: 'white',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}>
+                  {filteredLeads.map((lead) => (
+                    <Box
+                      key={lead._id}
+                      onClick={() => handleLeadSelect(lead)}
+                      sx={{
+                        p: 1.5,
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #e0e0e0',
+                        '&:last-child': {
+                          borderBottom: 'none'
+                        },
+                        '&:hover': {
+                          backgroundColor: '#f0f7ff',
+                          transform: 'scale(1.01)',
+                          transition: 'all 0.2s ease-in-out'
+                        },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Avatar sx={{ bgcolor: '#1976d2', width: 32, height: 32, fontSize: '0.875rem' }}>
+                          {lead.name.charAt(0)}
+                        </Avatar>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'black' }}>
+                            {lead.name}
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
+                            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
+                              <PhoneIcon sx={{ mr: 0.5, color: '#1976d2', fontSize: 16 }} />
+                              {lead.phone}
+                            </Typography>
+                            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
+                              <EmailIcon sx={{ mr: 0.5, color: '#1976d2', fontSize: 16 }} />
+                              {lead.email}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
+                            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
+                              <CalendarTodayIcon sx={{ mr: 0.5, color: '#1976d2', fontSize: 16 }} />
+                              Added: {new Date(lead.date).toLocaleDateString()}
+                            </Typography>
+                            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
+                              <InfoIcon sx={{ mr: 0.5, color: '#1976d2', fontSize: 16 }} />
+                              {lead.remarks}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+              {selectedLead && (
+                <Box sx={{ 
+                  mt: 2, 
+                  p: 2, 
+                  backgroundColor: '#e8f5e9', 
+                  borderRadius: 2,
+                  border: '2px solid #2e7d32',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}>
+                  <Typography variant="subtitle1" sx={{ color: '#2e7d32', fontWeight: 'bold', mb: 1 }}>
+                    Selected Lead
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Avatar sx={{ bgcolor: '#2e7d32', width: 40, height: 40, fontSize: '1rem' }}>
+                      {selectedLead.name.charAt(0)}
+                    </Avatar>
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'black' }}>
+                        {selectedLead.name}
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
+                        <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
+                          <PhoneIcon sx={{ mr: 0.5, color: '#2e7d32', fontSize: 16 }} />
+                          {selectedLead.phone}
+                        </Typography>
+                        <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
+                          <EmailIcon sx={{ mr: 0.5, color: '#2e7d32', fontSize: 16 }} />
+                          {selectedLead.email}
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" sx={{ mt: 0.5, display: 'flex', alignItems: 'center', color: 'black' }}>
+                        <InfoIcon sx={{ mr: 0.5, color: '#2e7d32', fontSize: 16 }} />
+                        {selectedLead.remarks}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              )}
+            </Box>
 
+            {/* Insurance Type Selection */}
             <FormControl component="fieldset" sx={{ mb: 3 }}>
               <FormLabel component="legend">Insurance Type</FormLabel>
               <RadioGroup
@@ -741,254 +1056,89 @@ const PolicyStatus = () => {
                 </Card>
               </RadioGroup>
             </FormControl>
-<Grid item xs={12}>
-                <Typography variant="subtitle1" gutterBottom sx={{ mt: 1 }}>
-                  Upload Documents
-                </Typography>
-                <Divider />
-                <Box sx={{ mt: 2 }}>
-                  <Button
-                    component="label"
-                    variant="outlined"
-                    startIcon={<UploadIcon />}
-                    sx={{ mr: 2 }}
-                  >
-                    Upload Documents
-                    <VisuallyHiddenInput 
-                      type="file" 
-                      onChange={handleFileUpload}
-                      multiple
-                      accept=".pdf,.doc,.docx,.jpg,.png"
-                    />
-                  </Button>
-                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                    Accepted formats: PDF, DOC, JPG, PNG (Max 10MB each)
-                  </Typography>
-                  
-                  {uploadedFiles.length > 0 && (
-                    <Box sx={{ mt: 2 }}>
-                      <Typography variant="subtitle2">Selected Files:</Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                        {uploadedFiles.map((file, index) => (
-                          <Chip
-                            key={index}
-                            label={file.name}
-                            onDelete={() => removeFile(index)}
-                            variant="outlined"
-                            size="small"
-                            sx={{ maxWidth: 200 }}
-                          />
-                        ))}
-                      </Box>
-                    </Box>
-                  )}
-                </Box>
-              </Grid>
-            <Divider/>
-            <Grid container spacing={3}>
-              {/* Common Fields */}
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Policy Number"
-                  value={newPolicy.policyNumber}
-                  onChange={handleNewPolicyChange('policyNumber')}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
-                  <Select
-                    value={newPolicy.company}
-                    onChange={handleNewPolicyChange('company')}
-                    displayEmpty
-                    required
-                    renderValue={(selected) => selected || "Select Insurance Company"}
-                  >
-                    {insuranceCompanies.map((company) => (
-                      <MenuItem key={company} value={company}>
-                        {company}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Insured Name"
-                  value={newPolicy.insuredName}
-                  onChange={handleNewPolicyChange('insuredName')}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Client Name"
-                  value={newPolicy.clientName}
-                  onChange={handleNewPolicyChange('clientName')}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Mobile Number"
-                  value={newPolicy.mobile}
-                  onChange={handleNewPolicyChange('mobile')}
-                  type="tel"
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  value={newPolicy.email}
-                  onChange={handleNewPolicyChange('email')}
-                  type="email"
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
-                  <Typography 
-                    variant="caption" 
-                    sx={{ 
-                      mb: 1, 
-                      color: 'text.secondary',
-                      position: 'relative',
-                      fontSize: '0.75rem'
-                    }}
-                  >
-                    Start Date *
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    type="date"
-                    value={newPolicy.startDate}
-                    onChange={handleNewPolicyChange('startDate')}
-                    required
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        height: '40px',
-                        backgroundColor: 'white',
-                        '& fieldset': {
-                          borderColor: 'rgba(0, 0, 0, 0.23)',
-                          borderRadius: 1
-                        },
-                        '&:hover fieldset': {
-                          borderColor: 'primary.main'
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: 'primary.main'
-                        }
-                      },
-                      '& .MuiInputBase-input': {
-                        color: 'black',
-                        fontSize: '0.875rem',
-                        padding: '10px 14px',
-                        cursor: 'pointer'
-                      },
-                      '& input[type="date"]::-webkit-calendar-picker-indicator': {
-                        cursor: 'pointer',
-                        filter: 'invert(0.5)'
-                      }
-                    }}
-                    inputProps={{
-                      min: new Date().toISOString().split('T')[0]
-                    }}
-                  />
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
-                  <Typography 
-                    variant="caption" 
-                    sx={{ 
-                      mb: 1, 
-                      color: 'text.secondary',
-                      position: 'relative',
-                      fontSize: '0.75rem'
-                    }}
-                  >
-                    End Date *
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    type="date"
-                    value={newPolicy.endDate}
-                    onChange={handleNewPolicyChange('endDate')}
-                    required
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        height: '40px',
-                        backgroundColor: 'white',
-                        '& fieldset': {
-                          borderColor: 'rgba(0, 0, 0, 0.23)',
-                          borderRadius: 1
-                        },
-                        '&:hover fieldset': {
-                          borderColor: 'primary.main'
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: 'primary.main'
-                        }
-                      },
-                      '& .MuiInputBase-input': {
-                        color: 'black',
-                        fontSize: '0.875rem',
-                        padding: '10px 14px',
-                        cursor: 'pointer'
-                      },
-                      '& input[type="date"]::-webkit-calendar-picker-indicator': {
-                        cursor: 'pointer',
-                        filter: 'invert(0.5)'
-                      }
-                    }}
-                    inputProps={{
-                      min: newPolicy.startDate || new Date().toISOString().split('T')[0]
-                    }}
-                  />
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
-                  <Select
-                    value={newPolicy.business}
-                    onChange={handleNewPolicyChange('business')}
-                  >
-                    <MenuItem value="New">New Business</MenuItem>
-                    <MenuItem value="Renewal">Renewal</MenuItem>
-                    <MenuItem value="Portability">Portability</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Premium Amount"
-                  value={newPolicy.premium}
-                  onChange={handleNewPolicyChange('premium')}
-                  required
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Nominee Name"
-                  value={newPolicy.nominee}
-                  onChange={handleNewPolicyChange('nominee')}
-                />
-              </Grid>
 
-              {/* Type-Specific Fields */}
-              {insuranceType === 'vehicle' && (
+            {/* Stepper */}
+            <Box sx={{ width: '100%', mb: 4 }}>
+              <Stepper activeStep={activeStep} alternativeLabel>
+                {steps[insuranceType].map((label) => (
+                  <Step key={label}>
+                    <StepLabel>{label}</StepLabel>
+                  </Step>
+                ))}
+              </Stepper>
+            </Box>
+
+            <Grid container spacing={3}>
+              {/* Step 1: Vehicle & Customer Details */}
+              {activeStep === 0 && insuranceType === 'vehicle' && (
                 <>
+                  {/* Common Fields */}
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Policy Number"
+                      value={newPolicy.policyNumber}
+                      onChange={handleNewPolicyChange('policyNumber')}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth>
+                      <Select
+                        value={newPolicy.company}
+                        onChange={handleNewPolicyChange('company')}
+                        displayEmpty
+                        required
+                        renderValue={(selected) => selected || "Select Insurance Company"}
+                      >
+                        {insuranceCompanies.map((company) => (
+                          <MenuItem key={company} value={company}>
+                            {company}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Insured Name"
+                      value={newPolicy.insuredName}
+                      onChange={handleNewPolicyChange('insuredName')}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Client Name"
+                      value={newPolicy.clientName}
+                      onChange={handleNewPolicyChange('clientName')}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Mobile Number"
+                      value={newPolicy.mobile}
+                      onChange={handleNewPolicyChange('mobile')}
+                      type="tel"
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Email"
+                      value={newPolicy.email}
+                      onChange={handleNewPolicyChange('email')}
+                      type="email"
+                      required
+                    />
+                  </Grid>
+
+                  {/* Vehicle Details */}
                   <Grid item xs={12}>
                     <Typography variant="subtitle1" gutterBottom sx={{ mt: 1 }}>
                       Vehicle Details
@@ -1001,6 +1151,7 @@ const PolicyStatus = () => {
                         value={newPolicy.vehicleType}
                         onChange={handleNewPolicyChange('vehicleType')}
                         displayEmpty
+                        required
                         renderValue={(selected) => selected || "Select Vehicle Type"}
                       >
                         {vehicleTypes.map((type) => (
@@ -1017,6 +1168,7 @@ const PolicyStatus = () => {
                       label="Vehicle Registration Number"
                       value={newPolicy.vehicleNumber}
                       onChange={handleNewPolicyChange('vehicleNumber')}
+                      required
                     />
                   </Grid>
                   <Grid item xs={12} md={4}>
@@ -1047,11 +1199,223 @@ const PolicyStatus = () => {
                 </>
               )}
 
-              {insuranceType === 'health' && (
+              {/* Step 2: Premium Details */}
+              {activeStep === 1 && insuranceType === 'vehicle' && (
                 <>
                   <Grid item xs={12}>
                     <Typography variant="subtitle1" gutterBottom sx={{ mt: 1 }}>
-                      Health Details
+                      Premium Details
+                    </Typography>
+                    <Divider />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="Basic Premium"
+                      value={newPolicy.basicPremium}
+                      onChange={handleNewPolicyChange('basicPremium')}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="OD Premium"
+                      value={newPolicy.odPremium}
+                      onChange={handleNewPolicyChange('odPremium')}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="TP Premium"
+                      value={newPolicy.tpPremium}
+                      onChange={handleNewPolicyChange('tpPremium')}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="NCB Discount"
+                      value={newPolicy.ncbDiscount}
+                      onChange={handleNewPolicyChange('ncbDiscount')}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="Add-on Premium"
+                      value={newPolicy.addonPremium}
+                      onChange={handleNewPolicyChange('addonPremium')}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="GST"
+                      value={newPolicy.gst}
+                      onChange={handleNewPolicyChange('gst')}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="Total Premium"
+                      value={newPolicy.totalPremium}
+                      onChange={handleNewPolicyChange('totalPremium')}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <FormControl fullWidth>
+                      <Select
+                        value={newPolicy.paymentMode}
+                        onChange={handleNewPolicyChange('paymentMode')}
+                        displayEmpty
+                        renderValue={(selected) => selected || "Select Payment Mode"}
+                      >
+                        <MenuItem value="Cash">Cash</MenuItem>
+                        <MenuItem value="Cheque">Cheque</MenuItem>
+                        <MenuItem value="Online Transfer">Online Transfer</MenuItem>
+                        <MenuItem value="UPI">UPI</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="Payment Reference"
+                      value={newPolicy.paymentReference}
+                      onChange={handleNewPolicyChange('paymentReference')}
+                    />
+                  </Grid>
+                </>
+              )}
+
+              {/* Step 3: Commission Details */}
+              {activeStep === 2 && insuranceType === 'vehicle' && (
+                <>
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle1" gutterBottom sx={{ color: 'primary.main' }}>
+                      Commission Details
+                    </Typography>
+                    <Divider sx={{ mb: 2 }} />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Commission Amount"
+                      value={newPolicy.commissionAmount}
+                      onChange={handleNewPolicyChange('commissionAmount')}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Commission Percentage"
+                      value={newPolicy.commissionPercentage}
+                      onChange={handleNewPolicyChange('commissionPercentage')}
+                      InputProps={{
+                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                      }}
+                    />
+                  </Grid>
+                </>
+              )}
+
+              {/* Health Insurance Form */}
+              {insuranceType === 'health' && (
+                <>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Policy Number"
+                      value={newPolicy.policyNumber}
+                      onChange={handleNewPolicyChange('policyNumber')}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth>
+                      <Select
+                        value={newPolicy.company}
+                        onChange={handleNewPolicyChange('company')}
+                        displayEmpty
+                        required
+                        renderValue={(selected) => selected || "Select Insurance Company"}
+                      >
+                        {insuranceCompanies.map((company) => (
+                          <MenuItem key={company} value={company}>
+                            {company}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Insured Name"
+                      value={newPolicy.insuredName}
+                      onChange={handleNewPolicyChange('insuredName')}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Client Name"
+                      value={newPolicy.clientName}
+                      onChange={handleNewPolicyChange('clientName')}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Mobile Number"
+                      value={newPolicy.mobile}
+                      onChange={handleNewPolicyChange('mobile')}
+                      type="tel"
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Email"
+                      value={newPolicy.email}
+                      onChange={handleNewPolicyChange('email')}
+                      type="email"
+                      required
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle1" gutterBottom sx={{ mt: 1 }}>
+                      Health Insurance Details
                     </Typography>
                     <Divider />
                   </Grid>
@@ -1061,6 +1425,7 @@ const PolicyStatus = () => {
                         value={newPolicy.healthPlan}
                         onChange={handleNewPolicyChange('healthPlan')}
                         displayEmpty
+                        required
                         renderValue={(selected) => selected || "Select Health Plan"}
                       >
                         {healthPlans.map((plan) => (
@@ -1077,6 +1442,7 @@ const PolicyStatus = () => {
                       label="Sum Insured"
                       value={newPolicy.sumInsured}
                       onChange={handleNewPolicyChange('sumInsured')}
+                      required
                       InputProps={{
                         startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                       }}
@@ -1089,6 +1455,7 @@ const PolicyStatus = () => {
                       value={newPolicy.age}
                       onChange={handleNewPolicyChange('age')}
                       type="number"
+                      required
                     />
                   </Grid>
                   <Grid item xs={12} md={6}>
@@ -1096,6 +1463,7 @@ const PolicyStatus = () => {
                       <Select
                         value={newPolicy.preExisting}
                         onChange={handleNewPolicyChange('preExisting')}
+                        required
                       >
                         <MenuItem value="No">No Pre-existing Conditions</MenuItem>
                         <MenuItem value="Yes">Pre-existing Conditions</MenuItem>
@@ -1105,11 +1473,77 @@ const PolicyStatus = () => {
                 </>
               )}
 
+              {/* Travel Insurance Form */}
               {insuranceType === 'travel' && (
                 <>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Policy Number"
+                      value={newPolicy.policyNumber}
+                      onChange={handleNewPolicyChange('policyNumber')}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth>
+                      <Select
+                        value={newPolicy.company}
+                        onChange={handleNewPolicyChange('company')}
+                        displayEmpty
+                        required
+                        renderValue={(selected) => selected || "Select Insurance Company"}
+                      >
+                        {insuranceCompanies.map((company) => (
+                          <MenuItem key={company} value={company}>
+                            {company}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Insured Name"
+                      value={newPolicy.insuredName}
+                      onChange={handleNewPolicyChange('insuredName')}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Client Name"
+                      value={newPolicy.clientName}
+                      onChange={handleNewPolicyChange('clientName')}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Mobile Number"
+                      value={newPolicy.mobile}
+                      onChange={handleNewPolicyChange('mobile')}
+                      type="tel"
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Email"
+                      value={newPolicy.email}
+                      onChange={handleNewPolicyChange('email')}
+                      type="email"
+                      required
+                    />
+                  </Grid>
+
                   <Grid item xs={12}>
                     <Typography variant="subtitle1" gutterBottom sx={{ mt: 1 }}>
-                      Travel Details
+                      Travel Insurance Details
                     </Typography>
                     <Divider />
                   </Grid>
@@ -1119,6 +1553,7 @@ const PolicyStatus = () => {
                         value={newPolicy.travelType}
                         onChange={handleNewPolicyChange('travelType')}
                         displayEmpty
+                        required
                         renderValue={(selected) => selected || "Select Travel Type"}
                       >
                         {travelTypes.map((type) => (
@@ -1135,6 +1570,7 @@ const PolicyStatus = () => {
                       label="Destination"
                       value={newPolicy.destination}
                       onChange={handleNewPolicyChange('destination')}
+                      required
                     />
                   </Grid>
                   <Grid item xs={12} md={6}>
@@ -1144,31 +1580,64 @@ const PolicyStatus = () => {
                       value={newPolicy.tripDuration}
                       onChange={handleNewPolicyChange('tripDuration')}
                       type="number"
+                      required
                     />
                   </Grid>
                 </>
               )}
-
-              {/* Document Upload */}
-              
             </Grid>
+
+            {/* Step 3: Commission Details */}
+            {activeStep === 2 && insuranceType === 'travel' && (
+              <>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" gutterBottom sx={{ color: 'primary.main' }}>
+                    Commission Details
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Commission Amount"
+                    value={newPolicy.commissionAmount}
+                    onChange={handleNewPolicyChange('commissionAmount')}
+                    InputProps={{
+                      startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Commission Percentage"
+                    value={newPolicy.commissionPercentage}
+                    onChange={handleNewPolicyChange('commissionPercentage')}
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                    }}
+                  />
+                </Grid>
+              </>
+            )}
 
             {isSubmitting && <LinearProgress sx={{ mt: 2 }} />}
 
             <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
               <Button 
-                onClick={() => {
+                onClick={activeStep === 0 ? () => {
                   setOpenNewPolicy(false);
                   resetForm();
-                }}
+                  handleReset();
+                } : handleBack}
                 sx={{ textTransform: 'none' }}
                 disabled={isSubmitting}
               >
-                Cancel
+                {activeStep === 0 ? 'Cancel' : 'Back'}
               </Button>
               <Button
                 variant="contained"
-                onClick={handleAddPolicy}
+                onClick={activeStep === steps[insuranceType].length - 1 ? handleAddPolicy : handleNext}
                 disabled={isSubmitting}
                 sx={{
                   backgroundColor: "#0C47A0",
@@ -1178,7 +1647,9 @@ const PolicyStatus = () => {
                   }
                 }}
               >
-                {isSubmitting ? 'Creating Policy...' : 'Create Policy'}
+                {activeStep === steps[insuranceType].length - 1 ? 
+                  (isSubmitting ? 'Creating Policy...' : 'Create Policy') : 
+                  'Next'}
               </Button>
             </Box>
           </Box>

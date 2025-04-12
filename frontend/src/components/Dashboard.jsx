@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Drawer,
   List,
@@ -37,15 +37,18 @@ import {
   AssignmentTurnedIn as TaskIcon,
   Search as SearchIcon,
   Description as DocumentIcon,
-  Policy as PolicyIcon
+  Policy as PolicyIcon,
+  MonetizationOn as CommissionIcon
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import Leads from "./AdminDash/Leads";
 import Customers from "./AdminDash/Customers";
 import AssignTask from "./AdminDash/AssignTask";
 import Documents from "./AdminDash/Documents";
 import PolicyStatus from "./AdminDash/PolicyStatus";
 import PolicyManagement from './AdminDash/PolicyManagement';
+import Commission from './AdminDash/Commission';
 
 const primaryColor = "#1976d2";
 const secondaryColor = "#f50057";
@@ -71,6 +74,7 @@ const Sidebar = ({ section, setSection }) => {
     { text: "Policy Status", icon: <PolicyIcon />, section: "Policy Status" },
     { text: "Policy Management", icon: <PolicyIcon />, section: "Policy Management" },
     { text: "Documents", icon: <DocumentIcon />, section: "Documents" },
+    { text: "Commission", icon: <CommissionIcon />, section: "Commission" },
   ];
 
   return (
@@ -148,6 +152,8 @@ const Dashboard = () => {
     severity: "success"
   });
   const theme = useTheme();
+  const [payments, setPayments] = useState([]);
+  const [commissions, setCommissions] = useState([]);
 
   const departments = ["Sales", "Support", "Development", "Marketing", "HR"];
   const taskTypes = [
@@ -286,6 +292,67 @@ const Dashboard = () => {
       emp.phone.includes(searchTerm)
   );
 
+  // Add this useEffect to fetch payments
+  useEffect(() => {
+    // Sample payment data - Replace with API call in production
+    const samplePayments = [
+      {
+        id: 1,
+        companyName: 'ABC Insurance',
+        amount: 5000,
+        paymentDate: '2024-03-01',
+        status: 'Completed',
+      },
+      {
+        id: 2,
+        companyName: 'XYZ Insurance',
+        amount: 3000,
+        paymentDate: '2024-03-15',
+        status: 'Pending',
+      },
+    ];
+    setPayments(samplePayments);
+  }, []);
+
+  // Calculate payment statistics
+  const totalPayments = payments.reduce((sum, payment) => sum + payment.amount, 0);
+  const completedPayments = payments
+    .filter(payment => payment.status === 'Completed')
+    .reduce((sum, payment) => sum + payment.amount, 0);
+  const pendingPayments = payments
+    .filter(payment => payment.status === 'Pending')
+    .reduce((sum, payment) => sum + payment.amount, 0);
+
+  // Add this useEffect to fetch commissions
+  useEffect(() => {
+    // Sample commission data - Replace with API call in production
+    const sampleCommissions = [
+      {
+        id: 1,
+        companyName: 'ABC Insurance',
+        commissionRate: '15%',
+        totalEarnings: 15000,
+        pendingPayments: 5000,
+      },
+      {
+        id: 2,
+        companyName: 'XYZ Insurance',
+        commissionRate: '12%',
+        totalEarnings: 12000,
+        pendingPayments: 3000,
+      },
+    ];
+    setCommissions(sampleCommissions);
+  }, []);
+
+  // Calculate analytics data
+  const analyticsData = commissions.map(commission => ({
+    name: commission.companyName,
+    rate: parseFloat(commission.commissionRate),
+    earnings: commission.totalEarnings,
+    pending: commission.pendingPayments,
+  }));
+
   return (
     <Box
       sx={{
@@ -309,7 +376,7 @@ const Dashboard = () => {
               Dashboard Overview
             </Typography>
             <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={3}>
                 <Card sx={{ bgcolor: primaryColor, color: "white", p: 2 }}>
                   <CardContent>
                     <Typography variant="h6">Total Employees</Typography>
@@ -317,7 +384,7 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={3}>
                 <Card sx={{ bgcolor: secondaryColor, color: "white", p: 2 }}>
                   <CardContent>
                     <Typography variant="h6">Active Leads</Typography>
@@ -325,11 +392,176 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={3}>
                 <Card sx={{ bgcolor: "success.main", color: "white", p: 2 }}>
                   <CardContent>
                     <Typography variant="h6">Active Tasks</Typography>
                     <Typography variant="h3">{tasks.length}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <Card sx={{ bgcolor: "info.main", color: "white", p: 2 }}>
+                  <CardContent>
+                    <Typography variant="h6">Total Payments</Typography>
+                    <Typography variant="h3">₹{totalPayments.toLocaleString('en-IN')}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+
+            {/* Payment Overview Section */}
+            <Typography variant="h5" sx={{ mt: 4, mb: 2, color: "#0C47A0" }}>
+              Payment Overview
+            </Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={4}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" color="text.secondary">
+                      Completed Payments
+                    </Typography>
+                    <Typography variant="h4" color="success.main" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 'bold' }}>
+                      ₹{completedPayments.toLocaleString('en-IN')}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" color="text.secondary">
+                      Pending Payments
+                    </Typography>
+                    <Typography variant="h4" color="warning.main">
+                      ₹{pendingPayments.toLocaleString('en-IN')}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" color="text.secondary">
+                      Recent Payments
+                    </Typography>
+                    <TableContainer>
+                      <Table size="small">
+                        <TableBody>
+                          {payments.slice(0, 3).map((payment) => (
+                            <TableRow key={payment.id}>
+                              <TableCell>{payment.companyName}</TableCell>
+                              <TableCell>₹{payment.amount.toLocaleString('en-IN')}</TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={payment.status}
+                                  color={payment.status === 'Completed' ? 'success' : 'warning'}
+                                  size="small"
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+
+            {/* Analytics Section */}
+            <Typography variant="h5" sx={{ mt: 4, mb: 2, color: "#0C47A0" }}>
+              Commission Analytics
+            </Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Commission Rates by Company
+                    </Typography>
+                    <Box sx={{ width: '100%', height: 300 }}>
+                      <BarChart width={500} height={300} data={analyticsData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="rate" fill="#8884d8" name="Commission Rate (%)" />
+                      </BarChart>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Earnings Overview
+                    </Typography>
+                    <Box sx={{ width: '100%', height: 300 }}>
+                      <BarChart width={500} height={300} data={analyticsData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="earnings" fill="#82ca9d" name="Total Earnings (₹)" />
+                        <Bar dataKey="pending" fill="#ffc658" name="Pending Payments (₹)" />
+                      </BarChart>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+
+            {/* Payment Analytics */}
+            <Typography variant="h5" sx={{ mt: 4, mb: 2, color: "#0C47A0" }}>
+              Payment Analytics
+            </Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Payment Status Distribution
+                    </Typography>
+                    <Box sx={{ width: '100%', height: 300 }}>
+                      <BarChart width={500} height={300} data={[
+                        { name: 'Completed', value: completedPayments },
+                        { name: 'Pending', value: pendingPayments }
+                      ]}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="value" fill="#8884d8" name="Amount (₹)" />
+                      </BarChart>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Recent Payment Trends
+                    </Typography>
+                    <Box sx={{ width: '100%', height: 300 }}>
+                      <BarChart width={500} height={300} data={payments.map(payment => ({
+                        name: payment.companyName,
+                        amount: payment.amount,
+                        date: payment.paymentDate
+                      }))}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="amount" fill="#82ca9d" name="Payment Amount (₹)" />
+                      </BarChart>
+                    </Box>
                   </CardContent>
                 </Card>
               </Grid>
@@ -637,6 +869,9 @@ const Dashboard = () => {
             setDocumentFiles={setDocumentFiles}
           />
         )}
+
+        {/* Commission */}
+        {section === "Commission" && <Commission />}
 
         {/* Password Reset Modal */}
         <Modal open={openModal} onClose={() => setOpenModal(false)}>
