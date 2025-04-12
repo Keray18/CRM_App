@@ -31,20 +31,26 @@ import {
   Card,
   CardContent,
   LinearProgress,
+  Snackbar,
+  Alert,
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogContentText,
   DialogActions,
-  Tooltip,
-  CircularProgress,
-  Switch,
-  Badge,
+  InputLabel,
+  Stepper,
+  Step,
+  StepLabel,
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Stepper,
-  Step,
-  StepLabel
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  Switch,
+  Tooltip
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -60,1081 +66,726 @@ import {
   DirectionsCar as VehicleIcon,
   LocalHospital as HealthIcon,
   Flight as TravelIcon,
-  PictureAsPdf as PdfIcon,
-  Info as InfoIcon,
   ExpandMore as ExpandMoreIcon,
-  CheckCircle as CheckCircleIcon,
+  Business as CompanyIcon,
   Category as CategoryIcon,
+  Settings as SettingsIcon,
+  Save as SaveIcon,
+  Info as InfoIcon,
   MonetizationOn as PremiumIcon,
-  Stars as StarIcon,
-  Policy as PolicyManagementIcon,
-  Star as FeaturedIcon
+  Star as StarIcon,
+  CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
-import { styled } from '@mui/material/styles';
-import { v4 as uuidv4 } from 'uuid';
 
-// AWS SDK (commented out but ready for future implementation)
-// import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-
-const VisuallyHiddenInput = styled('input')({
-  clip: 'rect(0 0 0 0)',
-  clipPath: 'inset(50%)',
-  height: 1,
-  overflow: 'hidden',
-  position: 'absolute',
-  bottom: 0,
-  left: 0,
-  whiteSpace: 'nowrap',
-  width: 1,
-});
-
-// Color scheme
-const colors = {
-  primary: '#3f51b5',
-  secondary: '#9c27b0',
-  success: '#4caf50',
-  error: '#f44336',
-  warning: '#ff9800',
-  info: '#2196f3',
-  background: '#f5f7fa',
-  cardBackground: '#ffffff',
-  textPrimary: '#212121',
-  textSecondary: '#757575',
-  border: '#e0e0e0',
-  highlight: '#ffeb3b'
-};
-
-const PolicyManagement = () => {
-  const [policies, setPolicies] = useState([]);
-  const [filteredPolicies, setFilteredPolicies] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [currentTab, setCurrentTab] = useState('all');
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [selectedPolicy, setSelectedPolicy] = useState(null);
-  const [openPolicyModal, setOpenPolicyModal] = useState(false);
+const MasterDataManagement = () => {
+  // State for different master data sections
+  const [activeTab, setActiveTab] = useState('policyTypes');
+  const [openModal, setOpenModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeStep, setActiveStep] = useState(0);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [categories, setCategories] = useState([
-    'Vehicle',
-    'Health',
-    'Travel',
-    'Life',
-    'Property',
-    'Business'
-  ]);
-  const [insuranceCompanies, setInsuranceCompanies] = useState([
-    'TATA AIG GIC',
-    'ICICI Lombard GIC',
-    'HDFC ERGO',
-    'Bajaj Allianz',
-    'SBI General Insurance'
-  ]);
-
-  // New policy form state
-  const [newPolicy, setNewPolicy] = useState({
-    id: '',
-    name: '',
-    description: '',
-    category: 'Vehicle',
-    company: '',
-    premiumOptions: [],
-    coverageDetails: [],
-    features: [],
-    requirements: [],
-    isFeatured: false,
-    isActive: true,
-    documents: [],
-    createdAt: '',
-    updatedAt: ''
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
   });
 
-  // Initialize with sample data
-  useEffect(() => {
-    const samplePolicies = [
-      {
-        id: uuidv4(),
-        name: 'Comprehensive Car Insurance',
-        description: 'Complete coverage for your vehicle including third-party liability and own damage',
-        category: 'Vehicle',
-        company: 'TATA AIG GIC',
-        premiumOptions: [
-          { type: 'Annual', amount: '₹12,500', discount: '10%' },
-          { type: 'Semi-Annual', amount: '₹6,500', discount: '5%' }
-        ],
-        coverageDetails: [
-          'Own Damage Cover',
-          'Third Party Liability',
-          'Personal Accident Cover',
-          'Zero Depreciation'
-        ],
-        features: [
-          '24/7 Roadside Assistance',
-          'Cashless Claim Settlement',
-          'Quick Claim Processing'
-        ],
-        requirements: [
-          'Vehicle RC Copy',
-          'Previous Policy Details',
-          'Owner ID Proof'
-        ],
-        isFeatured: true,
-        isActive: true,
-        documents: ['policy-doc.pdf', 'terms.pdf'],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      {
-        id: uuidv4(),
-        name: 'Family Health Shield',
-        description: 'Comprehensive health insurance for your entire family with cashless hospitalization',
-        category: 'Health',
-        company: 'HDFC ERGO',
-        premiumOptions: [
-          { type: 'Annual', amount: '₹25,000', discount: '15%' }
-        ],
-        coverageDetails: [
-          'Hospitalization Expenses',
-          'Pre and Post Hospitalization',
-          'Day Care Procedures',
-          'Ambulance Charges'
-        ],
-        features: [
-          'Cashless Network Hospitals',
-          'No Claim Bonus',
-          'Free Health Checkup'
-        ],
-        requirements: [
-          'Age Proof',
-          'Medical History',
-          'Address Proof'
-        ],
-        isFeatured: false,
-        isActive: true,
-        documents: ['health-policy.pdf'],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+  // Master data states
+  const [policyTypes, setPolicyTypes] = useState([
+    { 
+      id: 1, 
+      name: 'Vehicle Insurance', 
+      code: 'VEH', 
+      isActive: true,
+      description: 'Comprehensive coverage for vehicles',
+      features: ['Third Party Liability', 'Own Damage', 'Personal Accident Cover'],
+      requirements: ['RC Copy', 'Previous Policy', 'ID Proof']
+    },
+    { 
+      id: 2, 
+      name: 'Health Insurance', 
+      code: 'HLT', 
+      isActive: true,
+      description: 'Medical coverage for individuals and families',
+      features: ['Hospitalization', 'Day Care', 'Pre/Post Hospitalization'],
+      requirements: ['Age Proof', 'Medical History', 'Address Proof']
+    },
+    { 
+      id: 3, 
+      name: 'Travel Insurance', 
+      code: 'TRV', 
+      isActive: true,
+      description: 'Coverage for travel-related risks',
+      features: ['Medical Emergency', 'Trip Cancellation', 'Baggage Loss'],
+      requirements: ['Passport Copy', 'Travel Itinerary', 'Visa Details']
+    }
+  ]);
+
+  const [insuranceCompanies, setInsuranceCompanies] = useState([
+    { 
+      id: 1, 
+      name: 'TATA AIG GIC', 
+      code: 'TATA', 
+      isActive: true,
+      description: 'Leading general insurance company',
+      contact: {
+        email: 'support@tataaig.com',
+        phone: '1800-266-7780',
+        website: 'www.tataaig.com'
       }
-    ];
-
-    setPolicies(samplePolicies);
-    setFilteredPolicies(samplePolicies);
-  }, []);
-
-  // Filter policies based on search and tab
-  useEffect(() => {
-    let result = policies;
-    
-    // Filter by tab
-    if (currentTab === 'featured') {
-      result = result.filter(policy => policy.isFeatured);
-    } else if (currentTab === 'active') {
-      result = result.filter(policy => policy.isActive);
-    } else if (currentTab === 'inactive') {
-      result = result.filter(policy => !policy.isActive);
+    },
+    { 
+      id: 2, 
+      name: 'ICICI Lombard GIC', 
+      code: 'ICICI', 
+      isActive: true,
+      description: 'One of the largest private sector general insurance companies',
+      contact: {
+        email: 'support@icicilombard.com',
+        phone: '1800-266-7780',
+        website: 'www.icicilombard.com'
+      }
+    },
+    { 
+      id: 3, 
+      name: 'HDFC ERGO', 
+      code: 'HDFC', 
+      isActive: true,
+      description: 'Leading private sector general insurance company',
+      contact: {
+        email: 'support@hdfcergo.com',
+        phone: '1800-266-7780',
+        website: 'www.hdfcergo.com'
+      }
     }
-    
-    // Filter by search term
-    if (searchTerm) {
-      result = result.filter(policy =>
-        Object.values(policy).some(value =>
-          value && value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-      ));
+  ]);
+
+  const [vehicleTypes, setVehicleTypes] = useState([
+    { 
+      id: 1, 
+      name: 'Private Car', 
+      code: 'PC', 
+      isActive: true,
+      description: 'Insurance for personal cars',
+      premiumFactors: ['Make & Model', 'Age of Vehicle', 'Location']
+    },
+    { 
+      id: 2, 
+      name: 'Two-Wheeler', 
+      code: 'TW', 
+      isActive: true,
+      description: 'Insurance for motorcycles and scooters',
+      premiumFactors: ['CC', 'Age of Vehicle', 'Location']
+    },
+    { 
+      id: 3, 
+      name: 'Commercial Vehicle', 
+      code: 'CV', 
+      isActive: true,
+      description: 'Insurance for commercial vehicles',
+      premiumFactors: ['Type', 'Usage', 'Location']
     }
-    
-    
-    setFilteredPolicies(result);
-  }, [searchTerm, currentTab, policies]);
+  ]);
+
+  const [healthPlans, setHealthPlans] = useState([
+    { 
+      id: 1, 
+      name: 'Individual', 
+      code: 'IND', 
+      isActive: true,
+      description: 'Health insurance for single person',
+      coverage: ['Hospitalization', 'Day Care', 'Pre/Post Hospitalization']
+    },
+    { 
+      id: 2, 
+      name: 'Family Floater', 
+      code: 'FF', 
+      isActive: true,
+      description: 'Health insurance for entire family',
+      coverage: ['Hospitalization', 'Day Care', 'Pre/Post Hospitalization']
+    },
+    { 
+      id: 3, 
+      name: 'Senior Citizen', 
+      code: 'SC', 
+      isActive: true,
+      description: 'Health insurance for senior citizens',
+      coverage: ['Hospitalization', 'Day Care', 'Pre/Post Hospitalization']
+    }
+  ]);
+
+  const [travelTypes, setTravelTypes] = useState([
+    { 
+      id: 1, 
+      name: 'Individual', 
+      code: 'IND', 
+      isActive: true,
+      description: 'Travel insurance for single person',
+      coverage: ['Medical Emergency', 'Trip Cancellation', 'Baggage Loss']
+    },
+    { 
+      id: 2, 
+      name: 'Family', 
+      code: 'FAM', 
+      isActive: true,
+      description: 'Travel insurance for family',
+      coverage: ['Medical Emergency', 'Trip Cancellation', 'Baggage Loss']
+    },
+    { 
+      id: 3, 
+      name: 'Student', 
+      code: 'STU', 
+      isActive: true,
+      description: 'Travel insurance for students',
+      coverage: ['Medical Emergency', 'Trip Cancellation', 'Baggage Loss']
+    }
+  ]);
+
+  // Form state for adding/editing items
+  const [formData, setFormData] = useState({
+    name: '',
+    code: '',
+    description: '',
+    isActive: true,
+    features: [],
+    requirements: [],
+    contact: {
+      email: '',
+      phone: '',
+      website: ''
+    },
+    premiumFactors: [],
+    coverage: []
+  });
 
   const handleTabChange = (event, newValue) => {
-    setCurrentTab(newValue);
+    setActiveTab(newValue);
   };
 
-  const handleMenuClick = (event, policy) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedPolicy(policy);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedPolicy(null);
-  };
-
-  const handleAddPolicy = () => {
+  const handleAddItem = () => {
     setIsEditing(false);
-    setNewPolicy({
-      id: uuidv4(),
+    setFormData({
       name: '',
+      code: '',
       description: '',
-      category: 'Vehicle',
-      company: '',
-      premiumOptions: [{ type: '', amount: '', discount: '' }],
-      coverageDetails: [''],
-      features: [''],
-      requirements: [''],
-      isFeatured: false,
       isActive: true,
-      documents: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      features: [],
+      requirements: [],
+      contact: {
+        email: '',
+        phone: '',
+        website: ''
+      },
+      premiumFactors: [],
+      coverage: []
     });
-    setActiveStep(0);
-    setOpenPolicyModal(true);
+    setOpenModal(true);
   };
 
-  const handleEditPolicy = (policy) => {
+  const handleEditItem = (item) => {
     setIsEditing(true);
-    setNewPolicy(policy);
-    setActiveStep(0);
-    setOpenPolicyModal(true);
+    setSelectedItem(item);
+    setFormData({
+      name: item.name,
+      code: item.code,
+      description: item.description || '',
+      isActive: item.isActive,
+      features: item.features || [],
+      requirements: item.requirements || [],
+      contact: item.contact || {
+        email: '',
+        phone: '',
+        website: ''
+      },
+      premiumFactors: item.premiumFactors || [],
+      coverage: item.coverage || []
+    });
+    setOpenModal(true);
   };
 
-  const handlePolicyChange = (field, value) => {
-    setNewPolicy(prev => ({
-      ...prev,
-      [field]: value,
-      updatedAt: new Date().toISOString()
-    }));
+  const handleDeleteItem = (item) => {
+    setSelectedItem(item);
+    // Show confirmation dialog
   };
 
-  const handleArrayFieldChange = (field, index, value) => {
-    const updatedArray = [...newPolicy[field]];
-    updatedArray[index] = value;
-    handlePolicyChange(field, updatedArray);
+  const handleSaveItem = () => {
+    // Validate form data
+    if (!formData.name || !formData.code) {
+      setSnackbar({
+        open: true,
+        message: 'Please fill in all required fields',
+        severity: 'error'
+      });
+      return;
+    }
+
+    // Save logic based on active tab
+    switch (activeTab) {
+      case 'policyTypes':
+        if (isEditing) {
+          setPolicyTypes(prev => prev.map(item => 
+            item.id === selectedItem.id ? { ...item, ...formData } : item
+          ));
+        } else {
+          setPolicyTypes(prev => [...prev, { 
+            id: Date.now(), 
+            ...formData 
+          }]);
+        }
+        break;
+      case 'companies':
+        if (isEditing) {
+          setInsuranceCompanies(prev => prev.map(item => 
+            item.id === selectedItem.id ? { ...item, ...formData } : item
+          ));
+        } else {
+          setInsuranceCompanies(prev => [...prev, { 
+            id: Date.now(), 
+            ...formData 
+          }]);
+        }
+        break;
+      case 'vehicleTypes':
+        if (isEditing) {
+          setVehicleTypes(prev => prev.map(item => 
+            item.id === selectedItem.id ? { ...item, ...formData } : item
+          ));
+        } else {
+          setVehicleTypes(prev => [...prev, { 
+            id: Date.now(), 
+            ...formData 
+          }]);
+        }
+        break;
+      case 'healthPlans':
+        if (isEditing) {
+          setHealthPlans(prev => prev.map(item => 
+            item.id === selectedItem.id ? { ...item, ...formData } : item
+          ));
+        } else {
+          setHealthPlans(prev => [...prev, { 
+            id: Date.now(), 
+            ...formData 
+          }]);
+        }
+        break;
+      case 'travelTypes':
+        if (isEditing) {
+          setTravelTypes(prev => prev.map(item => 
+            item.id === selectedItem.id ? { ...item, ...formData } : item
+          ));
+        } else {
+          setTravelTypes(prev => [...prev, { 
+            id: Date.now(), 
+            ...formData 
+          }]);
+        }
+        break;
+    }
+
+    setSnackbar({
+      open: true,
+      message: `${isEditing ? 'Updated' : 'Added'} successfully`,
+      severity: 'success'
+    });
+    setOpenModal(false);
   };
 
-  const addArrayFieldItem = (field) => {
-    handlePolicyChange(field, [...newPolicy[field], '']);
-  };
-
-  const removeArrayFieldItem = (field, index) => {
-    const updatedArray = newPolicy[field].filter((_, i) => i !== index);
-    handlePolicyChange(field, updatedArray);
-  };
-
-  const handlePremiumOptionChange = (index, field, value) => {
-    const updatedOptions = [...newPolicy.premiumOptions];
-    updatedOptions[index] = {
-      ...updatedOptions[index],
-      [field]: value
-    };
-    handlePolicyChange('premiumOptions', updatedOptions);
-  };
-
-  const addPremiumOption = () => {
-    handlePolicyChange('premiumOptions', [
-      ...newPolicy.premiumOptions,
-      { type: '', amount: '', discount: '' }
-    ]);
-  };
-
-  const removePremiumOption = (index) => {
-    const updatedOptions = newPolicy.premiumOptions.filter((_, i) => i !== index);
-    handlePolicyChange('premiumOptions', updatedOptions);
-  };
-
-  const handleFileUpload = (event) => {
-    const files = Array.from(event.target.files);
-    setUploadedFiles(prev => [...prev, ...files]);
-  };
-
-  const removeFile = (index) => {
-    const updatedFiles = [...uploadedFiles];
-    updatedFiles.splice(index, 1);
-    setUploadedFiles(updatedFiles);
-  };
-
-  const handleNextStep = () => {
-    setActiveStep(prev => prev + 1);
-  };
-
-  const handleBackStep = () => {
-    setActiveStep(prev => prev - 1);
-  };
-
-  const handleSubmitPolicy = () => {
-    setIsSubmitting(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      const finalPolicy = {
-        ...newPolicy,
-        documents: [...newPolicy.documents, ...uploadedFiles.map(file => file.name)]
-      };
-      
-      if (isEditing) {
-        // Update existing policy
-        setPolicies(prev => 
-          prev.map(policy => policy.id === finalPolicy.id ? finalPolicy : policy)
-        );
-      } else {
-        // Add new policy
-        setPolicies(prev => [...prev, finalPolicy]);
-      }
-      
-      setIsSubmitting(false);
-      setOpenPolicyModal(false);
-      setUploadedFiles([]);
-    }, 1500);
-  };
-
-  const handleDeletePolicy = () => {
-    setPolicies(prev => prev.filter(policy => policy.id !== selectedPolicy.id));
-    handleMenuClose();
-  };
-
-  const togglePolicyStatus = (policyId) => {
-    setPolicies(prev =>
-      prev.map(policy =>
-        policy.id === policyId
-          ? { ...policy, isActive: !policy.isActive }
-          : policy
-      )
-    );
-  };
-
-  const toggleFeaturedStatus = (policyId) => {
-    setPolicies(prev =>
-      prev.map(policy =>
-        policy.id === policyId
-          ? { ...policy, isFeatured: !policy.isFeatured }
-          : policy
-      )
-    );
-  };
-
-  const getCategoryIcon = (category) => {
-    switch (category) {
-      case 'Vehicle': return <VehicleIcon fontSize="small" />;
-      case 'Health': return <HealthIcon fontSize="small" />;
-      case 'Travel': return <TravelIcon fontSize="small" />;
-      case 'Life': return <PolicyIcon fontSize="small" />;
-      default: return <CategoryIcon fontSize="small" />;
+  const getCurrentData = () => {
+    switch (activeTab) {
+      case 'policyTypes': return policyTypes;
+      case 'companies': return insuranceCompanies;
+      case 'vehicleTypes': return vehicleTypes;
+      case 'healthPlans': return healthPlans;
+      case 'travelTypes': return travelTypes;
+      default: return [];
     }
   };
 
-  const steps = ['Basic Information', 'Coverage Details', 'Premium Options', 'Documents'];
+  const renderFormFields = () => {
+    const commonFields = (
+      <>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="Name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            required
+          />
+        </Grid>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="Code"
+            value={formData.code}
+            onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+            required
+          />
+        </Grid>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="Description"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            multiline
+            rows={3}
+          />
+        </Grid>
+        <Grid item xs={12}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={formData.isActive}
+                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+              />
+            }
+            label="Active"
+          />
+        </Grid>
+      </>
+    );
+
+    switch (activeTab) {
+      case 'policyTypes':
+        return (
+          <>
+            {commonFields}
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" gutterBottom>Features</Typography>
+              {formData.features.map((feature, index) => (
+                <Box key={index} sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                  <TextField
+                    fullWidth
+                    value={feature}
+                    onChange={(e) => {
+                      const newFeatures = [...formData.features];
+                      newFeatures[index] = e.target.value;
+                      setFormData({ ...formData, features: newFeatures });
+                    }}
+                  />
+                  <IconButton onClick={() => {
+                    const newFeatures = formData.features.filter((_, i) => i !== index);
+                    setFormData({ ...formData, features: newFeatures });
+                  }}>
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
+              ))}
+              <Button
+                startIcon={<AddIcon />}
+                onClick={() => setFormData({ ...formData, features: [...formData.features, ''] })}
+              >
+                Add Feature
+              </Button>
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" gutterBottom>Requirements</Typography>
+              {formData.requirements.map((requirement, index) => (
+                <Box key={index} sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                  <TextField
+                    fullWidth
+                    value={requirement}
+                    onChange={(e) => {
+                      const newRequirements = [...formData.requirements];
+                      newRequirements[index] = e.target.value;
+                      setFormData({ ...formData, requirements: newRequirements });
+                    }}
+                  />
+                  <IconButton onClick={() => {
+                    const newRequirements = formData.requirements.filter((_, i) => i !== index);
+                    setFormData({ ...formData, requirements: newRequirements });
+                  }}>
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
+              ))}
+              <Button
+                startIcon={<AddIcon />}
+                onClick={() => setFormData({ ...formData, requirements: [...formData.requirements, ''] })}
+              >
+                Add Requirement
+              </Button>
+            </Grid>
+          </>
+        );
+      case 'companies':
+        return (
+          <>
+            {commonFields}
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" gutterBottom>Contact Information</Typography>
+              <TextField
+                fullWidth
+                label="Email"
+                value={formData.contact.email}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  contact: { ...formData.contact, email: e.target.value }
+                })}
+                sx={{ mb: 2 }}
+              />
+              <TextField
+                fullWidth
+                label="Phone"
+                value={formData.contact.phone}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  contact: { ...formData.contact, phone: e.target.value }
+                })}
+                sx={{ mb: 2 }}
+              />
+              <TextField
+                fullWidth
+                label="Website"
+                value={formData.contact.website}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  contact: { ...formData.contact, website: e.target.value }
+                })}
+              />
+            </Grid>
+          </>
+        );
+      case 'vehicleTypes':
+        return (
+          <>
+            {commonFields}
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" gutterBottom>Premium Factors</Typography>
+              {formData.premiumFactors.map((factor, index) => (
+                <Box key={index} sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                  <TextField
+                    fullWidth
+                    value={factor}
+                    onChange={(e) => {
+                      const newFactors = [...formData.premiumFactors];
+                      newFactors[index] = e.target.value;
+                      setFormData({ ...formData, premiumFactors: newFactors });
+                    }}
+                  />
+                  <IconButton onClick={() => {
+                    const newFactors = formData.premiumFactors.filter((_, i) => i !== index);
+                    setFormData({ ...formData, premiumFactors: newFactors });
+                  }}>
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
+              ))}
+              <Button
+                startIcon={<AddIcon />}
+                onClick={() => setFormData({ ...formData, premiumFactors: [...formData.premiumFactors, ''] })}
+              >
+                Add Premium Factor
+              </Button>
+            </Grid>
+          </>
+        );
+      case 'healthPlans':
+      case 'travelTypes':
+        return (
+          <>
+            {commonFields}
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" gutterBottom>Coverage</Typography>
+              {formData.coverage.map((item, index) => (
+                <Box key={index} sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                  <TextField
+                    fullWidth
+                    value={item}
+                    onChange={(e) => {
+                      const newCoverage = [...formData.coverage];
+                      newCoverage[index] = e.target.value;
+                      setFormData({ ...formData, coverage: newCoverage });
+                    }}
+                  />
+                  <IconButton onClick={() => {
+                    const newCoverage = formData.coverage.filter((_, i) => i !== index);
+                    setFormData({ ...formData, coverage: newCoverage });
+                  }}>
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
+              ))}
+              <Button
+                startIcon={<AddIcon />}
+                onClick={() => setFormData({ ...formData, coverage: [...formData.coverage, ''] })}
+              >
+                Add Coverage Item
+              </Button>
+            </Grid>
+          </>
+        );
+      default:
+        return commonFields;
+    }
+  };
 
   return (
-    <Box sx={{ p: 3, backgroundColor: colors.background, minHeight: '100vh' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <PolicyManagementIcon sx={{ fontSize: 40, color: colors.primary, mr: 2 }} />
-        <Typography variant="h4" fontWeight="bold" sx={{ color: colors.textPrimary }}>
-          Policy Management
-        </Typography>
-      </Box>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h5" gutterBottom fontWeight="bold" sx={{ color: "#333" }}>
+        Master Data Management
+      </Typography>
 
       {/* Tabs */}
-      <Box sx={{ 
-        borderBottom: 1, 
-        borderColor: colors.border, 
-        mb: 3,
-        backgroundColor: colors.cardBackground,
-        borderRadius: 1,
-        boxShadow: 1,
-        p: 1
-      }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs 
-          value={currentTab} 
+          value={activeTab} 
           onChange={handleTabChange}
           sx={{
             '& .MuiTab-root': {
-              color: colors.textSecondary,
+              color: '#666',
               textTransform: 'none',
               fontSize: '0.9rem',
               minWidth: 100,
               '&.Mui-selected': {
-                color: colors.primary,
-                fontWeight: 'bold'
+                color: '#0C47A0'
               }
             },
             '& .MuiTabs-indicator': {
-              backgroundColor: colors.primary,
-              height: 3
+              backgroundColor: '#0C47A0'
             }
           }}
         >
-          <Tab label="All Policies" value="all" />
-          <Tab label="Featured" value="featured" />
-          <Tab label="Active" value="active" />
-          <Tab label="Inactive" value="inactive" />
+          <Tab label="Policy Types" value="policyTypes" />
+          <Tab label="Insurance Companies" value="companies" />
+          <Tab label="Vehicle Types" value="vehicleTypes" />
+          <Tab label="Health Plans" value="healthPlans" />
+          <Tab label="Travel Types" value="travelTypes" />
         </Tabs>
       </Box>
 
-      {/* Search and Add Policy Section */}
-      <Box sx={{ 
-        mb: 3, 
-        display: 'flex', 
-        gap: 2, 
-        alignItems: 'center',
-        backgroundColor: colors.cardBackground,
-        p: 2,
-        borderRadius: 1,
-        boxShadow: 1
-      }}>
-        <TextField
-          placeholder="Search policies..."
-          variant="outlined"
-          size="small"
-          fullWidth
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          sx={{
-            '& .MuiOutlinedInput-root': {
-              backgroundColor: 'white',
-              borderRadius: 1,
-              color: colors.textPrimary,
-            }
-          }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon sx={{ color: colors.textSecondary }} />
-              </InputAdornment>
-            ),
-          }}
-        />
-
+      {/* Add Button */}
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={handleAddPolicy}
+          onClick={handleAddItem}
           sx={{
-            height: '60px',
-            width: '200px',
-            backgroundColor: colors.primary,
+            backgroundColor: "#0C47A0",
             textTransform: 'none',
-            fontWeight: 'bold',
             '&:hover': {
-              backgroundColor: '#303f9f'
+              backgroundColor: "#1565C0"
             }
           }}
         >
-          New Policy
+          Add New
         </Button>
       </Box>
 
-      {/* Policies Table */}
-      <TableContainer 
-        component={Paper} 
-        sx={{ 
-          boxShadow: 2, 
-          border: `1px solid ${colors.border}`,
-          borderRadius: 1,
-          overflow: 'auto',
-          maxHeight: 'calc(100vh - 300px)'
-        }}
-      >
-        <Table stickyHeader>
-          <TableHead sx={{ backgroundColor: colors.primary }}>
-            <TableRow>
-              {['Policy Name', 'Category', 'Insurance Company', 'Premium Options', 'Status', 'Actions'].map((header) => (
-                <TableCell 
-                  key={header}
-                  sx={{ 
-                    color: 'white', 
-                    fontWeight: 'bold',
-                    fontSize: '0.9rem'
-                  }}
-                >
-                  {header}
-                </TableCell>
-              ))}
+      {/* Data Table */}
+      <TableContainer component={Paper} sx={{ boxShadow: 'none' }}>
+        <Table>
+          <TableHead>
+            <TableRow sx={{ backgroundColor: 'primary.light' }}>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Code</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Name</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Description</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Status</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredPolicies.length > 0 ? (
-              filteredPolicies.map((policy) => (
-                <TableRow 
-                  key={policy.id} 
-                  // sx={{ 
-                  //   '&:nth-of-type(even)': {
-                  //     backgroundColor: colors.background
-                  //   }
-                  // }}
-                >
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      {policy.isFeatured && (
-                        <FeaturedIcon sx={{ color: colors.highlight }} />
-                      )}
-                      <Box>
-                        <Typography fontWeight="600">{policy.name}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {policy.description.substring(0, 50)}...
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {getCategoryIcon(policy.category)}
-                      <Typography>{policy.category}</Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Typography>{policy.company}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    {policy.premiumOptions.map((option, index) => (
-                      <Box key={index} sx={{ mb: 0.5 }}>
-                        <Typography variant="body2">
-                          <strong>{option.type}:</strong> {option.amount} {option.discount && `(${option.discount} off)`}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Switch
-                        checked={policy.isActive}
-                        onChange={() => togglePolicyStatus(policy.id)}
-                        color="success"
-                        size="small"
-                      />
-                      <Chip
-                        label={policy.isActive ? 'Active' : 'Inactive'}
-                        color={policy.isActive ? 'success' : 'error'}
-                        size="small"
-                        sx={{ 
-                          fontWeight: 'bold',
-                          minWidth: 80,
-                          justifyContent: 'center'
-                        }}
-                      />
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Tooltip title={policy.isFeatured ? 'Remove from featured' : 'Mark as featured'}>
-                        <IconButton 
-                          size="small"
-                          onClick={() => toggleFeaturedStatus(policy.id)}
-                          sx={{
-                            color: policy.isFeatured ? colors.highlight : colors.textSecondary,
-                            '&:hover': {
-                              backgroundColor: colors.highlight + '20'
-                            }
-                          }}
-                        >
-                          <StarIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <IconButton 
-                        size="small"
-                        onClick={(e) => handleMenuClick(e, policy)}
-                        sx={{
-                          '&:hover': {
-                            backgroundColor: colors.primary + '20'
-                          }
-                        }}
-                      >
-                        <MoreVertIcon />
-                      </IconButton>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                  <Typography color="text.secondary">
-                    {searchTerm ? 'No matching policies found' : 'No policies available'}
-                  </Typography>
-                  <Button 
-                    variant="outlined" 
-                    startIcon={<AddIcon />}
-                    onClick={handleAddPolicy}
-                    sx={{ mt: 2 }}
-                  >
-                    Create New Policy
-                  </Button>
+            {getCurrentData().map((item) => (
+              <TableRow key={item.id} hover>
+                <TableCell>{item.code}</TableCell>
+                <TableCell>{item.name}</TableCell>
+                <TableCell>
+                  <Tooltip title={item.description}>
+                    <Typography sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.description}
+                    </Typography>
+                  </Tooltip>
+                </TableCell>
+                <TableCell>
+                  <Chip 
+                    label={item.isActive ? 'Active' : 'Inactive'} 
+                    color={item.isActive ? 'success' : 'error'}
+                    size="small"
+                  />
+                </TableCell>
+                <TableCell>
+                  <IconButton onClick={() => handleEditItem(item)}>
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton onClick={() => handleDeleteItem(item)}>
+                    <DeleteIcon />
+                  </IconButton>
                 </TableCell>
               </TableRow>
-            )}
+            ))}
           </TableBody>
         </Table>
       </TableContainer>
 
-      {/* Actions Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-        PaperProps={{
-          sx: {
-            boxShadow: 2,
-            minWidth: 180
-          }
-        }}
-      >
-        <MenuItem 
-          onClick={() => {
-            handleEditPolicy(selectedPolicy);
-            handleMenuClose();
-          }}
-          sx={{ color: colors.textPrimary }}
-        >
-          <EditIcon sx={{ mr: 1.5, fontSize: 20, color: colors.primary }} /> Edit Policy
-        </MenuItem>
-        <MenuItem 
-          onClick={() => {
-            toggleFeaturedStatus(selectedPolicy.id);
-            handleMenuClose();
-          }}
-          sx={{ color: colors.textPrimary }}
-        >
-          {selectedPolicy?.isFeatured ? (
-            <>
-              <FeaturedIcon sx={{ mr: 1.5, fontSize: 20, color: colors.warning }} /> Remove Featured
-            </>
-          ) : (
-            <>
-              <FeaturedIcon sx={{ mr: 1.5, fontSize: 20, color: colors.highlight }} /> Mark Featured
-            </>
-          )}
-        </MenuItem>
-        <Divider />
-        <MenuItem 
-          onClick={handleDeletePolicy} 
-          sx={{ color: colors.error }}
-        >
-          <DeleteIcon sx={{ mr: 1.5, fontSize: 20 }} /> Delete Policy
-        </MenuItem>
-      </Menu>
-
-      {/* Policy Modal */}
+      {/* Add/Edit Modal */}
       <Modal
-        open={openPolicyModal}
-        onClose={() => !isSubmitting && setOpenPolicyModal(false)}
-        aria-labelledby="policy-modal"
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        aria-labelledby="master-data-modal"
       >
         <Box sx={{
           position: 'absolute',
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: { xs: '95%', md: '900px' },
+          width: 600,
           maxHeight: '90vh',
+          overflowY: 'auto',
           bgcolor: 'background.paper',
           boxShadow: 24,
-          borderRadius: 1,
-          overflow: 'auto',
-          outline: 'none'
+          p: 4,
+          borderRadius: 1
         }}>
-          <Box sx={{ 
-            position: 'sticky', 
-            top: 0, 
-            bgcolor: colors.primary, 
-            zIndex: 1,
-            p: 2,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            color: 'white'
-          }}>
-            <Typography variant="h6" component="h2" fontWeight="bold">
-              {isEditing ? 'Edit Policy' : 'Create New Policy'}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h6">
+              {isEditing ? 'Edit' : 'Add New'} {activeTab}
             </Typography>
-            <IconButton 
-              onClick={() => !isSubmitting && setOpenPolicyModal(false)} 
-              size="small"
-              sx={{ color: 'white' }}
-              disabled={isSubmitting}
-            >
+            <IconButton onClick={() => setOpenModal(false)}>
               <CloseIcon />
             </IconButton>
           </Box>
 
-          <Box sx={{ p: 3 }}>
-            <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
-              {steps.map((label) => (
-                <Step key={label}>
-                  <StepLabel>{label}</StepLabel>
-                </Step>
-              ))}
-            </Stepper>
+          <Grid container spacing={3}>
+            {renderFormFields()}
+          </Grid>
 
-            {activeStep === 0 && (
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Policy Name"
-                    value={newPolicy.name}
-                    onChange={(e) => handlePolicyChange('name', e.target.value)}
-                    required
-                    variant="outlined"
-                    size="small"
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth size="small">
-                    <Select
-                      value={newPolicy.category}
-                      onChange={(e) => handlePolicyChange('category', e.target.value)}
-                      required
-                      variant="outlined"
-                    >
-                      {categories.map((category) => (
-                        <MenuItem key={category} value={category}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {getCategoryIcon(category)}
-                            {category}
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Description"
-                    value={newPolicy.description}
-                    onChange={(e) => handlePolicyChange('description', e.target.value)}
-                    required
-                    variant="outlined"
-                    size="small"
-                    multiline
-                    rows={3}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth size="small">
-                    <Select
-                      value={newPolicy.company}
-                      onChange={(e) => handlePolicyChange('company', e.target.value)}
-                      required
-                      variant="outlined"
-                      displayEmpty
-                      renderValue={(selected) => selected || "Select Insurance Company"}
-                    >
-                      {insuranceCompanies.map((company) => (
-                        <MenuItem key={company} value={company}>
-                          {company}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Box sx={{ display: 'flex', gap: 2 }}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={newPolicy.isFeatured}
-                          onChange={(e) => handlePolicyChange('isFeatured', e.target.checked)}
-                          color="warning"
-                        />
-                      }
-                      label="Featured Policy"
-                    />
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={newPolicy.isActive}
-                          onChange={(e) => handlePolicyChange('isActive', e.target.checked)}
-                          color="success"
-                        />
-                      }
-                      label="Active"
-                    />
-                  </Box>
-                </Grid>
-              </Grid>
-            )}
-
-            {activeStep === 1 && (
-              <Grid container spacing={3}>
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                    Coverage Details
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  {newPolicy.coverageDetails.map((detail, index) => (
-                    <Box key={index} sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                      <TextField
-                        fullWidth
-                        value={detail}
-                        onChange={(e) => handleArrayFieldChange('coverageDetails', index, e.target.value)}
-                        variant="outlined"
-                        size="small"
-                        placeholder="Enter coverage detail"
-                      />
-                      <IconButton
-                        onClick={() => removeArrayFieldItem('coverageDetails', index)}
-                        color="error"
-                      >
-                        <CloseIcon />
-                      </IconButton>
-                    </Box>
-                  ))}
-                  <Button
-                    variant="outlined"
-                    startIcon={<AddIcon />}
-                    onClick={() => addArrayFieldItem('coverageDetails')}
-                    sx={{ mt: 1 }}
-                  >
-                    Add Coverage Detail
-                  </Button>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                    Policy Features
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  {newPolicy.features.map((feature, index) => (
-                    <Box key={index} sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                      <TextField
-                        fullWidth
-                        value={feature}
-                        onChange={(e) => handleArrayFieldChange('features', index, e.target.value)}
-                        variant="outlined"
-                        size="small"
-                        placeholder="Enter feature"
-                      />
-                      <IconButton
-                        onClick={() => removeArrayFieldItem('features', index)}
-                        color="error"
-                      >
-                        <CloseIcon />
-                      </IconButton>
-                    </Box>
-                  ))}
-                  <Button
-                    variant="outlined"
-                    startIcon={<AddIcon />}
-                    onClick={() => addArrayFieldItem('features')}
-                    sx={{ mt: 1 }}
-                  >
-                    Add Feature
-                  </Button>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                    Requirements
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  {newPolicy.requirements.map((requirement, index) => (
-                    <Box key={index} sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                      <TextField
-                        fullWidth
-                        value={requirement}
-                        onChange={(e) => handleArrayFieldChange('requirements', index, e.target.value)}
-                        variant="outlined"
-                        size="small"
-                        placeholder="Enter requirement"
-                      />
-                      <IconButton
-                        onClick={() => removeArrayFieldItem('requirements', index)}
-                        color="error"
-                      >
-                        <CloseIcon />
-                      </IconButton>
-                    </Box>
-                  ))}
-                  <Button
-                    variant="outlined"
-                    startIcon={<AddIcon />}
-                    onClick={() => addArrayFieldItem('requirements')}
-                    sx={{ mt: 1 }}
-                  >
-                    Add Requirement
-                  </Button>
-                </Grid>
-              </Grid>
-            )}
-
-            {activeStep === 2 && (
-              <Grid container spacing={3}>
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                    Premium Options
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  {newPolicy.premiumOptions.map((option, index) => (
-                    <Box key={index} sx={{ mb: 3, p: 2, border: `1px solid ${colors.border}`, borderRadius: 1 }}>
-                      <Grid container spacing={2}>
-                        <Grid item xs={12} md={4}>
-                          <TextField
-                            fullWidth
-                            label="Option Type"
-                            value={option.type}
-                            onChange={(e) => handlePremiumOptionChange(index, 'type', e.target.value)}
-                            variant="outlined"
-                            size="small"
-                            placeholder="e.g., Annual, Monthly"
-                          />
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                          <TextField
-                            fullWidth
-                            label="Amount"
-                            value={option.amount}
-                            onChange={(e) => handlePremiumOptionChange(index, 'amount', e.target.value)}
-                            variant="outlined"
-                            size="small"
-                            placeholder="e.g., ₹12,500"
-                          />
-                        </Grid>
-                        <Grid item xs={12} md={3}>
-                          <TextField
-                            fullWidth
-                            label="Discount"
-                            value={option.discount}
-                            onChange={(e) => handlePremiumOptionChange(index, 'discount', e.target.value)}
-                            variant="outlined"
-                            size="small"
-                            placeholder="e.g., 10%"
-                          />
-                        </Grid>
-                        <Grid item xs={12} md={1} sx={{ display: 'flex', alignItems: 'center' }}>
-                          <IconButton
-                            onClick={() => removePremiumOption(index)}
-                            color="error"
-                          >
-                            <CloseIcon />
-                          </IconButton>
-                        </Grid>
-                      </Grid>
-                    </Box>
-                  ))}
-                  <Button
-                    variant="outlined"
-                    startIcon={<AddIcon />}
-                    onClick={addPremiumOption}
-                    sx={{ mt: 1 }}
-                  >
-                    Add Premium Option
-                  </Button>
-                </Grid>
-              </Grid>
-            )}
-
-            {activeStep === 3 && (
-              <Grid container spacing={3}>
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                    Policy Documents
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Upload PDF documents related to this policy (terms & conditions, policy wording, etc.)
-                  </Typography>
-                  
-                  <Box sx={{ mb: 3 }}>
-                    <Button
-                      component="label"
-                      variant="outlined"
-                      startIcon={<UploadIcon />}
-                      sx={{ mr: 2 }}
-                    >
-                      Upload Documents
-                      <VisuallyHiddenInput 
-                        type="file" 
-                        onChange={handleFileUpload}
-                        multiple
-                        accept=".pdf"
-                      />
-                    </Button>
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                      Accepted format: PDF (Max 10MB each)
-                    </Typography>
-                  </Box>
-
-                  {uploadedFiles.length > 0 && (
-                    <Box sx={{ mb: 3 }}>
-                      <Typography variant="subtitle2" sx={{ mb: 1 }}>New Files to Upload:</Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                        {uploadedFiles.map((file, index) => (
-                          <Chip
-                            key={index}
-                            label={file.name}
-                            onDelete={() => removeFile(index)}
-                            variant="outlined"
-                            size="small"
-                            icon={<PdfIcon color="error" fontSize="small" />}
-                            sx={{ maxWidth: 200 }}
-                          />
-                        ))}
-                      </Box>
-                    </Box>
-                  )}
-
-                  {newPolicy.documents.length > 0 && (
-                    <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1 }}>Existing Documents:</Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                        {newPolicy.documents.map((doc, index) => (
-                          <Chip
-                            key={index}
-                            label={doc}
-                            variant="outlined"
-                            size="small"
-                            icon={<PdfIcon color="error" fontSize="small" />}
-                            sx={{ maxWidth: 200 }}
-                          />
-                        ))}
-                      </Box>
-                    </Box>
-                  )}
-                </Grid>
-              </Grid>
-            )}
-
-            {isSubmitting && <LinearProgress sx={{ mt: 2 }} />}
-
-            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
-              <Button
-                disabled={activeStep === 0 || isSubmitting}
-                onClick={handleBackStep}
-                sx={{ textTransform: 'none' }}
-              >
-                Back
-              </Button>
-              
-              {activeStep < steps.length - 1 ? (
-                <Button
-                  variant="contained"
-                  onClick={handleNextStep}
-                  disabled={isSubmitting}
-                  sx={{
-                    backgroundColor: colors.primary,
-                    textTransform: 'none',
-                    '&:hover': {
-                      backgroundColor: '#303f9f'
-                    }
-                  }}
-                >
-                  Next
-                </Button>
-              ) : (
-                <Button
-                  variant="contained"
-                  onClick={handleSubmitPolicy}
-                  disabled={isSubmitting}
-                  startIcon={isSubmitting ? <CircularProgress size={20} /> : <CheckCircleIcon />}
-                  sx={{
-                    backgroundColor: colors.success,
-                    textTransform: 'none',
-                    '&:hover': {
-                      backgroundColor: '#2e7d32'
-                    }
-                  }}
-                >
-                  {isSubmitting ? 'Saving...' : 'Save Policy'}
-                </Button>
-              )}
-            </Box>
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+            <Button onClick={() => setOpenModal(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              onClick={handleSaveItem}
+              startIcon={<SaveIcon />}
+              sx={{
+                backgroundColor: "#0C47A0",
+                '&:hover': {
+                  backgroundColor: "#1565C0"
+                }
+              }}
+            >
+              Save
+            </Button>
           </Box>
         </Box>
       </Modal>
+
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
 
-export default PolicyManagement;
+export default MasterDataManagement;
