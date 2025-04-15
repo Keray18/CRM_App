@@ -77,7 +77,7 @@ const VisuallyHiddenInput = styled('input')({
   width: 1,
 });
 
-const PolicyStatus = () => {
+const PolicyStatus = ({ leads = [] }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentTab, setCurrentTab] = useState('all');
   const [anchorEl, setAnchorEl] = useState(null);
@@ -101,7 +101,6 @@ const PolicyStatus = () => {
     health: ['Health Insurance Details', 'Commission Details'],
     travel: ['Travel Insurance Details', 'Commission Details']
   });
-  const [leads, setLeads] = useState([]);
   const [leadSearchTerm, setLeadSearchTerm] = useState('');
   const [filteredLeads, setFilteredLeads] = useState([]);
   const [selectedLead, setSelectedLead] = useState(null);
@@ -201,54 +200,6 @@ const PolicyStatus = () => {
     effectiveCommissionPercentage: '',
   });
 
-  // Add useEffect to fetch leads
-  useEffect(() => {
-    // Dummy leads data
-    const dummyLeads = [
-      {
-        _id: 1,
-        name: "Rahul Sharma",
-        phone: "9876543210",
-        email: "rahul@example.com",
-        date: "2024-03-20",
-        status: "New",
-        policyInterested: "vehicle",
-        remarks: "Interested in car insurance"
-      },
-      {
-        _id: 2,
-        name: "Priya Patel",
-        phone: "8765432109",
-        email: "priya@example.com",
-        date: "2024-03-19",
-        status: "New",
-        policyInterested: "health",
-        remarks: "Looking for family health insurance"
-      },
-      {
-        _id: 3,
-        name: "Amit Kumar",
-        phone: "7654321098",
-        email: "amit@example.com",
-        date: "2024-03-18",
-        status: "New",
-        policyInterested: "travel",
-        remarks: "Planning international trip"
-      },
-      {
-        _id: 4,
-        name: "Sneha Gupta",
-        phone: "6543210987",
-        email: "sneha@example.com",
-        date: "2024-03-17",
-        status: "New",
-        policyInterested: "vehicle",
-        remarks: "New bike insurance required"
-      }
-    ];
-    setLeads(dummyLeads);
-  }, []);
-
   // Add useEffect to initialize policies
   useEffect(() => {
     // Initialize with some dummy policies for testing
@@ -283,7 +234,10 @@ const PolicyStatus = () => {
       return;
     }
 
-    const filtered = leads.filter(lead => 
+    // Filter active leads (not converted and not deleted)
+    const activeLeads = leads.filter(lead => !lead.isConverted && !lead.isDeleted);
+    
+    const filtered = activeLeads.filter(lead => 
       lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.phone.includes(searchTerm) ||
       lead.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -328,29 +282,63 @@ const PolicyStatus = () => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleNewPolicyChange = (field) => (event) => {
+  // Add this new function to handle date changes specifically
+  const handleDateChange = (field) => (event) => {
     const value = event.target.value;
+    console.log(`Setting ${field} to:`, value); // Debug log
     
-    // Handle numeric fields
-    if (['basicPremium', 'totalPremium', 'commissionAmount', 'commissionPercentage', 'age', 'tripDuration'].includes(field)) {
-      setNewPolicy(prev => ({
-        ...prev,
-        [field]: value === '' ? '' : Number(value)
-      }));
-    } else if (['startDate', 'endDate'].includes(field)) {
-      // Handle date fields
-      setNewPolicy(prev => ({
+    setNewPolicy(prev => {
+      const updated = {
         ...prev,
         [field]: value
+      };
+      console.log('Updated policy state:', updated); // Debug log
+      return updated;
+    });
+
+    // Clear error for this field
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: undefined
       }));
-      // Clear error when date is selected
+    }
+  };
+
+  // Update the handleNewPolicyChange function
+  const handleNewPolicyChange = (field) => (event) => {
+    const value = event.target.value;
+    console.log(`Setting ${field} to:`, value); // Debug log
+    
+    if (field === 'startDate' || field === 'endDate') {
+      // For date fields, ensure we have a valid date string
+      const dateValue = value || new Date().toISOString().split('T')[0];
+      console.log(`Setting date ${field} to:`, dateValue); // Debug log
+      
+      setNewPolicy(prev => {
+        const updated = {
+          ...prev,
+          [field]: dateValue
+        };
+        console.log('Updated policy state:', updated); // Debug log
+        return updated;
+      });
+      
+      // Clear error for this field
       if (errors[field]) {
         setErrors(prev => ({
           ...prev,
           [field]: undefined
         }));
       }
+    } else if (['basicPremium', 'totalPremium', 'commissionAmount', 'commissionPercentage', 'age', 'tripDuration'].includes(field)) {
+      // Handle numeric fields
+      setNewPolicy(prev => ({
+        ...prev,
+        [field]: value === '' ? '' : Number(value)
+      }));
     } else {
+      // Handle all other fields
       setNewPolicy(prev => ({
         ...prev,
         [field]: value
@@ -372,31 +360,36 @@ const PolicyStatus = () => {
     let totalCommission = 0;
     let effectivePercentage = 0;
 
+    // Convert string values to numbers and ensure they are valid
+    const odPremium = parseFloat(policy.odPremium) || 0;
+    const tpPremium = parseFloat(policy.tpPremium) || 0;
+    const addonPremium = parseFloat(policy.addonPremium) || 0;
+    const odCommissionPercentage = parseFloat(policy.odCommissionPercentage) || 0;
+    const tpCommissionPercentage = parseFloat(policy.tpCommissionPercentage) || 0;
+    const addonCommissionPercentage = parseFloat(policy.addonCommissionPercentage) || 0;
+
     switch (policy.commissionType) {
       case 'OD':
-        // Commission on OD Only
-        totalCommission = (parseFloat(policy.odPremium || 0) * parseFloat(policy.odCommissionPercentage || 0)) / 100;
-        effectivePercentage = policy.odCommissionPercentage || 0;
+        totalCommission = (odPremium * odCommissionPercentage) / 100;
+        effectivePercentage = odCommissionPercentage;
         break;
 
       case 'TP_OD':
-        // Commission on TP + OD + Add-on
-        const totalPremium = parseFloat(policy.odPremium || 0) + parseFloat(policy.tpPremium || 0) + parseFloat(policy.addonPremium || 0);
-        const odCommission = (parseFloat(policy.odPremium || 0) * parseFloat(policy.odCommissionPercentage || 0)) / 100;
-        const tpCommission = (parseFloat(policy.tpPremium || 0) * parseFloat(policy.tpCommissionPercentage || 0)) / 100;
-        const addonCommission = (parseFloat(policy.addonPremium || 0) * parseFloat(policy.addonCommissionPercentage || 0)) / 100;
+        const totalPremium = odPremium + tpPremium + addonPremium;
+        const odCommission = (odPremium * odCommissionPercentage) / 100;
+        const tpCommission = (tpPremium * tpCommissionPercentage) / 100;
+        const addonCommission = (addonPremium * addonCommissionPercentage) / 100;
         
         totalCommission = odCommission + tpCommission + addonCommission;
         effectivePercentage = totalPremium > 0 ? (totalCommission / totalPremium) * 100 : 0;
         break;
 
       case 'BOTH':
-        // Commission on Both (TP + OD%)
-        const odAmount = (parseFloat(policy.odPremium || 0) * parseFloat(policy.odCommissionPercentage || 0)) / 100;
-        const tpAmount = (parseFloat(policy.tpPremium || 0) * parseFloat(policy.tpCommissionPercentage || 0)) / 100;
+        const odAmount = (odPremium * odCommissionPercentage) / 100;
+        const tpAmount = (tpPremium * tpCommissionPercentage) / 100;
         
         totalCommission = odAmount + tpAmount;
-        const totalBaseAmount = parseFloat(policy.odPremium || 0) + parseFloat(policy.tpPremium || 0);
+        const totalBaseAmount = odPremium + tpPremium;
         effectivePercentage = totalBaseAmount > 0 ? (totalCommission / totalBaseAmount) * 100 : 0;
         break;
 
@@ -405,11 +398,16 @@ const PolicyStatus = () => {
     }
 
     // Update the commission amounts in the policy
-    setNewPolicy(prev => ({
-      ...prev,
+    const updatedPolicy = {
+      ...policy,
+      commissionAmount: totalCommission.toFixed(2),
+      commissionPercentage: effectivePercentage.toFixed(2),
       totalCommissionAmount: totalCommission.toFixed(2),
       effectiveCommissionPercentage: effectivePercentage.toFixed(2)
-    }));
+    };
+
+    setNewPolicy(updatedPolicy);
+    return updatedPolicy;
   };
 
   // Add useEffect to calculate commission when relevant fields change
@@ -427,10 +425,9 @@ const PolicyStatus = () => {
     newPolicy.addonCommissionPercentage
   ]);
 
-  // Update validateForm function to include new commission validations
+  // Update the validateForm function
   const validateForm = () => {
     const newErrors = {};
-    console.log('Current Policy Data:', newPolicy); // Debug log
     
     // Common validations for all insurance types
     if (!newPolicy.policyNumber?.trim()) newErrors.policyNumber = 'Policy Number is required';
@@ -439,15 +436,31 @@ const PolicyStatus = () => {
     if (!newPolicy.email?.trim()) newErrors.email = 'Email is required';
     if (!newPolicy.company?.trim()) newErrors.company = 'Insurance Company is required';
     if (!newPolicy.business?.trim()) newErrors.business = 'Policy Type is required';
-    if (!newPolicy.startDate?.trim()) newErrors.startDate = 'Start Date is required';
-    if (!newPolicy.endDate?.trim()) newErrors.endDate = 'End Date is required';
 
-    // Commission validations for all types
-    if (!newPolicy.commissionAmount || newPolicy.commissionAmount <= 0) {
-      newErrors.commissionAmount = 'Commission Amount is required and must be greater than 0';
+    // Date validations
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (!newPolicy.startDate) {
+      newErrors.startDate = 'Start Date is required';
+    } else {
+      const startDate = new Date(newPolicy.startDate);
+      startDate.setHours(0, 0, 0, 0);
+      if (startDate < today) {
+        newErrors.startDate = 'Start Date cannot be in the past';
+      }
     }
-    if (!newPolicy.commissionPercentage || newPolicy.commissionPercentage <= 0 || newPolicy.commissionPercentage > 100) {
-      newErrors.commissionPercentage = 'Commission Percentage is required and must be between 0 and 100';
+
+    if (!newPolicy.endDate) {
+      newErrors.endDate = 'End Date is required';
+    } else if (newPolicy.startDate) {
+      const startDate = new Date(newPolicy.startDate);
+      const endDate = new Date(newPolicy.endDate);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+      if (endDate <= startDate) {
+        newErrors.endDate = 'End Date must be after Start Date';
+      }
     }
 
     // Vehicle specific validations
@@ -455,48 +468,15 @@ const PolicyStatus = () => {
       if (!newPolicy.vehicleType?.trim()) newErrors.vehicleType = 'Vehicle Type is required';
       if (!newPolicy.vehicleNumber?.trim()) newErrors.vehicleNumber = 'Vehicle Number is required';
       
-      // Premium validations for vehicle insurance only
+      // Premium validations for vehicle insurance
       if (!newPolicy.basicPremium || newPolicy.basicPremium <= 0) {
         newErrors.basicPremium = 'Basic Premium is required and must be greater than 0';
       }
       if (!newPolicy.totalPremium || newPolicy.totalPremium <= 0) {
         newErrors.totalPremium = 'Total Premium is required and must be greater than 0';
       }
-    }
 
-    // Health specific validations
-    if (insuranceType === 'health') {
-      if (!newPolicy.healthPlan?.trim()) newErrors.healthPlan = 'Health Plan is required';
-      if (!newPolicy.sumInsured || newPolicy.sumInsured <= 0) {
-        newErrors.sumInsured = 'Sum Insured is required and must be greater than 0';
-      }
-      if (!newPolicy.dateOfBirth?.trim()) newErrors.dateOfBirth = 'Date of Birth is required';
-      if (!newPolicy.height || newPolicy.height <= 0) {
-        newErrors.height = 'Height is required and must be greater than 0';
-      }
-      if (!newPolicy.weight || newPolicy.weight <= 0) {
-        newErrors.weight = 'Weight is required and must be greater than 0';
-      }
-      if (!newPolicy.bloodGroup?.trim()) newErrors.bloodGroup = 'Blood Group is required';
-      if (!newPolicy.preExistingConditions || newPolicy.preExistingConditions.length === 0) {
-        newErrors.preExistingConditions = 'Please select at least one option (or None)';
-      }
-      if (newPolicy.familyMembers === undefined || newPolicy.familyMembers === null) {
-        newErrors.familyMembers = 'Please select number of family members';
-      }
-    }
-
-    // Travel specific validations
-    if (insuranceType === 'travel') {
-      if (!newPolicy.travelType?.trim()) newErrors.travelType = 'Travel Type is required';
-      if (!newPolicy.destination?.trim()) newErrors.destination = 'Destination is required';
-      if (!newPolicy.tripDuration || newPolicy.tripDuration <= 0) {
-        newErrors.tripDuration = 'Trip Duration is required and must be greater than 0';
-      }
-    }
-
-    // Vehicle commission validations
-    if (insuranceType === 'vehicle') {
+      // Commission validations for vehicle insurance
       if (!newPolicy.commissionType) {
         newErrors.commissionType = 'Please select commission type';
       }
@@ -526,6 +506,38 @@ const PolicyStatus = () => {
       }
     }
 
+    // Health specific validations
+    if (insuranceType === 'health') {
+      if (!newPolicy.healthPlan?.trim()) newErrors.healthPlan = 'Health Plan is required';
+      if (!newPolicy.sumInsured || newPolicy.sumInsured <= 0) {
+        newErrors.sumInsured = 'Sum Insured is required and must be greater than 0';
+      }
+      if (!newPolicy.dateOfBirth?.trim()) newErrors.dateOfBirth = 'Date of Birth is required';
+      if (!newPolicy.height || newPolicy.height <= 0) {
+        newErrors.height = 'Height is required and must be greater than 0';
+      }
+      if (!newPolicy.weight || newPolicy.weight <= 0) {
+        newErrors.weight = 'Weight is required and must be greater than 0';
+      }
+      if (!newPolicy.bloodGroup?.trim()) newErrors.bloodGroup = 'Blood Group is required';
+      if (!newPolicy.preExistingConditions || newPolicy.preExistingConditions.length === 0) {
+        newErrors.preExistingConditions = 'Please select at least one option (or None)';
+      }
+      // Only require family members for Family Floater plan
+      if (newPolicy.healthPlan === 'Family Floater Plan' && (!newPolicy.familyMembers || newPolicy.familyMembers <= 0)) {
+        newErrors.familyMembers = 'Please select number of family members';
+      }
+    }
+
+    // Travel specific validations
+    if (insuranceType === 'travel') {
+      if (!newPolicy.travelType?.trim()) newErrors.travelType = 'Travel Type is required';
+      if (!newPolicy.destination?.trim()) newErrors.destination = 'Destination is required';
+      if (!newPolicy.tripDuration || newPolicy.tripDuration <= 0) {
+        newErrors.tripDuration = 'Trip Duration is required and must be greater than 0';
+      }
+    }
+
     console.log('Validation Errors:', newErrors); // Debug log
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -533,6 +545,27 @@ const PolicyStatus = () => {
 
   const handleAddPolicy = async () => {
     console.log('Attempting to add policy...'); // Debug log
+    
+    // Set default dates if not provided
+    const today = new Date().toISOString().split('T')[0];
+    const nextYear = new Date();
+    nextYear.setFullYear(nextYear.getFullYear() + 1);
+    const nextYearDate = nextYear.toISOString().split('T')[0];
+
+    // Update policy with default dates if not set
+    const policyWithDates = {
+      ...newPolicy,
+      startDate: newPolicy.startDate || today,
+      endDate: newPolicy.endDate || nextYearDate
+    };
+    setNewPolicy(policyWithDates);
+
+    // Calculate commission first
+    if (insuranceType === 'vehicle') {
+      const updatedPolicy = calculateCommission(policyWithDates);
+      setNewPolicy(updatedPolicy);
+    }
+
     const isValid = validateForm();
     console.log('Form validation result:', isValid); // Debug log
 
@@ -551,10 +584,9 @@ const PolicyStatus = () => {
     try {
       const policyToAdd = {
         id: `P${Date.now()}`,
-        ...newPolicy,
+        ...policyWithDates,
         type: insuranceType,
         status: 'Live Policy',
-        startDate: newPolicy.startDate || new Date().toISOString().split('T')[0],
         documents: uploadedFiles.map(file => file.name),
       };
 
@@ -586,14 +618,23 @@ const PolicyStatus = () => {
     }
   };
 
+  // Update the resetForm function
   const resetForm = () => {
+    const today = new Date();
+    const nextYear = new Date();
+    nextYear.setFullYear(today.getFullYear() + 1);
+
+    const todayStr = today.toISOString().split('T')[0];
+    const nextYearStr = nextYear.toISOString().split('T')[0];
+
     setNewPolicy({
+      ...newPolicy,
       policyNumber: '',
       insuredName: '',
       mobile: '',
       email: '',
-      startDate: '',
-      endDate: '',
+      startDate: todayStr,
+      endDate: nextYearStr,
       company: '',
       business: 'New',
       type: 'vehicle',
@@ -866,7 +907,7 @@ const PolicyStatus = () => {
       </Box>
 
       {/* Policies Table */}
-      <TableContainer component={Paper} sx={{ boxShadow: 'none', mt: 3 }}>
+      <TableContainer component={Paper} sx={{ boxShadow: 'none', mt: 3, backgroundColor: '#ffffff' }}>
         <Table>
           <TableHead>
             <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
@@ -881,7 +922,7 @@ const PolicyStatus = () => {
           </TableHead>
           <TableBody>
             {policies.map((policy) => (
-              <TableRow key={policy.id} hover>
+              <TableRow key={policy.id} hover sx={{ backgroundColor: '#ffffff' }}>
                 <TableCell sx={{ color: '#000000' }}>{policy.policyNumber}</TableCell>
                 <TableCell sx={{ color: '#000000' }}>{policy.insuredName}</TableCell>
                 <TableCell sx={{ color: '#000000' }}>{policy.endDate}</TableCell>
@@ -1208,7 +1249,7 @@ const PolicyStatus = () => {
                       fullWidth
                       label="Start Date"
                       type="date"
-                      value={newPolicy.startDate}
+                      value={newPolicy.startDate || ''}
                       onChange={handleNewPolicyChange('startDate')}
                       error={!!errors.startDate}
                       helperText={errors.startDate}
@@ -1227,7 +1268,7 @@ const PolicyStatus = () => {
                       fullWidth
                       label="End Date"
                       type="date"
-                      value={newPolicy.endDate}
+                      value={newPolicy.endDate || ''}
                       onChange={handleNewPolicyChange('endDate')}
                       error={!!errors.endDate}
                       helperText={errors.endDate}
@@ -2396,7 +2437,7 @@ const PolicyStatus = () => {
                           required
                           label="Start Date"
                           type="date"
-                          value={newPolicy.startDate}
+                          value={newPolicy.startDate || ''}
                           onChange={handleNewPolicyChange('startDate')}
                           InputLabelProps={{ shrink: true }}
                           error={!!errors.startDate}
@@ -2413,7 +2454,7 @@ const PolicyStatus = () => {
                           required
                           label="End Date"
                           type="date"
-                          value={newPolicy.endDate}
+                          value={newPolicy.endDate || ''}
                           onChange={handleNewPolicyChange('endDate')}
                           InputLabelProps={{ shrink: true }}
                           error={!!errors.endDate}

@@ -72,7 +72,7 @@ const Sidebar = ({ section, setSection }) => {
     { text: "Leads", icon: <AssignmentIcon /> },
     { text: "Customers", icon: <GroupIcon /> },
     { text: "Policy Status", icon: <PolicyIcon />, section: "Policy Status" },
-    { text: "Policy Management", icon: <PolicyIcon />, section: "Policy Management" },
+    { text: "Master Data", icon: <PolicyIcon />, section: "Master Data" },
     { text: "Documents", icon: <DocumentIcon />, section: "Documents" },
     { text: "Commission", icon: <CommissionIcon />, section: "Commission" },
   ];
@@ -839,7 +839,14 @@ const Dashboard = () => {
         </Modal>
 
         {/* Other Sections */}
-        {section === "Task Assignments" && <AssignTask tasks={tasks} />}
+        {section === "Task Assignments" && (
+          <AssignTask 
+            tasks={tasks} 
+            employees={employees}
+            leads={leads}
+            policies={[]} // You'll need to add policies state if you want to link tasks to policies
+          />
+        )}
         {section === "Leads" && (
           <Leads 
             leads={activeLeads} 
@@ -854,10 +861,10 @@ const Dashboard = () => {
         )}
 
         {/* Policy Status */}
-        {section === "Policy Status" && <PolicyStatus />}
+        {section === "Policy Status" && <PolicyStatus leads={leads} />}
 
-        {/* Policy Management */}
-        {section === "Policy Management" && <PolicyManagement />}
+        {/* Master Data */}
+        {section === "Master Data" && <PolicyManagement />}
 
         {/* Documents */}
         {section === "Documents" && (

@@ -175,7 +175,7 @@ function Login() {
               description: 'Track and convert insurance leads efficiently.',
             },
             {
-              title: 'Policy Processing',
+              title: 'Master Data',
               description: 'Generate and enhance policy proposals automatically.',
             },
             {
