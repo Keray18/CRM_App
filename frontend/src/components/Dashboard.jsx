@@ -56,7 +56,7 @@ const backgroundColor = "#f5f5f5";
 
 const StyledDrawer = styled(Drawer)({
   "& .MuiDrawer-paper": {
-    backgroundColor: primaryColor,
+    backgroundColor: "#0C47A0",
     color: "#fff",
     width: 240,
     transition: "all 0.3s ease",
@@ -132,7 +132,6 @@ const Dashboard = () => {
     email: "",
     position: "",
     department: "",
-    policyNumber: "",
   });
   const [taskForm, setTaskForm] = useState({
     employeeId: "",
@@ -187,7 +186,6 @@ const Dashboard = () => {
       email: "",
       position: "",
       department: "",
-      policyNumber: "",
     });
     setSnackbar({
       open: true,
@@ -592,7 +590,6 @@ const Dashboard = () => {
                 "phone",
                 "position",
                 "department",
-                "policyNumber",
               ].map((field) => (
                 <Grid item xs={12} md={6} key={field}>
                   <TextField
@@ -626,7 +623,7 @@ const Dashboard = () => {
                   size="large"
                   onClick={handleEmployeeSubmit}
                   sx={{
-                    bgcolor: primaryColor,
+                    bgcolor: "#0C47A0",
                     "&:hover": { bgcolor: "#1565c0" },
                   }}
                 >
@@ -699,7 +696,7 @@ const Dashboard = () => {
                     <TableRow key={emp.id} hover>
                       <TableCell>
                         <Box sx={{ display: "flex", alignItems: "center" }}>
-                          <Avatar sx={{ mr: 2, bgcolor: primaryColor }}>
+                          <Avatar sx={{ mr: 2, bgcolor: "#0C47A0" }}>
                             {emp.name.charAt(0)}
                           </Avatar>
                           {emp.name}
@@ -829,6 +826,10 @@ const Dashboard = () => {
                     variant="contained"
                     onClick={handleTaskSubmit}
                     disabled={!taskForm.taskType || !taskForm.description || !taskForm.dueDate}
+                    sx={{
+                      bgcolor: "#0C47A0",
+                      "&:hover": { bgcolor: "#1565c0" },
+                    }}
                   >
                     Assign Task
                   </Button>
