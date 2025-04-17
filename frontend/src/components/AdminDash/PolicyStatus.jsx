@@ -370,15 +370,11 @@ const PolicyStatus = ({ leads = [] }) => {
 
     switch (policy.commissionType) {
       case 'OD':
-<<<<<<< HEAD
         // Commission on Own Damage only
-=======
->>>>>>> 280946c410c54a1fa21538d7165c631969060f8c
         totalCommission = (odPremium * odCommissionPercentage) / 100;
         effectivePercentage = odCommissionPercentage;
         break;
 
-<<<<<<< HEAD
       case 'TP_OD_ADDON':
         // Commission on TP + OD + Add-on
         const totalPremium = odPremium + tpPremium + addonPremium;
@@ -391,22 +387,6 @@ const PolicyStatus = ({ leads = [] }) => {
         // Commission on Both (TP + OD%)
         const odAmount = (odPremium * odCommissionPercentage) / 100;
         const tpAmount = (tpPremium * tpCommissionPercentage) / 100;
-=======
-      case 'TP_OD':
-        const totalPremium = odPremium + tpPremium + addonPremium;
-        const odCommission = (odPremium * odCommissionPercentage) / 100;
-        const tpCommission = (tpPremium * tpCommissionPercentage) / 100;
-        const addonCommission = (addonPremium * addonCommissionPercentage) / 100;
-        
-        totalCommission = odCommission + tpCommission + addonCommission;
-        effectivePercentage = totalPremium > 0 ? (totalCommission / totalPremium) * 100 : 0;
-        break;
-
-      case 'BOTH':
-        const odAmount = (odPremium * odCommissionPercentage) / 100;
-        const tpAmount = (tpPremium * tpCommissionPercentage) / 100;
-        
->>>>>>> 280946c410c54a1fa21538d7165c631969060f8c
         totalCommission = odAmount + tpAmount;
         const totalBaseAmount = odPremium + tpPremium;
         effectivePercentage = totalBaseAmount > 0 ? (totalCommission / totalBaseAmount) * 100 : 0;
@@ -1697,12 +1677,6 @@ const PolicyStatus = ({ leads = [] }) => {
                         '& .MuiInputLabel-root': { color: '#ffffff' },
                         '& .MuiOutlinedInput-root': { color: '#ffffff' }
                       }}
-                      error={!!errors.ncbDiscount}
-                      helperText={errors.ncbDiscount}
-                      sx={{ 
-                        '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                      }}
                     />
                   </Grid>
                   <Grid item xs={12} md={4}>
@@ -1738,12 +1712,6 @@ const PolicyStatus = ({ leads = [] }) => {
                           backgroundColor: 'rgba(255, 255, 255, 0.1)'
                         }
                       }}
-                      error={!!errors.gst}
-                      helperText={errors.gst}
-                      sx={{ 
-                        '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                      }}
                     />
                   </Grid>
                   <Grid item xs={12} md={4}>
@@ -1763,12 +1731,6 @@ const PolicyStatus = ({ leads = [] }) => {
                           color: '#ffffff',
                           backgroundColor: 'rgba(255, 255, 255, 0.1)'
                         }
-                      }}
-                      error={!!errors.totalPremium}
-                      helperText={errors.totalPremium}
-                      sx={{ 
-                        '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
                       }}
                     />
                   </Grid>
@@ -1826,15 +1788,9 @@ const PolicyStatus = ({ leads = [] }) => {
                         label="Commission Type"
                         sx={{ color: '#ffffff' }}
                       >
-<<<<<<< HEAD
                         <MenuItem value="OD">Comm OD (Commission on Own Damage)</MenuItem>
                         <MenuItem value="TP_OD_ADDON">Comm A/ct (Commission on TP + OD + Add-on)</MenuItem>
                         <MenuItem value="BOTH">Comm Both (TP + OD%)</MenuItem>
-=======
-                        <MenuItem value="OD">Commission on OD Only</MenuItem>
-                        <MenuItem value="TP_OD">Commission on TP + OD + Add-on</MenuItem>
-                        <MenuItem value="BOTH">Commission on Both (TP + OD%)</MenuItem>
->>>>>>> 280946c410c54a1fa21538d7165c631969060f8c
                       </Select>
                       {errors.commissionType && (
                         <FormHelperText error>{errors.commissionType}</FormHelperText>
@@ -1842,7 +1798,6 @@ const PolicyStatus = ({ leads = [] }) => {
                     </FormControl>
                   </Grid>
 
-<<<<<<< HEAD
                   {/* Commission Fields based on Type */}
                   {(newPolicy.commissionType === 'OD' || newPolicy.commissionType === 'BOTH') && (
                     <>
@@ -1981,17 +1936,6 @@ const PolicyStatus = ({ leads = [] }) => {
                       fullWidth
                       label="Total Commission Amount"
                       value={newPolicy.totalCommissionAmount || '0.00'}
-=======
-                  {/* OD Commission */}
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      required
-                      label="OD Premium Amount"
-                      value={newPolicy.odPremium}
-                      onChange={handleNewPolicyChange('odPremium')}
-                      type="number"
->>>>>>> 280946c410c54a1fa21538d7165c631969060f8c
                       InputProps={{
                         startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                         readOnly: true,
@@ -2003,27 +1947,13 @@ const PolicyStatus = ({ leads = [] }) => {
                           backgroundColor: 'rgba(255, 255, 255, 0.1)'
                         }
                       }}
-                      error={!!errors.odPremium}
-                      helperText={errors.odPremium}
-                      sx={{ 
-                        '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                      }}
                     />
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
-<<<<<<< HEAD
                       label="Effective Commission Percentage"
                       value={newPolicy.effectiveCommissionPercentage || '0.00'}
-=======
-                      required
-                      label="OD Commission Percentage"
-                      value={newPolicy.odCommissionPercentage}
-                      onChange={handleNewPolicyChange('odCommissionPercentage')}
-                      type="number"
->>>>>>> 280946c410c54a1fa21538d7165c631969060f8c
                       InputProps={{
                         endAdornment: <InputAdornment position="end">%</InputAdornment>,
                         readOnly: true,
@@ -2034,127 +1964,6 @@ const PolicyStatus = ({ leads = [] }) => {
                           color: '#ffffff',
                           backgroundColor: 'rgba(255, 255, 255, 0.1)'
                         }
-                      }}
-                      error={!!errors.odCommissionPercentage}
-                      helperText={errors.odCommissionPercentage}
-                      sx={{ 
-                        '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                      }}
-                    />
-                  </Grid>
-
-                  {/* TP Commission */}
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      required
-                      label="TP Premium Amount"
-                      value={newPolicy.tpPremium}
-                      onChange={handleNewPolicyChange('tpPremium')}
-                      type="number"
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                      }}
-                      error={!!errors.tpPremium}
-                      helperText={errors.tpPremium}
-                      sx={{ 
-                        '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      required
-                      label="TP Commission Percentage"
-                      value={newPolicy.tpCommissionPercentage}
-                      onChange={handleNewPolicyChange('tpCommissionPercentage')}
-                      type="number"
-                      InputProps={{
-                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                      }}
-                      error={!!errors.tpCommissionPercentage}
-                      helperText={errors.tpCommissionPercentage}
-                      sx={{ 
-                        '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                      }}
-                    />
-                  </Grid>
-
-                  {/* Add-on Commission */}
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Add-on Premium Amount"
-                      value={newPolicy.addonPremium}
-                      onChange={handleNewPolicyChange('addonPremium')}
-                      type="number"
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                      }}
-                      error={!!errors.addonPremium}
-                      helperText={errors.addonPremium}
-                      sx={{ 
-                        '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Add-on Commission Percentage"
-                      value={newPolicy.addonCommissionPercentage}
-                      onChange={handleNewPolicyChange('addonCommissionPercentage')}
-                      type="number"
-                      InputProps={{
-                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                      }}
-                      error={!!errors.addonCommissionPercentage}
-                      helperText={errors.addonCommissionPercentage}
-                      sx={{ 
-                        '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                      }}
-                    />
-                  </Grid>
-
-                  {/* Total Commission */}
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle2" gutterBottom sx={{ mt: 2, color: '#ffffff' }}>
-                      Total Commission
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Total Commission Amount"
-                      value={newPolicy.totalCommissionAmount}
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                        readOnly: true,
-                      }}
-                      sx={{ 
-                        '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Effective Commission Percentage"
-                      value={newPolicy.effectiveCommissionPercentage}
-                      InputProps={{
-                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                        readOnly: true,
-                      }}
-                      sx={{ 
-                        '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
                       }}
                     />
                   </Grid>

@@ -144,7 +144,6 @@ const Dashboard = () => {
     email: "",
     position: "",
     department: "",
-<<<<<<< HEAD
     joiningDate: "",
     salary: "",
     address: "",
@@ -154,8 +153,6 @@ const Dashboard = () => {
     experience: "",
     skills: [],
     role: "Employee"
-=======
->>>>>>> 280946c410c54a1fa21538d7165c631969060f8c
   });
   const [taskForm, setTaskForm] = useState({
     employeeId: "",
@@ -205,7 +202,6 @@ const Dashboard = () => {
     }
   };
 
-<<<<<<< HEAD
   const validateForm = () => {
     const errors = {};
     if (!formData.name.trim()) errors.name = "Name is required";
@@ -282,27 +278,6 @@ const Dashboard = () => {
     } finally {
       setIsSubmitting(false);
     }
-=======
-  const handleEmployeeSubmit = () => {
-    const newEmployee = {
-      ...formData,
-      id: Date.now(),
-      password: generatePassword(),
-    };
-    setEmployees([...employees, newEmployee]);
-    setFormData({
-      name: "",
-      phone: "",
-      email: "",
-      position: "",
-      department: "",
-    });
-    setSnackbar({
-      open: true,
-      message: "Employee registered successfully",
-      severity: "success"
-    });
->>>>>>> 280946c410c54a1fa21538d7165c631969060f8c
   };
 
   // Password reset functionality
@@ -708,7 +683,6 @@ const Dashboard = () => {
 
         {/* Employee Registration */}
         {section === "Register Employee" && (
-<<<<<<< HEAD
           <Box sx={{ maxWidth: 1000, mx: "auto", mt: 4, mb: 6 }}>
             <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
               <Typography
@@ -731,31 +705,6 @@ const Dashboard = () => {
                 </Grid>
                 
                 <Grid item xs={12} md={6}>
-=======
-          <Box sx={{ maxWidth: 800, mx: "auto", mt: 4 }}>
-            <Typography
-              variant="h4"
-              gutterBottom
-              fontWeight="bold"
-              color="#0C47A0"
-            >
-              <PersonAddIcon sx={{ mr: 1, verticalAlign: "bottom" }} />
-              Employee Registration
-            </Typography>
-            <Grid
-              container
-              spacing={3}
-              sx={{ p: 3, bgcolor: "background.paper", borderRadius: 2 }}
-            >
-              {[
-                "name",
-                "email",
-                "phone",
-                "position",
-                "department",
-              ].map((field) => (
-                <Grid item xs={12} md={6} key={field}>
->>>>>>> 280946c410c54a1fa21538d7165c631969060f8c
                   <TextField
                     fullWidth
                     label="Full Name"
@@ -866,7 +815,6 @@ const Dashboard = () => {
                     ))}
                   </TextField>
                 </Grid>
-<<<<<<< HEAD
 
                 <Grid item xs={12} md={6}>
                   <TextField
@@ -1043,22 +991,6 @@ const Dashboard = () => {
                     </Button>
                   </Box>
                 </Grid>
-=======
-              ))}
-              <Grid item xs={12}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  size="large"
-                  onClick={handleEmployeeSubmit}
-                  sx={{
-                    bgcolor: "#0C47A0",
-                    "&:hover": { bgcolor: "#1565c0" },
-                  }}
-                >
-                  Register Employee
-                </Button>
->>>>>>> 280946c410c54a1fa21538d7165c631969060f8c
               </Grid>
             </Paper>
           </Box>
