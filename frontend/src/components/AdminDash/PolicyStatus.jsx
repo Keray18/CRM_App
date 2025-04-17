@@ -370,24 +370,23 @@ const PolicyStatus = ({ leads = [] }) => {
 
     switch (policy.commissionType) {
       case 'OD':
+        // Commission on Own Damage only
         totalCommission = (odPremium * odCommissionPercentage) / 100;
         effectivePercentage = odCommissionPercentage;
         break;
 
-      case 'TP_OD':
+      case 'TP_OD_ADDON':
+        // Commission on TP + OD + Add-on
         const totalPremium = odPremium + tpPremium + addonPremium;
-        const odCommission = (odPremium * odCommissionPercentage) / 100;
-        const tpCommission = (tpPremium * tpCommissionPercentage) / 100;
-        const addonCommission = (addonPremium * addonCommissionPercentage) / 100;
-        
-        totalCommission = odCommission + tpCommission + addonCommission;
-        effectivePercentage = totalPremium > 0 ? (totalCommission / totalPremium) * 100 : 0;
+        const commissionPercentage = parseFloat(policy.commissionPercentage) || 0;
+        totalCommission = (totalPremium * commissionPercentage) / 100;
+        effectivePercentage = commissionPercentage;
         break;
 
       case 'BOTH':
+        // Commission on Both (TP + OD%)
         const odAmount = (odPremium * odCommissionPercentage) / 100;
         const tpAmount = (tpPremium * tpCommissionPercentage) / 100;
-        
         totalCommission = odAmount + tpAmount;
         const totalBaseAmount = odPremium + tpPremium;
         effectivePercentage = totalBaseAmount > 0 ? (totalCommission / totalBaseAmount) * 100 : 0;
@@ -1210,6 +1209,148 @@ const PolicyStatus = ({ leads = [] }) => {
               {/* Step 1: Vehicle & Customer Details */}
               {activeStep === 0 && insuranceType === 'vehicle' && (
                 <>
+                  {/* Document Upload Section */}
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" gutterBottom sx={{ mt: 2, color: 'white', fontWeight: 'bold', fontSize: '1.3rem' }}>
+                      Required Documents
+                    </Typography>
+                    <Box sx={{ 
+                      p: 3, 
+                      border: '2px solid #e0e0e0',
+                      borderRadius: 2,
+                      backgroundColor: '#ffffff',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                      mb: 3
+                    }}>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12}>
+                          <Box sx={{ 
+                            p: 3, 
+                            border: '1px dashed #1976d2',
+                            borderRadius: 1,
+                            backgroundColor: '#f8f9fa'
+                          }}>
+                            <Typography variant="subtitle2" sx={{ color: '#1976d2', fontWeight: 'bold', mb: 2 }}>
+                              Upload Documents
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: '#666666', mb: 3 }}>
+                              Required documents for vehicle insurance:
+                              <Box component="ul" sx={{ mt: 1, pl: 2 }}>
+                                <li>Registration Certificate (RC Book)</li>
+                                <li>Previous Insurance Policy (if any)</li>
+                                <li>Vehicle Photos (front, back, sides)</li>
+                                <li>Invoice (for new vehicles)</li>
+                                <li>Driving License</li>
+                                <li>ID & Address Proof</li>
+                              </Box>
+                            </Typography>
+                            
+                            <Box sx={{ 
+                              display: 'flex', 
+                              flexDirection: 'column',
+                              gap: 2
+                            }}>
+                              <Button
+                                component="label"
+                                variant="outlined"
+                                startIcon={<UploadIcon />}
+                                fullWidth
+                                sx={{
+                                  py: 1.5,
+                                  borderColor: '#1976d2',
+                                  color: '#1976d2',
+                                  backgroundColor: '#ffffff',
+                                  '&:hover': {
+                                    backgroundColor: '#f5f9ff',
+                                    borderColor: '#1976d2'
+                                  }
+                                }}
+                              >
+                                Select Documents
+                                <VisuallyHiddenInput 
+                                  type="file"
+                                  onChange={(e) => {
+                                    const files = Array.from(e.target.files);
+                                    files.forEach(file => {
+                                      setUploadedFiles(prev => [...prev, { 
+                                        type: 'Vehicle Document', 
+                                        file,
+                                        uploadDate: new Date().toLocaleString()
+                                      }]);
+                                    });
+                                  }}
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                  multiple
+                                />
+                              </Button>
+
+                              {/* Display Uploaded Files */}
+                              {uploadedFiles.length > 0 && (
+                                <Box sx={{ mt: 2 }}>
+                                  <Typography variant="subtitle2" sx={{ color: '#1976d2', fontWeight: 'bold', mb: 2 }}>
+                                    Uploaded Documents ({uploadedFiles.length})
+                                  </Typography>
+                                  <Box sx={{ 
+                                    display: 'flex', 
+                                    flexDirection: 'column',
+                                    gap: 1
+                                  }}>
+                                    {uploadedFiles.map((file, index) => (
+                                      <Box
+                                        key={index}
+                                        sx={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'space-between',
+                                          p: 1.5,
+                                          borderRadius: 1,
+                                          backgroundColor: '#e3f2fd',
+                                          border: '1px solid #90caf9'
+                                        }}
+                                      >
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                          <Description sx={{ color: '#1976d2' }} />
+                                          <Box>
+                                            <Typography variant="body2" sx={{ color: '#1976d2', fontWeight: 500 }}>
+                                              {file.file.name}
+                                            </Typography>
+                                            <Typography variant="caption" sx={{ color: '#666666' }}>
+                                              {file.uploadDate}
+                                            </Typography>
+                                          </Box>
+                                        </Box>
+                                        <IconButton 
+                                          size="small" 
+                                          onClick={() => removeFile(index)}
+                                          sx={{ 
+                                            color: '#d32f2f',
+                                            '&:hover': {
+                                              backgroundColor: 'rgba(211, 47, 47, 0.04)'
+                                            }
+                                          }}
+                                        >
+                                          <CloseIcon fontSize="small" />
+                                        </IconButton>
+                                      </Box>
+                                    ))}
+                                  </Box>
+                                </Box>
+                              )}
+                            </Box>
+                          </Box>
+                        </Grid>
+                      </Grid>
+                    </Box>
+                  </Grid>
+
+                  {/* Existing Vehicle & Customer Details */}
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle1" gutterBottom sx={{ mt: 1 }}>
+                      Vehicle & Customer Details
+                    </Typography>
+                    <Divider />
+                  </Grid>
+
                   {/* Common Fields */}
                   <Grid item xs={12} md={6}>
                     <TextField
@@ -1445,7 +1586,21 @@ const PolicyStatus = ({ leads = [] }) => {
                       fullWidth
                       label="Basic Premium"
                       value={newPolicy.basicPremium}
-                      onChange={handleNewPolicyChange('basicPremium')}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        handleNewPolicyChange('basicPremium')({ target: { value } });
+                        // Recalculate total premium
+                        const basicPremium = parseFloat(value) || 0;
+                        const ncbAmount = basicPremium * (parseFloat(newPolicy.ncbDiscount || 0) / 100);
+                        const netPremium = basicPremium - ncbAmount;
+                        const gstAmount = netPremium * 0.18; // 18% GST
+                        const totalPremium = netPremium + gstAmount;
+                        setNewPolicy(prev => ({
+                          ...prev,
+                          gst: gstAmount.toFixed(2),
+                          totalPremium: totalPremium.toFixed(2)
+                        }));
+                      }}
                       InputProps={{
                         startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                       }}
@@ -1494,11 +1649,27 @@ const PolicyStatus = ({ leads = [] }) => {
                   <Grid item xs={12} md={4}>
                     <TextField
                       fullWidth
-                      label="NCB Discount"
+                      label="NCB Discount (%)"
                       value={newPolicy.ncbDiscount}
-                      onChange={handleNewPolicyChange('ncbDiscount')}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        handleNewPolicyChange('ncbDiscount')({ target: { value } });
+                        // Recalculate total premium
+                        const basicPremium = parseFloat(newPolicy.basicPremium) || 0;
+                        const ncbAmount = basicPremium * (parseFloat(value || 0) / 100);
+                        const netPremium = basicPremium - ncbAmount;
+                        const gstAmount = netPremium * 0.18; // 18% GST
+                        const totalPremium = netPremium + gstAmount;
+                        setNewPolicy(prev => ({
+                          ...prev,
+                          gst: gstAmount.toFixed(2),
+                          totalPremium: totalPremium.toFixed(2)
+                        }));
+                      }}
+                      type="number"
                       InputProps={{
-                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                        inputProps: { min: 0, max: 50 } // NCB typically has a maximum of 50%
                       }}
                       error={!!errors.ncbDiscount}
                       helperText={errors.ncbDiscount}
@@ -1528,17 +1699,18 @@ const PolicyStatus = ({ leads = [] }) => {
                   <Grid item xs={12} md={4}>
                     <TextField
                       fullWidth
-                      label="GST"
+                      label="GST (18%)"
                       value={newPolicy.gst}
-                      onChange={handleNewPolicyChange('gst')}
                       InputProps={{
                         startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                        readOnly: true,
                       }}
-                      error={!!errors.gst}
-                      helperText={errors.gst}
                       sx={{ 
                         '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
+                        '& .MuiOutlinedInput-root': { 
+                          color: '#ffffff',
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                        }
                       }}
                     />
                   </Grid>
@@ -1547,15 +1719,18 @@ const PolicyStatus = ({ leads = [] }) => {
                       fullWidth
                       label="Total Premium"
                       value={newPolicy.totalPremium}
-                      onChange={handleNewPolicyChange('totalPremium')}
                       InputProps={{
                         startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                        readOnly: true,
                       }}
                       error={!!errors.totalPremium}
                       helperText={errors.totalPremium}
                       sx={{ 
                         '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
+                        '& .MuiOutlinedInput-root': { 
+                          color: '#ffffff',
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                        }
                       }}
                     />
                   </Grid>
@@ -1613,9 +1788,9 @@ const PolicyStatus = ({ leads = [] }) => {
                         label="Commission Type"
                         sx={{ color: '#ffffff' }}
                       >
-                        <MenuItem value="OD">Commission on OD Only</MenuItem>
-                        <MenuItem value="TP_OD">Commission on TP + OD + Add-on</MenuItem>
-                        <MenuItem value="BOTH">Commission on Both (TP + OD%)</MenuItem>
+                        <MenuItem value="OD">Comm OD (Commission on Own Damage)</MenuItem>
+                        <MenuItem value="TP_OD_ADDON">Comm A/ct (Commission on TP + OD + Add-on)</MenuItem>
+                        <MenuItem value="BOTH">Comm Both (TP + OD%)</MenuItem>
                       </Select>
                       {errors.commissionType && (
                         <FormHelperText error>{errors.commissionType}</FormHelperText>
@@ -1623,123 +1798,132 @@ const PolicyStatus = ({ leads = [] }) => {
                     </FormControl>
                   </Grid>
 
-                  {/* OD Commission */}
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      required
-                      label="OD Premium Amount"
-                      value={newPolicy.odPremium}
-                      onChange={handleNewPolicyChange('odPremium')}
-                      type="number"
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                      }}
-                      error={!!errors.odPremium}
-                      helperText={errors.odPremium}
-                      sx={{ 
-                        '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      required
-                      label="OD Commission Percentage"
-                      value={newPolicy.odCommissionPercentage}
-                      onChange={handleNewPolicyChange('odCommissionPercentage')}
-                      type="number"
-                      InputProps={{
-                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                      }}
-                      error={!!errors.odCommissionPercentage}
-                      helperText={errors.odCommissionPercentage}
-                      sx={{ 
-                        '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                      }}
-                    />
-                  </Grid>
+                  {/* Commission Fields based on Type */}
+                  {(newPolicy.commissionType === 'OD' || newPolicy.commissionType === 'BOTH') && (
+                    <>
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          label="OD Premium Amount"
+                          value={newPolicy.odPremium || 0}
+                          InputProps={{
+                            startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                            readOnly: true,
+                          }}
+                          sx={{ 
+                            '& .MuiInputLabel-root': { color: '#ffffff' },
+                            '& .MuiOutlinedInput-root': { 
+                              color: '#ffffff',
+                              backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                            }
+                          }}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          required
+                          label="OD Commission Percentage"
+                          value={newPolicy.odCommissionPercentage}
+                          onChange={handleNewPolicyChange('odCommissionPercentage')}
+                          type="number"
+                          InputProps={{
+                            endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                          }}
+                          error={!!errors.odCommissionPercentage}
+                          helperText={errors.odCommissionPercentage}
+                          sx={{ 
+                            '& .MuiInputLabel-root': { color: '#ffffff' },
+                            '& .MuiOutlinedInput-root': { color: '#ffffff' }
+                          }}
+                        />
+                      </Grid>
+                    </>
+                  )}
 
-                  {/* TP Commission */}
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      required
-                      label="TP Premium Amount"
-                      value={newPolicy.tpPremium}
-                      onChange={handleNewPolicyChange('tpPremium')}
-                      type="number"
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                      }}
-                      error={!!errors.tpPremium}
-                      helperText={errors.tpPremium}
-                      sx={{ 
-                        '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      required
-                      label="TP Commission Percentage"
-                      value={newPolicy.tpCommissionPercentage}
-                      onChange={handleNewPolicyChange('tpCommissionPercentage')}
-                      type="number"
-                      InputProps={{
-                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                      }}
-                      error={!!errors.tpCommissionPercentage}
-                      helperText={errors.tpCommissionPercentage}
-                      sx={{ 
-                        '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                      }}
-                    />
-                  </Grid>
+                  {(newPolicy.commissionType === 'TP_OD_ADDON') && (
+                    <>
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          label="Total Premium (TP + OD + Add-on)"
+                          value={parseFloat(newPolicy.odPremium || 0) + parseFloat(newPolicy.tpPremium || 0) + parseFloat(newPolicy.addonPremium || 0)}
+                          InputProps={{
+                            startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                            readOnly: true,
+                          }}
+                          sx={{ 
+                            '& .MuiInputLabel-root': { color: '#ffffff' },
+                            '& .MuiOutlinedInput-root': { 
+                              color: '#ffffff',
+                              backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                            }
+                          }}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          required
+                          label="Commission Percentage"
+                          value={newPolicy.commissionPercentage}
+                          onChange={handleNewPolicyChange('commissionPercentage')}
+                          type="number"
+                          InputProps={{
+                            endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                          }}
+                          error={!!errors.commissionPercentage}
+                          helperText={errors.commissionPercentage}
+                          sx={{ 
+                            '& .MuiInputLabel-root': { color: '#ffffff' },
+                            '& .MuiOutlinedInput-root': { color: '#ffffff' }
+                          }}
+                        />
+                      </Grid>
+                    </>
+                  )}
 
-                  {/* Add-on Commission */}
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Add-on Premium Amount"
-                      value={newPolicy.addonPremium}
-                      onChange={handleNewPolicyChange('addonPremium')}
-                      type="number"
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                      }}
-                      error={!!errors.addonPremium}
-                      helperText={errors.addonPremium}
-                      sx={{ 
-                        '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Add-on Commission Percentage"
-                      value={newPolicy.addonCommissionPercentage}
-                      onChange={handleNewPolicyChange('addonCommissionPercentage')}
-                      type="number"
-                      InputProps={{
-                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                      }}
-                      error={!!errors.addonCommissionPercentage}
-                      helperText={errors.addonCommissionPercentage}
-                      sx={{ 
-                        '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                      }}
-                    />
-                  </Grid>
+                  {(newPolicy.commissionType === 'BOTH') && (
+                    <>
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          label="TP Premium Amount"
+                          value={newPolicy.tpPremium || 0}
+                          InputProps={{
+                            startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                            readOnly: true,
+                          }}
+                          sx={{ 
+                            '& .MuiInputLabel-root': { color: '#ffffff' },
+                            '& .MuiOutlinedInput-root': { 
+                              color: '#ffffff',
+                              backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                            }
+                          }}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          required
+                          label="TP Commission Percentage"
+                          value={newPolicy.tpCommissionPercentage}
+                          onChange={handleNewPolicyChange('tpCommissionPercentage')}
+                          type="number"
+                          InputProps={{
+                            endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                          }}
+                          error={!!errors.tpCommissionPercentage}
+                          helperText={errors.tpCommissionPercentage}
+                          sx={{ 
+                            '& .MuiInputLabel-root': { color: '#ffffff' },
+                            '& .MuiOutlinedInput-root': { color: '#ffffff' }
+                          }}
+                        />
+                      </Grid>
+                    </>
+                  )}
 
                   {/* Total Commission */}
                   <Grid item xs={12}>
@@ -1751,14 +1935,17 @@ const PolicyStatus = ({ leads = [] }) => {
                     <TextField
                       fullWidth
                       label="Total Commission Amount"
-                      value={newPolicy.totalCommissionAmount}
+                      value={newPolicy.totalCommissionAmount || '0.00'}
                       InputProps={{
                         startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                         readOnly: true,
                       }}
                       sx={{ 
                         '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
+                        '& .MuiOutlinedInput-root': { 
+                          color: '#ffffff',
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                        }
                       }}
                     />
                   </Grid>
@@ -1766,14 +1953,17 @@ const PolicyStatus = ({ leads = [] }) => {
                     <TextField
                       fullWidth
                       label="Effective Commission Percentage"
-                      value={newPolicy.effectiveCommissionPercentage}
+                      value={newPolicy.effectiveCommissionPercentage || '0.00'}
                       InputProps={{
                         endAdornment: <InputAdornment position="end">%</InputAdornment>,
                         readOnly: true,
                       }}
                       sx={{ 
                         '& .MuiInputLabel-root': { color: '#ffffff' },
-                        '& .MuiOutlinedInput-root': { color: '#ffffff' }
+                        '& .MuiOutlinedInput-root': { 
+                          color: '#ffffff',
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                        }
                       }}
                     />
                   </Grid>
