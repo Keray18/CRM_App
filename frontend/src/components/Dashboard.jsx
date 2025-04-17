@@ -27,6 +27,7 @@ import {
   InputAdornment,
   Snackbar,
   Alert,
+  CircularProgress,
 } from "@mui/material";
 import {
   Dashboard as DashboardIcon,
@@ -38,10 +39,21 @@ import {
   Search as SearchIcon,
   Description as DocumentIcon,
   Policy as PolicyIcon,
-  MonetizationOn as CommissionIcon
+  MonetizationOn as CommissionIcon,
+  Person as PersonIcon,
+  Email as EmailIcon,
+  Phone as PhoneIcon,
+  LocationOn as LocationOnIcon,
+  Business as BusinessIcon,
+  Work as WorkIcon,
+  CalendarToday as CalendarTodayIcon,
+  AttachMoney as AttachMoneyIcon,
+  School as SchoolIcon,
+  ExitToApp as LogoutIcon,
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { useNavigate } from "react-router-dom";
 import Leads from "./AdminDash/Leads";
 import Customers from "./AdminDash/Customers";
 import AssignTask from "./AdminDash/AssignTask";
@@ -132,6 +144,15 @@ const Dashboard = () => {
     email: "",
     position: "",
     department: "",
+    joiningDate: "",
+    salary: "",
+    address: "",
+    emergencyContact: "",
+    emergencyPhone: "",
+    education: "",
+    experience: "",
+    skills: [],
+    role: "Employee"
   });
   const [taskForm, setTaskForm] = useState({
     employeeId: "",
@@ -153,6 +174,9 @@ const Dashboard = () => {
   const theme = useTheme();
   const [payments, setPayments] = useState([]);
   const [commissions, setCommissions] = useState([]);
+  const [formErrors, setFormErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
 
   const departments = ["Sales", "Support", "Development", "Marketing", "HR"];
   const taskTypes = [
@@ -170,28 +194,90 @@ const Dashboard = () => {
 
   // Employee management handlers
   const handleEmployeeChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear error when user starts typing
+    if (formErrors[name]) {
+      setFormErrors(prev => ({ ...prev, [name]: "" }));
+    }
   };
 
-  const handleEmployeeSubmit = () => {
-    const newEmployee = {
-      ...formData,
-      id: Date.now(),
-      password: generatePassword(),
-    };
-    setEmployees([...employees, newEmployee]);
-    setFormData({
-      name: "",
-      phone: "",
-      email: "",
-      position: "",
-      department: "",
-    });
-    setSnackbar({
-      open: true,
-      message: "Employee registered successfully",
-      severity: "success"
-    });
+  const validateForm = () => {
+    const errors = {};
+    if (!formData.name.trim()) errors.name = "Name is required";
+    if (!formData.email.trim()) {
+      errors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = "Invalid email format";
+    }
+    if (!formData.phone.trim()) {
+      errors.phone = "Phone is required";
+    } else if (!/^\d{10}$/.test(formData.phone)) {
+      errors.phone = "Phone must be 10 digits";
+    }
+    if (!formData.position.trim()) errors.position = "Position is required";
+    if (!formData.department) errors.department = "Department is required";
+    if (!formData.joiningDate) errors.joiningDate = "Joining date is required";
+    if (!formData.salary) errors.salary = "Salary is required";
+    if (!formData.address.trim()) errors.address = "Address is required";
+    if (!formData.emergencyContact.trim()) errors.emergencyContact = "Emergency contact is required";
+    if (!formData.emergencyPhone.trim()) {
+      errors.emergencyPhone = "Emergency phone is required";
+    } else if (!/^\d{10}$/.test(formData.emergencyPhone)) {
+      errors.emergencyPhone = "Phone must be 10 digits";
+    }
+    if (!formData.education.trim()) errors.education = "Education is required";
+    if (!formData.experience.trim()) errors.experience = "Experience is required";
+    return errors;
+  };
+
+  const handleEmployeeSubmit = async () => {
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const newEmployee = {
+        ...formData,
+        id: Date.now(),
+        password: generatePassword(),
+        status: "Active",
+        createdAt: new Date().toISOString()
+      };
+      setEmployees([...employees, newEmployee]);
+      setFormData({
+        name: "",
+        phone: "",
+        email: "",
+        position: "",
+        department: "",
+        joiningDate: "",
+        salary: "",
+        address: "",
+        emergencyContact: "",
+        emergencyPhone: "",
+        education: "",
+        experience: "",
+        skills: [],
+        role: "Employee"
+      });
+      setSnackbar({
+        open: true,
+        message: "Employee registered successfully",
+        severity: "success"
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: "Failed to register employee",
+        severity: "error"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Password reset functionality
@@ -351,6 +437,12 @@ const Dashboard = () => {
     pending: commission.pendingPayments,
   }));
 
+  const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('userRole');
+    navigate('/');
+  };
+
   return (
     <Box
       sx={{
@@ -362,6 +454,28 @@ const Dashboard = () => {
       <Sidebar section={section} setSection={setSection} />
 
       <Box component="main" sx={{ flexGrow: 1, p: 4, pl: 35 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+          <Typography variant="h4" color="primary" fontWeight="bold">
+            {section}
+          </Typography>
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<LogoutIcon />}
+            onClick={handleLogout}
+            sx={{
+              borderColor: primaryColor,
+              color: primaryColor,
+              '&:hover': {
+                borderColor: '#115293',
+                backgroundColor: 'rgba(25, 118, 210, 0.04)',
+              },
+            }}
+          >
+            Logout
+          </Button>
+        </Box>
+
         {/* Dashboard Overview */}
         {section === "Dashboard" && (
           <Box>
@@ -569,68 +683,316 @@ const Dashboard = () => {
 
         {/* Employee Registration */}
         {section === "Register Employee" && (
-          <Box sx={{ maxWidth: 800, mx: "auto", mt: 4 }}>
-            <Typography
-              variant="h4"
-              gutterBottom
-              fontWeight="bold"
-              color="#0C47A0"
-            >
-              <PersonAddIcon sx={{ mr: 1, verticalAlign: "bottom" }} />
-              Employee Registration
-            </Typography>
-            <Grid
-              container
-              spacing={3}
-              sx={{ p: 3, bgcolor: "background.paper", borderRadius: 2 }}
-            >
-              {[
-                "name",
-                "email",
-                "phone",
-                "position",
-                "department",
-              ].map((field) => (
-                <Grid item xs={12} md={6} key={field}>
+          <Box sx={{ maxWidth: 1000, mx: "auto", mt: 4, mb: 6 }}>
+            <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
+              <Typography
+                variant="h4"
+                gutterBottom
+                fontWeight="bold"
+                color="#0C47A0"
+                sx={{ display: 'flex', alignItems: 'center', mb: 4 }}
+              >
+                <PersonAddIcon sx={{ mr: 2, fontSize: 32 }} />
+                Employee Registration
+              </Typography>
+              
+              <Grid container spacing={3}>
+                {/* Personal Information */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" color="primary" sx={{ mb: 2, fontWeight: 600 }}>
+                    Personal Information
+                  </Typography>
+                </Grid>
+                
+                <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label={field.replace(/([A-Z])/g, " $1")}
-                    name={field}
-                    value={formData[field]}
+                    label="Full Name"
+                    name="name"
+                    value={formData.name}
                     onChange={handleEmployeeChange}
-                    select={field === "department"}
+                    error={!!formErrors.name}
+                    helperText={formErrors.name}
                     InputProps={{
-                      startAdornment: field === "name" && (
+                      startAdornment: (
                         <InputAdornment position="start">
-                          <Avatar sx={{ width: 24, height: 24 }} />
+                          <PersonIcon sx={{ color: 'primary.main' }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleEmployeeChange}
+                    error={!!formErrors.email}
+                    helperText={formErrors.email}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <EmailIcon sx={{ color: 'primary.main' }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Phone Number"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleEmployeeChange}
+                    error={!!formErrors.phone}
+                    helperText={formErrors.phone}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PhoneIcon sx={{ color: 'primary.main' }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Address"
+                    name="address"
+                    multiline
+                    rows={2}
+                    value={formData.address}
+                    onChange={handleEmployeeChange}
+                    error={!!formErrors.address}
+                    helperText={formErrors.address}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <LocationOnIcon sx={{ color: 'primary.main' }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+
+                {/* Employment Details */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" color="primary" sx={{ mt: 2, mb: 2, fontWeight: 600 }}>
+                    Employment Details
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Department"
+                    name="department"
+                    value={formData.department}
+                    onChange={handleEmployeeChange}
+                    error={!!formErrors.department}
+                    helperText={formErrors.department}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <BusinessIcon sx={{ color: 'primary.main' }} />
                         </InputAdornment>
                       ),
                     }}
                   >
-                    {field === "department" &&
-                      departments.map((dept) => (
-                        <MenuItem key={dept} value={dept}>
-                          {dept}
-                        </MenuItem>
-                      ))}
+                    {departments.map((dept) => (
+                      <MenuItem key={dept} value={dept}>
+                        {dept}
+                      </MenuItem>
+                    ))}
                   </TextField>
                 </Grid>
-              ))}
-              <Grid item xs={12}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  size="large"
-                  onClick={handleEmployeeSubmit}
-                  sx={{
-                    bgcolor: "#0C47A0",
-                    "&:hover": { bgcolor: "#1565c0" },
-                  }}
-                >
-                  Register Employee
-                </Button>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Position"
+                    name="position"
+                    value={formData.position}
+                    onChange={handleEmployeeChange}
+                    error={!!formErrors.position}
+                    helperText={formErrors.position}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <WorkIcon sx={{ color: 'primary.main' }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    type="date"
+                    label="Joining Date"
+                    name="joiningDate"
+                    value={formData.joiningDate}
+                    onChange={handleEmployeeChange}
+                    error={!!formErrors.joiningDate}
+                    helperText={formErrors.joiningDate}
+                    InputLabelProps={{ shrink: true }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <CalendarTodayIcon sx={{ color: 'primary.main' }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Salary"
+                    name="salary"
+                    type="number"
+                    value={formData.salary}
+                    onChange={handleEmployeeChange}
+                    error={!!formErrors.salary}
+                    helperText={formErrors.salary}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <AttachMoneyIcon sx={{ color: 'primary.main' }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+
+                {/* Emergency Contact */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" color="primary" sx={{ mt: 2, mb: 2, fontWeight: 600 }}>
+                    Emergency Contact
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Emergency Contact Name"
+                    name="emergencyContact"
+                    value={formData.emergencyContact}
+                    onChange={handleEmployeeChange}
+                    error={!!formErrors.emergencyContact}
+                    helperText={formErrors.emergencyContact}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PersonIcon sx={{ color: 'primary.main' }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Emergency Contact Phone"
+                    name="emergencyPhone"
+                    value={formData.emergencyPhone}
+                    onChange={handleEmployeeChange}
+                    error={!!formErrors.emergencyPhone}
+                    helperText={formErrors.emergencyPhone}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PhoneIcon sx={{ color: 'primary.main' }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+
+                {/* Education & Experience */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" color="primary" sx={{ mt: 2, mb: 2, fontWeight: 600 }}>
+                    Education & Experience
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Education"
+                    name="education"
+                    multiline
+                    rows={2}
+                    value={formData.education}
+                    onChange={handleEmployeeChange}
+                    error={!!formErrors.education}
+                    helperText={formErrors.education}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SchoolIcon sx={{ color: 'primary.main' }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Experience"
+                    name="experience"
+                    multiline
+                    rows={2}
+                    value={formData.experience}
+                    onChange={handleEmployeeChange}
+                    error={!!formErrors.experience}
+                    helperText={formErrors.experience}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <WorkIcon sx={{ color: 'primary.main' }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
+                    <Button
+                      variant="contained"
+                      size="large"
+                      onClick={handleEmployeeSubmit}
+                      disabled={isSubmitting}
+                      sx={{
+                        bgcolor: "#0C47A0",
+                        "&:hover": { bgcolor: "#1565c0" },
+                        minWidth: 200
+                      }}
+                    >
+                      {isSubmitting ? (
+                        <CircularProgress size={24} color="inherit" />
+                      ) : (
+                        "Register Employee"
+                      )}
+                    </Button>
+                  </Box>
+                </Grid>
               </Grid>
-            </Grid>
+            </Paper>
           </Box>
         )}
 

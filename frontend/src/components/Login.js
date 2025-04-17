@@ -26,7 +26,12 @@ function Login() {
     e.preventDefault();
     if (email === 'jason@gmail.com' && password === 'oldmonk') {
       localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('userRole', 'admin');
       navigate('/dashboard');
+    } else if (email === 'jack@gmail.com' && password === 'singlemalt') {
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('userRole', 'employee');
+      navigate('/emp-dashboard');
     } else {
       setError('Invalid email or password');
     }
