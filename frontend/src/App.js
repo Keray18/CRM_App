@@ -3,6 +3,7 @@ import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
+import EmpDashboard from './components/EmpDashboard';
 
 const theme = createTheme({
   palette: {
@@ -89,8 +90,16 @@ function App() {
           <Route 
             path="/dashboard" 
             element={
-              <RequireAuth>
+              <RequireAuth role="admin">
                 <Dashboard />
+              </RequireAuth>
+            } 
+          />
+          <Route 
+            path="/emp-dashboard" 
+            element={
+              <RequireAuth role="employee">
+                <EmpDashboard />
               </RequireAuth>
             } 
           />
@@ -100,11 +109,16 @@ function App() {
   );
 }
 
-function RequireAuth({ children }) {
+function RequireAuth({ children, role }) {
   const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+  const userRole = localStorage.getItem('userRole');
   
   if (!isAuthenticated) {
     return <Navigate to="/" />;
+  }
+
+  if (role && userRole !== role) {
+    return <Navigate to={userRole === 'admin' ? '/dashboard' : '/emp-dashboard'} />;
   }
 
   return children;

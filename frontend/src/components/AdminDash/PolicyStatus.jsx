@@ -61,7 +61,8 @@ import {
   Phone as PhoneIcon,
   Email as EmailIcon,
   CalendarToday as CalendarTodayIcon,
-  Info as InfoIcon
+  Info as InfoIcon,
+  Description
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 

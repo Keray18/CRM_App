@@ -26,7 +26,12 @@ function Login() {
     e.preventDefault();
     if (email === 'jason@gmail.com' && password === 'oldmonk') {
       localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('userRole', 'admin');
       navigate('/dashboard');
+    } else if (email === 'jack@gmail.com' && password === 'singlemalt') {
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('userRole', 'employee');
+      navigate('/emp-dashboard');
     } else {
       setError('Invalid email or password');
     }
@@ -175,7 +180,7 @@ function Login() {
               description: 'Track and convert insurance leads efficiently.',
             },
             {
-              title: 'Policy Processing',
+              title: 'Master Data',
               description: 'Generate and enhance policy proposals automatically.',
             },
             {
