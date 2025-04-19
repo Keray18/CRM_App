@@ -213,6 +213,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
                 value={leadData.policy}
                 onChange={handleLeadChange}
                 label="Policy Type"
+                sx={{ color: '#ffffff',width: '200px' }}
               >
                 {policyTypes.map((type) => (
                   <MenuItem key={type.value} value={type.value}>
