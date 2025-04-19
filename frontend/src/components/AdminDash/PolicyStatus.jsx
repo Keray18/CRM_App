@@ -42,7 +42,8 @@ import {
   Stepper,
   Step,
   StepLabel,
-  FormHelperText
+  FormHelperText,
+  Tooltip
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -62,7 +63,8 @@ import {
   Email as EmailIcon,
   CalendarToday as CalendarTodayIcon,
   Info as InfoIcon,
-  Description
+  Description,
+  Refresh as RenewIcon
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 
@@ -803,6 +805,12 @@ const PolicyStatus = ({ leads = [] }) => {
     setSelectedPolicy(null);
   };
 
+  const handleRenew = (policy) => {
+    // Implement renewal logic here
+    console.log('Renewing policy:', policy);
+    // You can add your renewal logic here
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" gutterBottom fontWeight="bold" sx={{ color: "#000000" }}>
@@ -936,9 +944,64 @@ const PolicyStatus = ({ leads = [] }) => {
                   />
                 </TableCell>
                 <TableCell>
-                  <IconButton onClick={(e) => handleMenuClick(e, policy)}>
-                    <MoreVertIcon />
-                  </IconButton>
+                  <Tooltip title="View Policy">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleViewDetails(policy)}
+                      sx={{ 
+                        color: '#0C47A0',
+                        '&:hover': {
+                          backgroundColor: 'rgba(12, 71, 160, 0.04)',
+                        },
+                      }}
+                    >
+                      <ViewIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Edit Policy">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleEdit(policy)}
+                      sx={{ 
+                        color: '#0C47A0',
+                        '&:hover': {
+                          backgroundColor: 'rgba(12, 71, 160, 0.04)',
+                        },
+                      }}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  </Tooltip>
+                  {policy.status === 'Expired' && (
+                    <Tooltip title="Renew Policy">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleRenew(policy)}
+                        sx={{ 
+                          color: '#2E7D32',
+                          '&:hover': {
+                            backgroundColor: 'rgba(46, 125, 50, 0.04)',
+                          },
+                        }}
+                      >
+                        <RenewIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  <Tooltip title="Delete Policy">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDelete(policy)}
+                      sx={{ 
+                        color: '#D32F2F',
+                        '&:hover': {
+                          backgroundColor: 'rgba(211, 47, 47, 0.04)',
+                        },
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
                 </TableCell>
               </TableRow>
             ))}
