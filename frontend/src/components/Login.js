@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -22,18 +23,30 @@ function Login() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Check for admin credentials first
     if (email === 'jason@gmail.com' && password === 'oldmonk') {
       localStorage.setItem('isAuthenticated', 'true');
       localStorage.setItem('userRole', 'admin');
       navigate('/dashboard');
-    } else if (email === 'jack@gmail.com' && password === 'singlemalt') {
+      return;
+    }
+
+    // For non-admin users, try the login API
+    try {
+      const { data } = await axios.post('http://localhost:8080/api/auth/login', {
+        email,
+        password
+      });
+      
       localStorage.setItem('isAuthenticated', 'true');
       localStorage.setItem('userRole', 'employee');
+      localStorage.setItem('userData', JSON.stringify(data));
       navigate('/emp-dashboard');
-    } else {
-      setError('Invalid email or password');
+    } catch (error) {
+      setError(error.response?.data?.message || 'Invalid email or password');
     }
   };
 

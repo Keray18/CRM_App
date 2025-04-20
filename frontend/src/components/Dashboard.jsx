@@ -61,6 +61,7 @@ import Documents from "./AdminDash/Documents";
 import PolicyStatus from "./AdminDash/PolicyStatus";
 import PolicyManagement from './AdminDash/PolicyManagement';
 import Commission from './AdminDash/Commission';
+import axios from 'axios';
 
 const primaryColor = "#1976d2";
 const secondaryColor = "#f50057";
@@ -147,8 +148,6 @@ const Dashboard = () => {
     joiningDate: "",
     salary: "",
     address: "",
-    emergencyContact: "",
-    emergencyPhone: "",
     education: "",
     experience: "",
     skills: [],
@@ -176,6 +175,18 @@ const Dashboard = () => {
   const [commissions, setCommissions] = useState([]);
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [totalEmployees, setTotalEmployees] = useState(0);
+  const [dashboardStats, setDashboardStats] = useState({
+    isLoading: true,
+    error: null,
+    data: {
+      totalEmployees: 0,
+      activeLeads: 0,
+      activeTasks: 0,
+      totalPayments: 0
+    }
+  });
   const navigate = useNavigate();
 
   const departments = ["Sales", "Support", "Development", "Marketing", "HR"];
@@ -191,6 +202,87 @@ const Dashboard = () => {
   const activeLeads = leads.filter(lead => 
     !lead.isDeleted && !lead.isConverted
   );
+
+  // Fetch dashboard statistics
+  const fetchDashboardStats = async () => {
+    setDashboardStats(prev => ({ ...prev, isLoading: true, error: null }));
+    try {
+      const [employeesRes, leadsRes, tasksRes, paymentsRes] = await Promise.all([
+        axios.get('http://localhost:8080/api/auth/getAllEmployees'),
+        // Add other API calls here when available
+        Promise.resolve({ data: { leads: leads.filter(lead => !lead.isDeleted && !lead.isConverted) } }),
+        Promise.resolve({ data: { tasks: tasks.filter(task => task.status !== 'Completed') } }),
+        Promise.resolve({ data: { payments } })
+      ]);
+
+      const employeesArray = employeesRes.data.employees || [];
+      const activeLeads = leadsRes.data.leads || [];
+      const activeTasks = tasksRes.data.tasks || [];
+      const totalPayments = paymentsRes.data.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0;
+
+      setDashboardStats({
+        isLoading: false,
+        error: null,
+        data: {
+          totalEmployees: employeesArray.length,
+          activeLeads: activeLeads.length,
+          activeTasks: activeTasks.length,
+          totalPayments
+        }
+      });
+
+      // Update other states as needed
+      setTotalEmployees(employeesArray.length);
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+      setDashboardStats(prev => ({
+        ...prev,
+        isLoading: false,
+        error: 'Failed to fetch dashboard statistics'
+      }));
+      setSnackbar({
+        open: true,
+        message: "Failed to fetch dashboard statistics",
+        severity: "error"
+      });
+    }
+  };
+
+  // Fetch dashboard stats when Dashboard section is selected
+  useEffect(() => {
+    if (section === "Dashboard") {
+      fetchDashboardStats();
+    }
+  }, [section]);
+
+  // Fetch employees from API
+  const fetchEmployees = async () => {
+    setIsLoading(true);
+    try {
+      const { data } = await axios.get('http://localhost:8080/api/auth/getAllEmployees');
+      // Extract employees array from the response
+      const employeesArray = data.employees || [];
+      console.log('Fetched employees:', employeesArray); // Debug log
+      setEmployees(employeesArray);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      setSnackbar({
+        open: true,
+        message: "Failed to fetch employees",
+        severity: "error"
+      });
+      setEmployees([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch employees when Manage Employees section is selected
+  useEffect(() => {
+    if (section === "Manage Employees") {
+      fetchEmployees();
+    }
+  }, [section]);
 
   // Employee management handlers
   const handleEmployeeChange = (e) => {
@@ -220,14 +312,12 @@ const Dashboard = () => {
     if (!formData.joiningDate) errors.joiningDate = "Joining date is required";
     if (!formData.salary) errors.salary = "Salary is required";
     if (!formData.address.trim()) errors.address = "Address is required";
-    if (!formData.emergencyContact.trim()) errors.emergencyContact = "Emergency contact is required";
-    if (!formData.emergencyPhone.trim()) {
-      errors.emergencyPhone = "Emergency phone is required";
-    } else if (!/^\d{10}$/.test(formData.emergencyPhone)) {
-      errors.emergencyPhone = "Phone must be 10 digits";
-    }
     if (!formData.education.trim()) errors.education = "Education is required";
-    if (!formData.experience.trim()) errors.experience = "Experience is required";
+    if (!formData.experience) {
+      errors.experience = "Experience is required";
+    } else if (isNaN(formData.experience) || formData.experience < 0) {
+      errors.experience = "Experience must be a positive number";
+    }
     return errors;
   };
 
@@ -240,14 +330,71 @@ const Dashboard = () => {
 
     setIsSubmitting(true);
     try {
+      // Format date to YYYY-MM-DD
+      const formatDate = (dateString) => {
+        if (!dateString) return '';
+        // If the date is already in YYYY-MM-DD format, return as is
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+          return dateString;
+        }
+        // If the date is in DD-MM-YYYY format, convert it
+        if (/^\d{2}-\d{2}-\d{4}$/.test(dateString)) {
+          const [day, month, year] = dateString.split('-');
+          return `${year}-${month}-${day}`;
+        }
+        // If the date is in any other format, try to parse it
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+          throw new Error('Invalid date format');
+        }
+        return date.toISOString().split('T')[0];
+      };
+
+      // Generate a random password
+      const originalPassword = generatePassword();
+
+      // Structure data according to backend expectations
+      const formattedData = {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        address: formData.address.trim(),
+        department: formData.department,
+        position: formData.position.trim(),
+        date: formatDate(formData.joiningDate),
+        salary: Number(formData.salary),
+        education: formData.education.trim(),
+        experience: Number(formData.experience),
+        password: originalPassword,
+        originalPassword: originalPassword // Add original password to be stored
+      };
+
+      console.log('Sending data to backend:', formattedData);
+
+      const { data } = await axios.post('http://localhost:8080/api/auth/register', formattedData);
+      
+      console.log('Response from backend:', data);
+
+      // Ensure the employee data has all required properties
       const newEmployee = {
-        ...formData,
-        id: Date.now(),
-        password: generatePassword(),
+        id: data.employee?.id || Date.now(),
+        name: data.employee?.name || formattedData.name,
+        email: data.employee?.email || formattedData.email,
+        phone: data.employee?.phone || formattedData.phone,
+        department: data.employee?.department || formattedData.department,
+        position: data.employee?.position || formattedData.position,
+        joiningDate: data.employee?.date || formattedData.date,
+        salary: data.employee?.salary || formattedData.salary,
+        address: data.employee?.address || formattedData.address,
+        education: data.employee?.education || formattedData.education,
+        experience: data.employee?.experience || formattedData.experience,
+        password: originalPassword, // Store original password for display
         status: "Active",
         createdAt: new Date().toISOString()
       };
-      setEmployees([...employees, newEmployee]);
+      
+      setEmployees(prevEmployees => [...prevEmployees, newEmployee]);
+      
       setFormData({
         name: "",
         phone: "",
@@ -257,22 +404,22 @@ const Dashboard = () => {
         joiningDate: "",
         salary: "",
         address: "",
-        emergencyContact: "",
-        emergencyPhone: "",
         education: "",
         experience: "",
         skills: [],
         role: "Employee"
       });
+      
       setSnackbar({
         open: true,
         message: "Employee registered successfully",
         severity: "success"
       });
     } catch (error) {
+      console.error('Registration error:', error.response?.data || error.message);
       setSnackbar({
         open: true,
-        message: "Failed to register employee",
+        message: error.response?.data?.message || "Failed to register employee. Please check all fields and try again.",
         severity: "error"
       });
     } finally {
@@ -282,10 +429,11 @@ const Dashboard = () => {
 
   // Password reset functionality
   const handlePasswordReset = () => {
+    const newPassword = generatePassword();
     setEmployees(
       employees.map((emp) =>
         emp === selectedEmployee
-          ? { ...emp, password: generatePassword() }
+          ? { ...emp, password: newPassword }
           : emp
       )
     );
@@ -369,12 +517,12 @@ const Dashboard = () => {
   };
 
   // Filter employees for search
-  const filteredEmployees = employees.filter(
+  const filteredEmployees = Array.isArray(employees) ? employees.filter(
     (emp) =>
-      emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.phone.includes(searchTerm)
-  );
+      emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.phone?.includes(searchTerm)
+  ) : [];
 
   // Add this useEffect to fetch payments
   useEffect(() => {
@@ -492,7 +640,13 @@ const Dashboard = () => {
                 <Card sx={{ bgcolor: primaryColor, color: "white", p: 2 }}>
                   <CardContent>
                     <Typography variant="h6">Total Employees</Typography>
-                    <Typography variant="h3">{employees.length}</Typography>
+                    {dashboardStats.isLoading ? (
+                      <CircularProgress size={40} sx={{ color: 'white', mt: 1 }} />
+                    ) : dashboardStats.error ? (
+                      <Typography variant="h3" color="error">Error</Typography>
+                    ) : (
+                      <Typography variant="h3">{dashboardStats.data.totalEmployees}</Typography>
+                    )}
                   </CardContent>
                 </Card>
               </Grid>
@@ -500,7 +654,13 @@ const Dashboard = () => {
                 <Card sx={{ bgcolor: secondaryColor, color: "white", p: 2 }}>
                   <CardContent>
                     <Typography variant="h6">Active Leads</Typography>
-                    <Typography variant="h3">{activeLeads.length}</Typography>
+                    {dashboardStats.isLoading ? (
+                      <CircularProgress size={40} sx={{ color: 'white', mt: 1 }} />
+                    ) : dashboardStats.error ? (
+                      <Typography variant="h3" color="error">Error</Typography>
+                    ) : (
+                      <Typography variant="h3">{dashboardStats.data.activeLeads}</Typography>
+                    )}
                   </CardContent>
                 </Card>
               </Grid>
@@ -508,7 +668,13 @@ const Dashboard = () => {
                 <Card sx={{ bgcolor: "success.main", color: "white", p: 2 }}>
                   <CardContent>
                     <Typography variant="h6">Active Tasks</Typography>
-                    <Typography variant="h3">{tasks.length}</Typography>
+                    {dashboardStats.isLoading ? (
+                      <CircularProgress size={40} sx={{ color: 'white', mt: 1 }} />
+                    ) : dashboardStats.error ? (
+                      <Typography variant="h3" color="error">Error</Typography>
+                    ) : (
+                      <Typography variant="h3">{dashboardStats.data.activeTasks}</Typography>
+                    )}
                   </CardContent>
                 </Card>
               </Grid>
@@ -516,7 +682,13 @@ const Dashboard = () => {
                 <Card sx={{ bgcolor: "info.main", color: "white", p: 2 }}>
                   <CardContent>
                     <Typography variant="h6">Total Payments</Typography>
-                    <Typography variant="h3">₹{totalPayments.toLocaleString('en-IN')}</Typography>
+                    {dashboardStats.isLoading ? (
+                      <CircularProgress size={40} sx={{ color: 'white', mt: 1 }} />
+                    ) : dashboardStats.error ? (
+                      <Typography variant="h3" color="error">Error</Typography>
+                    ) : (
+                      <Typography variant="h3">₹{dashboardStats.data.totalPayments.toLocaleString('en-IN')}</Typography>
+                    )}
                   </CardContent>
                 </Card>
               </Grid>
@@ -685,16 +857,16 @@ const Dashboard = () => {
         {section === "Register Employee" && (
           <Box sx={{ maxWidth: 1000, mx: "auto", mt: 4, mb: 6 }}>
             <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
-              <Typography
-                variant="h4"
-                gutterBottom
-                fontWeight="bold"
-                color="#0C47A0"
+            <Typography
+              variant="h4"
+              gutterBottom
+              fontWeight="bold"
+              color="#0C47A0"
                 sx={{ display: 'flex', alignItems: 'center', mb: 4 }}
-              >
+            >
                 <PersonAddIcon sx={{ mr: 2, fontSize: 32 }} />
-                Employee Registration
-              </Typography>
+              Employee Registration
+            </Typography>
               
               <Grid container spacing={3}>
                 {/* Personal Information */}
@@ -809,10 +981,10 @@ const Dashboard = () => {
                     }}
                   >
                     {departments.map((dept) => (
-                      <MenuItem key={dept} value={dept}>
-                        {dept}
-                      </MenuItem>
-                    ))}
+                        <MenuItem key={dept} value={dept}>
+                          {dept}
+                        </MenuItem>
+                      ))}
                   </TextField>
                 </Grid>
 
@@ -876,53 +1048,8 @@ const Dashboard = () => {
                   />
                 </Grid>
 
-                {/* Emergency Contact */}
-                <Grid item xs={12}>
-                  <Typography variant="h6" color="primary" sx={{ mt: 2, mb: 2, fontWeight: 600 }}>
-                    Emergency Contact
-                  </Typography>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Emergency Contact Name"
-                    name="emergencyContact"
-                    value={formData.emergencyContact}
-                    onChange={handleEmployeeChange}
-                    error={!!formErrors.emergencyContact}
-                    helperText={formErrors.emergencyContact}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <PersonIcon sx={{ color: 'primary.main' }} />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Emergency Contact Phone"
-                    name="emergencyPhone"
-                    value={formData.emergencyPhone}
-                    onChange={handleEmployeeChange}
-                    error={!!formErrors.emergencyPhone}
-                    helperText={formErrors.emergencyPhone}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <PhoneIcon sx={{ color: 'primary.main' }} />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Grid>
-
                 {/* Education & Experience */}
-                <Grid item xs={12}>
+              <Grid item xs={12}>
                   <Typography variant="h6" color="primary" sx={{ mt: 2, mb: 2, fontWeight: 600 }}>
                     Education & Experience
                   </Typography>
@@ -930,7 +1057,7 @@ const Dashboard = () => {
 
                 <Grid item xs={12} md={6}>
                   <TextField
-                    fullWidth
+                  fullWidth
                     label="Education"
                     name="education"
                     multiline
@@ -952,14 +1079,14 @@ const Dashboard = () => {
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="Experience"
+                    label="Experience (Years)"
                     name="experience"
-                    multiline
-                    rows={2}
+                    type="number"
                     value={formData.experience}
                     onChange={handleEmployeeChange}
                     error={!!formErrors.experience}
                     helperText={formErrors.experience}
+                    inputProps={{ min: 0 }}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
@@ -973,13 +1100,13 @@ const Dashboard = () => {
                 <Grid item xs={12}>
                   <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
                     <Button
-                      variant="contained"
-                      size="large"
-                      onClick={handleEmployeeSubmit}
+                  variant="contained"
+                  size="large"
+                  onClick={handleEmployeeSubmit}
                       disabled={isSubmitting}
-                      sx={{
+                  sx={{
                         bgcolor: "#0C47A0",
-                        "&:hover": { bgcolor: "#1565c0" },
+                    "&:hover": { bgcolor: "#1565c0" },
                         minWidth: 200
                       }}
                     >
@@ -988,10 +1115,10 @@ const Dashboard = () => {
                       ) : (
                         "Register Employee"
                       )}
-                    </Button>
+                </Button>
                   </Box>
-                </Grid>
               </Grid>
+            </Grid>
             </Paper>
           </Box>
         )}
@@ -1041,7 +1168,6 @@ const Dashboard = () => {
                       "Contact",
                       "Department",
                       "Position",
-                      "Password",
                       "Actions",
                     ].map((header) => (
                       <TableCell
@@ -1054,56 +1180,65 @@ const Dashboard = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredEmployees.map((emp) => (
-                    <TableRow key={emp.id} hover>
-                      <TableCell>
-                        <Box sx={{ display: "flex", alignItems: "center" }}>
-                          <Avatar sx={{ mr: 2, bgcolor: "#0C47A0" }}>
-                            {emp.name.charAt(0)}
-                          </Avatar>
-                          {emp.name}
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Box>
-                          <Typography>{emp.email}</Typography>
-                          <Typography variant="body2">{emp.phone}</Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={emp.department}
-                          color="primary"
-                          variant="outlined"
-                        />
-                      </TableCell>
-                      <TableCell>{emp.position}</TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                          {emp.password}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outlined"
-                          sx={{ mr: 1 }}
-                          onClick={() => handleTaskAssign(emp)}
-                        >
-                          Assign Task
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          onClick={() => {
-                            setSelectedEmployee(emp);
-                            setOpenModal(true);
-                          }}
-                        >
-                          Reset Password
-                        </Button>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center">
+                        <CircularProgress />
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : filteredEmployees.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center">
+                        No employees found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredEmployees.map((emp) => (
+                      <TableRow key={emp.id} hover>
+                        <TableCell>
+                          <Box sx={{ display: "flex", alignItems: "center" }}>
+                            <Avatar sx={{ mr: 2, bgcolor: "#0C47A0" }}>
+                              {emp.name.charAt(0)}
+                            </Avatar>
+                            {emp.name}
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Box>
+                            <Typography>{emp.email}</Typography>
+                            <Typography variant="body2">{emp.phone}</Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={emp.department}
+                            color="primary"
+                            variant="outlined"
+                          />
+                        </TableCell>
+                        <TableCell>{emp.position}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outlined"
+                            sx={{ mr: 1 }}
+                            onClick={() => handleTaskAssign(emp)}
+                          >
+                            Assign Task
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            onClick={() => {
+                              setSelectedEmployee(emp);
+                              setOpenModal(true);
+                            }}
+                          >
+                            Reset Password
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
