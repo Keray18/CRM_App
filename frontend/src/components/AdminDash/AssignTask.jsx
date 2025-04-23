@@ -334,19 +334,19 @@ const AssignTask = ({
       <Typography variant="h6" gutterBottom color="#666" sx={{ mt: 4 }}>
         Assigned Tasks
       </Typography>
-      <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 3 }}>
-        <Table>
-          <TableHead sx={{ backgroundColor: 'primary.main' }}>
-            <TableRow>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Employee</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Task</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Description</TableCell>
+        <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 3 }}>
+          <Table>
+            <TableHead sx={{ backgroundColor: 'primary.main' }}>
+              <TableRow>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Employee</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Task</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Description</TableCell>
               <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Related To</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Due Date</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Status</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Due Date</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Status</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
             {tasks.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} align="center">
@@ -398,9 +398,9 @@ const AssignTask = ({
                 </TableRow>
               ))
             )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableBody>
+          </Table>
+        </TableContainer>
 
       {/* Snackbar for notifications */}
       <Snackbar

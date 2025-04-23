@@ -29,7 +29,7 @@ const register = async (req, res) => {
         })
         res.status(201).json({
             message: 'Employee registered successfully',
-            employee: newEmployee
+            
         })
     } catch (error) {
         res.status(500).json({
@@ -84,7 +84,10 @@ const getAllEmployees = async (req, res) => {
             employees: employees
         })
     } catch (error) {
-        
+        res.status(500).json({
+            message: 'Error fetching employees',
+            error: error.message
+        })
     }
 }
 
