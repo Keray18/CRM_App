@@ -3,6 +3,7 @@ const sequelize = require('./config/dbConn.js')
 const dotenv = require('dotenv').config()
 const authRoutes = require('./routes/authRoutes.js')
 const leadRoutes = require('./routes/leadRoutes.js')
+const taskRoutes = require('./routes/taskRoutes.js')
 const cors = require('cors')
 const app = express()
 
@@ -19,6 +20,7 @@ app.use(cors({
 // Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/leads', leadRoutes)
+app.use('/api/tasks', taskRoutes)
 
 // Warning: Use force: true only in dev
 sequelize.sync({ force: true }) 

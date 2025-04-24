@@ -6,7 +6,7 @@ const sequelize = require('../config/dbConn.js');
 const leadsController = {
    
     async submitLeadForm(req, res) {
-        const transaction = await sequelize.transaction()
+        const transaction = await sequelize.transaction();
         
         try {
             const { leadName, leadPhone, leadEmail, leadPolicyType, leadCreateDate, remarks } = req.body;
@@ -14,20 +14,20 @@ const leadsController = {
             const existingLead = await Leads.findOne({
                 where: { leadEmail },
                 transaction
-            })
+            });
             
             if (existingLead) {
                 await transaction.rollback();
                 return res.status(400).json({
                     message: 'Lead with this email already exists'
-                })
+                });
             }
             
             if (!leadName || !leadPhone || !leadEmail || !leadPolicyType) {
                 await transaction.rollback();
                 return res.status(400).json({
                     message: 'All lead fields are required'
-                })
+                });
             }
             
             // Create lead

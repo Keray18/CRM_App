@@ -1,4 +1,4 @@
-import React,{useState} from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Typography, 
   Box, 
@@ -26,17 +26,20 @@ import {
 } from "@mui/material";
 import { CheckCircle, Delete, Upload as UploadIcon } from "@mui/icons-material";
 import dayjs from "dayjs";
+import axios from 'axios';
+
+// API base URL
+const API_URL = 'http://localhost:8080/api';
 
 const Leads = ({ leads, setLeads, addCustomer }) => {
   const [leadData, setLeadData] = useState({ 
-    name: "", 
-    phone: "", 
-    email: "",
+    leadName: "", 
+    leadPhone: "", 
+    leadEmail: "",
+    leadPolicyType: "",
+    leadCreateDate: dayjs().format('YYYY-MM-DD'),
     remarks: "",
-    date: dayjs().format('YYYY-MM-DD'),
-    status: "New",
-    policy: "",
-    proposalDocument: null
+    document: null
   });
 
   const [snackbar, setSnackbar] = useState({
@@ -44,6 +47,27 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
     message: "",
     severity: "success"
   });
+
+  const [loading, setLoading] = useState(false);
+
+  // Fetch leads on component mount
+  useEffect(() => {
+    fetchLeads();
+  }, []);
+
+  const fetchLeads = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/leads`);
+      setLeads(response.data.leads);
+    } catch (error) {
+      console.error('Error fetching leads:', error);
+      setSnackbar({
+        open: true,
+        message: "Error fetching leads",
+        severity: "error"
+      });
+    }
+  };
 
   const policyTypes = [
     { value: "health", label: "Health Insurance" },
@@ -59,105 +83,118 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
-      setLeadData({ ...leadData, proposalDocument: file });
+      setLeadData({ ...leadData, document: file });
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Validate required fields
-    if (!leadData.name || !leadData.phone) {
+    if (!leadData.leadName || !leadData.leadPhone || !leadData.leadEmail || !leadData.leadPolicyType) {
       setSnackbar({
         open: true,
-        message: "Name and Phone are required fields",
+        message: "All fields are required",
         severity: "error"
       });
       return;
     }
 
-    // Create new lead
-    const newLead = {
-      id: Date.now(),
-      ...leadData,
-      createdAt: new Date().toISOString(),
-      isConverted: false,
-      isDeleted: false
-    };
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      Object.keys(leadData).forEach(key => {
+        if (key === 'document' && leadData[key]) {
+          formData.append('document', leadData[key]);
+        } else {
+          formData.append(key, leadData[key]);
+        }
+      });
 
-    // Add to leads list
-    setLeads(prevLeads => [...prevLeads, newLead]);
-    
-    // Reset form
-    setLeadData({ 
-      name: "", 
-      phone: "", 
-      email: "",
-      remarks: "",
-      date: dayjs().format('YYYY-MM-DD'),
-      status: "New",
-      policy: "",
-      proposalDocument: null
-    });
+      const response = await axios.post(`${API_URL}/leads/submit`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      // Add to leads list
+      setLeads(prevLeads => [...prevLeads, response.data.lead]);
+      
+      // Reset form
+      setLeadData({ 
+        leadName: "", 
+        leadPhone: "", 
+        leadEmail: "",
+        leadPolicyType: "",
+        leadCreateDate: dayjs().format('YYYY-MM-DD'),
+        remarks: "",
+        document: null
+      });
 
-    setSnackbar({
-      open: true,
-      message: "Lead created successfully",
-      severity: "success"
-    });
+      setSnackbar({
+        open: true,
+        message: "Lead created successfully",
+        severity: "success"
+      });
+    } catch (error) {
+      console.error('Error creating lead:', error);
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || "Error creating lead",
+        severity: "error"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleAcceptLead = (lead) => {
-    // Convert lead to customer
-    const newCustomer = {
-      id: Date.now(),
-      leadId: lead.id,
-      name: lead.name,
-      phone: lead.phone,
-      email: lead.email,
-      policyInterested: lead.policy,
-      status: "Active",
-      createdFrom: "Lead",
-      createdAt: new Date().toISOString(),
-      conversionDate: new Date().toISOString()
-    };
+  const handleDeleteLead = async (leadId) => {
+    try {
+      await axios.delete(`${API_URL}/leads/${leadId}`);
+      
+      // Update leads list
+      setLeads(prevLeads => prevLeads.filter(lead => lead.id !== leadId));
 
-    // Mark lead as converted
-    setLeads(prevLeads => 
-      prevLeads.map(l => 
-        l.id === lead.id 
-          ? { ...l, isConverted: true } 
-          : l
-      )
-    );
-
-    // Add customer
-    addCustomer(newCustomer);
-
-    setSnackbar({
-      open: true,
-      message: "Lead successfully converted to customer",
-      severity: "success"
-    });
+      setSnackbar({
+        open: true,
+        message: "Lead deleted successfully",
+        severity: "info"
+      });
+    } catch (error) {
+      console.error('Error deleting lead:', error);
+      setSnackbar({
+        open: true,
+        message: "Error deleting lead",
+        severity: "error"
+      });
+    }
   };
 
-  const handleDeleteLead = (leadId) => {
-    // Mark lead as deleted
-    setLeads(prevLeads => 
-      prevLeads.map(lead => 
-        lead.id === leadId 
-          ? { ...lead, isDeleted: true } 
-          : lead
-      )
-    );
+  const handleUpdateRemarks = async (leadId, remarks) => {
+    try {
+      const response = await axios.patch(`${API_URL}/leads/${leadId}/remarks`, { remarks });
+      
+      // Update leads list
+      setLeads(prevLeads => 
+        prevLeads.map(lead => 
+          lead.id === leadId 
+            ? response.data.lead 
+            : lead
+        )
+      );
 
-    setSnackbar({
-      open: true,
-      message: "Lead deleted successfully",
-      severity: "info"
-    });
+      setSnackbar({
+        open: true,
+        message: "Remarks updated successfully",
+        severity: "success"
+      });
+    } catch (error) {
+      console.error('Error updating remarks:', error);
+      setSnackbar({
+        open: true,
+        message: "Error updating remarks",
+        severity: "error"
+      });
+    }
   };
-
-  // Filter active leads (not converted and not deleted)
-  const activeLeads = leads.filter(lead => !lead.isConverted && !lead.isDeleted);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -170,10 +207,10 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
             <TextField 
-              name="name" 
+              name="leadName" 
               label="Lead Name" 
               required 
-              value={leadData.name} 
+              value={leadData.leadName} 
               onChange={handleLeadChange}
               fullWidth
               InputProps={{
@@ -187,33 +224,33 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField 
-              name="phone" 
+              name="leadPhone" 
               label="Phone" 
               required 
-              value={leadData.phone} 
+              value={leadData.leadPhone} 
               onChange={handleLeadChange}
               fullWidth
             />
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField 
-              name="email" 
+              name="leadEmail" 
               label="Email" 
               type="email" 
-              value={leadData.email} 
+              required
+              value={leadData.leadEmail} 
               onChange={handleLeadChange}
               fullWidth
             />
           </Grid>
           <Grid item xs={12} md={6}>
-            <FormControl fullWidth>
+            <FormControl fullWidth required>
               <InputLabel>Policy Type</InputLabel>
               <Select
-                name="policy"
-                value={leadData.policy}
+                name="leadPolicyType"
+                value={leadData.leadPolicyType}
                 onChange={handleLeadChange}
                 label="Policy Type"
-                sx={{ color: '#ffffff',width: '200px' }}
               >
                 {policyTypes.map((type) => (
                   <MenuItem key={type.value} value={type.value}>
@@ -225,9 +262,9 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField 
-              name="date" 
+              name="leadCreateDate" 
               type="date"
-              value={leadData.date} 
+              value={leadData.leadCreateDate} 
               onChange={handleLeadChange}
               fullWidth
               inputProps={{
@@ -275,23 +312,23 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
                   accept=".pdf,.doc,.docx"
                 />
               </Button>
-              {leadData.proposalDocument && (
+              {leadData.document && (
                 <Typography variant="body2" sx={{ mt: 1, color: '#0C47A0', display: 'flex', alignItems: 'center', gap: 1 }}>
                   <CheckCircle sx={{ fontSize: 16 }} />
-                  {leadData.proposalDocument.name}
+                  {leadData.document.name}
                 </Typography>
               )}
             </Box>
           </Grid>
           <Grid item xs={12}>
-            <TextField 
-              name="remarks" 
-              label="Remarks" 
-              multiline
-              rows={2}
-              value={leadData.remarks} 
+            <TextField
+              name="remarks"
+              label="Remarks"
+              value={leadData.remarks}
               onChange={handleLeadChange}
               fullWidth
+              multiline
+              rows={2}
             />
           </Grid>
           <Grid item xs={12}>
@@ -300,6 +337,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
               onClick={handleSubmit}
               fullWidth
               size="large"
+              disabled={loading}
               sx={{ 
                 bgcolor: "#0C47A0",
                 color: "white",
@@ -308,13 +346,12 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
                 }
               }}
             >
-              Create Lead
+              {loading ? "Creating..." : "Create Lead"}
             </Button>
           </Grid>
         </Grid>
       </Box>
 
-      {/* Active Leads Table */}
       <TableContainer component={Paper} sx={{ mt: 3, boxShadow: 2 }}>
         <Table>
           <TableHead sx={{ backgroundColor: "#0C47A0" }}>
@@ -323,40 +360,40 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
               <TableCell sx={{ color: "white", fontWeight: "bold" }}>Contact</TableCell>
               <TableCell sx={{ color: "white", fontWeight: "bold" }}>Policy Type</TableCell>
               <TableCell sx={{ color: "white", fontWeight: "bold" }}>Date</TableCell>
-              <TableCell sx={{ color: "white", fontWeight: "bold" }}>Status</TableCell>
+              <TableCell sx={{ color: "white", fontWeight: "bold" }}>Remarks</TableCell>
               <TableCell sx={{ color: "white", fontWeight: "bold" }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {activeLeads.length === 0 ? (
+            {leads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">No active leads</TableCell>
+                <TableCell colSpan={6} align="center">No leads found</TableCell>
               </TableRow>
             ) : (
-              activeLeads.map((lead) => (
+              leads.map((lead) => (
                 <TableRow key={lead.id} hover>
                   <TableCell>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                       <Avatar sx={{ bgcolor: "#0C47A0" }}>
-                        {lead.name.charAt(0)}
+                        {lead.leadName.charAt(0)}
                       </Avatar>
-                      {lead.name}
+                      {lead.leadName}
                     </Box>
                   </TableCell>
                   <TableCell>
                     <Box>
-                      <Typography>{lead.phone}</Typography>
-                      {lead.email && (
+                      <Typography>{lead.leadPhone}</Typography>
+                      {lead.leadEmail && (
                         <Typography variant="body2" color="textSecondary">
-                          {lead.email}
+                          {lead.leadEmail}
                         </Typography>
                       )}
                     </Box>
                   </TableCell>
                   <TableCell>
-                    {lead.policy ? (
+                    {lead.leadPolicyType ? (
                       <Chip 
-                        label={policyTypes.find(t => t.value === lead.policy)?.label || lead.policy}
+                        label={policyTypes.find(t => t.value === lead.leadPolicyType)?.label || lead.leadPolicyType}
                         color="primary"
                         size="small"
                         sx={{ bgcolor: "#0C47A0" }}
@@ -365,25 +402,16 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
                       <Typography variant="body2" color="textSecondary">Not specified</Typography>
                     )}
                   </TableCell>
-                  <TableCell>{lead.date}</TableCell>
+                  <TableCell>{dayjs(lead.leadCreateDate).format('DD/MM/YYYY')}</TableCell>
                   <TableCell>
-                    <Chip 
-                      label={lead.status}
-                      color="primary"
+                    <TextField
                       size="small"
-                      sx={{ bgcolor: "#0C47A0" }}
+                      value={lead.remarks || ''}
+                      onChange={(e) => handleUpdateRemarks(lead.id, e.target.value)}
+                      placeholder="Add remarks..."
                     />
                   </TableCell>
                   <TableCell>
-                    <Tooltip title="Convert to Customer">
-                      <IconButton 
-                        color="primary" 
-                        onClick={() => handleAcceptLead(lead)}
-                        sx={{ color: "#0C47A0" }}
-                      >
-                        <CheckCircle />
-                      </IconButton>
-                    </Tooltip>
                     <Tooltip title="Delete Lead">
                       <IconButton 
                         color="error"
@@ -400,7 +428,6 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
         </Table>
       </TableContainer>
 
-      {/* Snackbar for notifications */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}

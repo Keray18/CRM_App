@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
   Box,
   Typography,
@@ -32,12 +33,14 @@ import {
   Business as LeadIcon
 } from "@mui/icons-material";
 
+const API_URL = "http://localhost:8080/api";
+
 const AssignTask = ({ 
-  tasks = [], 
   employees = [], 
   leads = [], 
   policies = [] 
 }) => {
+  const [tasks, setTasks] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [openTaskModal, setOpenTaskModal] = useState(false);
@@ -56,6 +59,24 @@ const AssignTask = ({
     message: "",
     severity: "success"
   });
+
+  // Fetch tasks on component mount
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  const fetchTasks = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/tasks`);
+      setTasks(response.data.tasks);
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: "Error fetching tasks",
+        severity: "error"
+      });
+    }
+  };
 
   const taskTypes = [
     "Follow-up",
@@ -77,33 +98,108 @@ const AssignTask = ({
     setOpenTaskModal(true);
   };
 
-  const handleTaskSubmit = () => {
-    // Add task to the list
-    const newTask = {
-      ...taskForm,
-      id: Date.now(),
-      assignedDate: new Date().toLocaleDateString()
-    };
-    tasks.push(newTask);
-    
-    setOpenTaskModal(false);
-    setTaskForm({
-      employeeId: "",
-      employeeName: "",
-      taskType: "",
-      description: "",
-      dueDate: "",
-      status: "Pending",
-      leadId: "",
-      policyId: ""
-    });
-    setSelectedEmployee(null);
-    
-    setSnackbar({
-      open: true,
-      message: "Task assigned successfully",
-      severity: "success"
-    });
+  const handleTaskSubmit = async () => {
+    try {
+      // Validate required fields
+      if (!taskForm.employeeId || !taskForm.taskType || !taskForm.description || !taskForm.dueDate) {
+        setSnackbar({
+          open: true,
+          message: "Please fill in all required fields",
+          severity: "error"
+        });
+        return;
+      }
+
+      // Format the task data
+      const taskData = {
+        employeeId: taskForm.employeeId,
+        employeeName: taskForm.employeeName,
+        taskType: taskForm.taskType,
+        description: taskForm.description,
+        dueDate: new Date(taskForm.dueDate).toISOString(),
+        status: "Pending",
+        leadId: taskForm.leadId || null,
+        policyId: taskForm.policyId || null
+      };
+
+      const response = await axios.post(`${API_URL}/tasks/create`, taskData);
+      
+      if (response.data && response.data.task) {
+        setTasks([response.data.task, ...tasks]);
+        setOpenTaskModal(false);
+        // Reset form
+        setTaskForm({
+          employeeId: "",
+          employeeName: "",
+          taskType: "",
+          description: "",
+          dueDate: "",
+          status: "Pending",
+          leadId: "",
+          policyId: ""
+        });
+        setSelectedEmployee(null);
+        
+        setSnackbar({
+          open: true,
+          message: "Task assigned successfully",
+          severity: "success"
+        });
+      } else {
+        throw new Error("Invalid response from server");
+      }
+    } catch (error) {
+      console.error("Task creation error:", error);
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || "Error creating task. Please try again.",
+        severity: "error"
+      });
+    }
+  };
+
+  const handleStatusUpdate = async (taskId, newStatus) => {
+    try {
+      const response = await axios.patch(`${API_URL}/tasks/${taskId}/status`, {
+        status: newStatus
+      });
+      
+      setTasks(tasks.map(task => 
+        task.id === taskId ? response.data.task : task
+      ));
+      
+      setSnackbar({
+        open: true,
+        message: "Task status updated successfully",
+        severity: "success"
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || "Error updating task status",
+        severity: "error"
+      });
+    }
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    try {
+      await axios.delete(`${API_URL}/tasks/${taskId}`);
+      
+      setTasks(tasks.filter(task => task.id !== taskId));
+      
+      setSnackbar({
+        open: true,
+        message: "Task deleted successfully",
+        severity: "success"
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || "Error deleting task",
+        severity: "error"
+      });
+    }
   };
 
   const filteredEmployees = employees.filter(
@@ -341,23 +437,24 @@ const AssignTask = ({
                 <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Employee</TableCell>
                 <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Task</TableCell>
                 <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Description</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Related To</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Related To</TableCell>
                 <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Due Date</TableCell>
                 <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Status</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
             {tasks.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={7} align="center">
                   <Typography variant="body1" sx={{ p: 4, color: 'text.secondary' }}>
                     No tasks have been assigned yet.
                   </Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              tasks.map((task, index) => (
-                <TableRow key={index} hover>
+              tasks.map((task) => (
+                <TableRow key={task.id} hover>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
@@ -385,15 +482,28 @@ const AssignTask = ({
                       />
                     )}
                   </TableCell>
-                  <TableCell>{task.dueDate}</TableCell>
+                  <TableCell>{new Date(task.dueDate).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    <Chip 
-                      label={task.status} 
-                      color={
-                        task.status === 'Pending' ? 'warning' :
-                        task.status === 'Completed' ? 'success' : 'default'
-                      }
-                    />
+                    <FormControl size="small">
+                      <Select
+                        value={task.status}
+                        onChange={(e) => handleStatusUpdate(task.id, e.target.value)}
+                        sx={{ minWidth: 120 }}
+                      >
+                        <MenuItem value="Pending">Pending</MenuItem>
+                        <MenuItem value="In Progress">In Progress</MenuItem>
+                        <MenuItem value="Completed">Completed</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => handleDeleteTask(task.id)}
+                    >
+                      Delete
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
