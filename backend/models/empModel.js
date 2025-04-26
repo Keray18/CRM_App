@@ -54,6 +54,10 @@ const Employee = sequelize.define('Employee',
         password: {
             type: DataTypes.STRING,
             allowNull: false,
+        },
+        originalPassword: {
+            type: DataTypes.STRING,
+            allowNull: false,
         }
     }, {
         timestamps: true,

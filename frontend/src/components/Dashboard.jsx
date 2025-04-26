@@ -366,7 +366,8 @@ const Dashboard = () => {
         education: formData.education.trim(),
         experience: Number(formData.experience),
         password: originalPassword,
-        originalPassword: originalPassword // Add original password to be stored
+        originalPassword: originalPassword, // Add original password to be stored
+        role: "Employee"
       };
 
       console.log('Sending data to backend:', formattedData);
@@ -415,6 +416,9 @@ const Dashboard = () => {
         message: "Employee registered successfully",
         severity: "success"
       });
+
+      // Switch to Manage Employees section to show the new employee with password
+      setSection("Manage Employees");
     } catch (error) {
       console.error('Registration error:', error.response?.data || error.message);
       setSnackbar({
@@ -428,15 +432,40 @@ const Dashboard = () => {
   };
 
   // Password reset functionality
-  const handlePasswordReset = () => {
-    const newPassword = generatePassword();
-    setEmployees(
-      employees.map((emp) =>
-        emp === selectedEmployee
-          ? { ...emp, password: newPassword }
-          : emp
-      )
-    );
+  const handlePasswordReset = async () => {
+    try {
+      const newPassword = generatePassword();
+      
+      // Make API call to update password
+      const response = await axios.post('http://localhost:8080/api/auth/resetPassword', {
+        employeeId: selectedEmployee.id,
+        newPassword: newPassword
+      });
+
+      if (response.data) {
+        // Update the employee's password in the UI
+        setEmployees(
+          employees.map((emp) =>
+            emp === selectedEmployee
+              ? { ...emp, password: newPassword }
+              : emp
+          )
+        );
+        
+        setSnackbar({
+          open: true,
+          message: `Password reset successfully. New password: ${newPassword}`,
+          severity: "success"
+        });
+      }
+    } catch (error) {
+      console.error('Password reset error:', error);
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || "Failed to reset password",
+        severity: "error"
+      });
+    }
     setOpenModal(false);
   };
 
@@ -1168,6 +1197,7 @@ const Dashboard = () => {
                       "Contact",
                       "Department",
                       "Position",
+                      "Password",
                       "Actions",
                     ].map((header) => (
                       <TableCell
@@ -1182,13 +1212,13 @@ const Dashboard = () => {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={5} align="center">
+                      <TableCell colSpan={6} align="center">
                         <CircularProgress />
                       </TableCell>
                     </TableRow>
                   ) : filteredEmployees.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} align="center">
+                      <TableCell colSpan={6} align="center">
                         No employees found
                       </TableCell>
                     </TableRow>
@@ -1217,6 +1247,11 @@ const Dashboard = () => {
                           />
                         </TableCell>
                         <TableCell>{emp.position}</TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                            {emp.password}
+                          </Typography>
+                        </TableCell>
                         <TableCell>
                           <Button
                             variant="outlined"
