@@ -67,6 +67,15 @@ import {
   Refresh as RenewIcon
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
+import {
+  getAllPolicies,
+  getPolicyStats,
+  getLeadsForPolicy,
+  createPolicy,
+  updatePolicy,
+  deletePolicy,
+  updatePolicyStatus
+} from '../../services/policyService';
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
@@ -80,7 +89,7 @@ const VisuallyHiddenInput = styled('input')({
   width: 1,
 });
 
-const PolicyStatus = ({ leads = [] }) => {
+const PolicyStatus = ({ leads = [], addCustomer }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentTab, setCurrentTab] = useState('all');
   const [anchorEl, setAnchorEl] = useState(null);
@@ -109,6 +118,8 @@ const PolicyStatus = ({ leads = [] }) => {
   const [selectedLead, setSelectedLead] = useState(null);
   const [policies, setPolicies] = useState([]);
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState(null);
 
   // Insurance companies
   const insuranceCompanies = [
@@ -247,8 +258,46 @@ const PolicyStatus = ({ leads = [] }) => {
     setPolicies(initialPolicies);
   }, []);
 
-  // Add lead search handler
-  const handleLeadSearch = (event) => {
+  // Fetch policies on component mount
+  useEffect(() => {
+    fetchPolicies();
+    fetchStats();
+  }, [currentTab, searchTerm, currentMonth]);
+
+  // Fetch policies with filters
+  const fetchPolicies = async () => {
+    try {
+      setLoading(true);
+      const filters = {
+        status: currentTab !== 'all' ? currentTab : undefined,
+        search: searchTerm,
+        month: currentMonth !== 'All' ? currentMonth : undefined
+      };
+      const data = await getAllPolicies(filters);
+      setPolicies(data);
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.message || 'Error fetching policies',
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch policy statistics
+  const fetchStats = async () => {
+    try {
+      const data = await getPolicyStats();
+      setStats(data);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  // Handle lead search
+  const handleLeadSearch = async (event) => {
     const searchTerm = event.target.value;
     setLeadSearchTerm(searchTerm);
     
@@ -257,15 +306,16 @@ const PolicyStatus = ({ leads = [] }) => {
       return;
     }
 
-    // Filter active leads (not converted and not deleted)
-    const activeLeads = leads.filter(lead => !lead.isConverted && !lead.isDeleted);
-    
-    const filtered = activeLeads.filter(lead => 
-      lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.phone.includes(searchTerm) ||
-      lead.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredLeads(filtered);
+    try {
+      const leads = await getLeadsForPolicy(searchTerm);
+      setFilteredLeads(leads);
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.message || 'Error fetching leads',
+        severity: 'error'
+      });
+    }
   };
 
   // Add lead selection handler
@@ -273,12 +323,12 @@ const PolicyStatus = ({ leads = [] }) => {
     setSelectedLead(lead);
     setNewPolicy(prev => ({
       ...prev,
-      insuredName: lead.name,
-      mobile: lead.phone,
-      email: lead.email,
-      type: lead.policyInterested || 'vehicle'
+      insuredName: lead.leadName,
+      mobile: lead.leadPhone,
+      email: lead.leadEmail,
+      type: lead.leadPolicyType || 'vehicle'
     }));
-    setInsuranceType(lead.policyInterested || 'vehicle');
+    setInsuranceType(lead.leadPolicyType || 'vehicle');
     setFilteredLeads([]);
     setLeadSearchTerm('');
   };
@@ -548,6 +598,7 @@ const PolicyStatus = ({ leads = [] }) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Handle add policy
   const handleAddPolicy = async () => {
     try {
       // Validate the form first
@@ -555,29 +606,51 @@ const PolicyStatus = ({ leads = [] }) => {
         return;
       }
 
-      // Create the base policy object
+      setLoading(true);
       const policyToAdd = {
-        id: `P${Date.now()}`,
         ...newPolicy,
         type: insuranceType,
         status: 'Live Policy',
-        documents: uploadedFiles.map(file => file.name),
-        startDate: newPolicy.startDate || new Date(),
-        endDate: newPolicy.endDate || new Date(new Date().setFullYear(new Date().getFullYear() + 1))
+        documents: uploadedFiles.map(file => ({
+          name: file.name,
+          type: file.type,
+          uploadDate: new Date()
+        })),
+        sumInsured: newPolicy.sumInsured ? Number(newPolicy.sumInsured) : null,
+        tripDuration: newPolicy.tripDuration ? Number(newPolicy.tripDuration) : null,
+        height: newPolicy.height ? Number(newPolicy.height) : null,
+        weight: newPolicy.weight ? Number(newPolicy.weight) : null,
+        year: newPolicy.year ? Number(newPolicy.year) : null,
+        basicPremium: newPolicy.basicPremium ? Number(newPolicy.basicPremium) : null,
+        odPremium: newPolicy.odPremium ? Number(newPolicy.odPremium) : null,
+        tpPremium: newPolicy.tpPremium ? Number(newPolicy.tpPremium) : null,
+        ncbDiscount: newPolicy.ncbDiscount ? Number(newPolicy.ncbDiscount) : null,
+        addonPremium: newPolicy.addonPremium ? Number(newPolicy.addonPremium) : null,
+        gst: newPolicy.gst ? Number(newPolicy.gst) : null,
+        totalPremium: newPolicy.totalPremium ? Number(newPolicy.totalPremium) : null,
+        netPremium: newPolicy.netPremium ? Number(newPolicy.netPremium) : null,
+        odCommissionPercentage: newPolicy.odCommissionPercentage ? Number(newPolicy.odCommissionPercentage) : null,
+        tpCommissionPercentage: newPolicy.tpCommissionPercentage ? Number(newPolicy.tpCommissionPercentage) : null,
+        addonCommissionPercentage: newPolicy.addonCommissionPercentage ? Number(newPolicy.addonCommissionPercentage) : null,
+        commissionAmount: newPolicy.commissionAmount ? Number(newPolicy.commissionAmount) : null,
+        totalCommissionAmount: newPolicy.totalCommissionAmount ? Number(newPolicy.totalCommissionAmount) : null,
+        effectiveCommissionPercentage: newPolicy.effectiveCommissionPercentage ? Number(newPolicy.effectiveCommissionPercentage) : null,
+        age: newPolicy.age ? Number(newPolicy.age) : null,
       };
 
-      // Calculate commission for vehicle insurance
-      if (insuranceType === 'vehicle' && newPolicy.commissionType) {
-        const commission = calculateCommission(policyToAdd);
-        if (commission) {
-          Object.assign(policyToAdd, commission);
-        }
+      const createdPolicy = await createPolicy(policyToAdd);
+      setPolicies(prevPolicies => [...prevPolicies, createdPolicy]);
+      // Add to customers if addCustomer is provided
+      if (addCustomer) {
+        addCustomer({
+          id: createdPolicy.id,
+          name: createdPolicy.insuredName,
+          phone: createdPolicy.mobile,
+          email: createdPolicy.email,
+          policy: createdPolicy.type,
+          conversionDate: createdPolicy.startDate || new Date().toISOString(),
+        });
       }
-
-      // Add the policy to the list
-      setPolicies(prevPolicies => [...prevPolicies, policyToAdd]);
-      
-      // Reset the form and close the dialog
       resetForm();
       setOpenNewPolicy(false);
       setSnackbar({
@@ -586,12 +659,13 @@ const PolicyStatus = ({ leads = [] }) => {
         severity: 'success'
       });
     } catch (error) {
-      console.error('Error adding policy:', error);
       setSnackbar({
         open: true,
-        message: 'Error adding policy',
+        message: error.message || 'Error adding policy',
         severity: 'error'
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -656,22 +730,28 @@ const PolicyStatus = ({ leads = [] }) => {
     setActiveStep(0);
   };
 
-  // Update the handleStatusChange function to include notification
-  const handleStatusChange = (policyId, newStatus) => {
-    setPolicies(prevPolicies =>
-      prevPolicies.map(policy =>
-        policy.id === policyId 
-          ? { ...policy, status: newStatus }
-          : policy
-      )
-    );
-
-    // Show notification
-    setSnackbar({
-      open: true,
-      message: `Policy status updated to ${newStatus}`,
-      severity: 'success'
-    });
+  // Handle status change
+  const handleStatusChange = async (policyId, newStatus) => {
+    try {
+      const updatedPolicy = await updatePolicyStatus(policyId, String(newStatus));
+      const policyObj = Array.isArray(updatedPolicy) ? updatedPolicy[0] : updatedPolicy;
+      setPolicies(prevPolicies =>
+        prevPolicies.map(policy =>
+          policy.id === policyObj.id ? policyObj : policy
+        )
+      );
+      setSnackbar({
+        open: true,
+        message: `Policy status updated to ${newStatus}`,
+        severity: 'success'
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.message || 'Error updating policy status',
+        severity: 'error'
+      });
+    }
   };
 
   // Update the filteredPolicies logic to properly filter based on status
@@ -753,68 +833,78 @@ const PolicyStatus = ({ leads = [] }) => {
   };
 
   // Confirm Delete
-  const handleConfirmDelete = () => {
-    if (!selectedPolicy) return;
-    
-    setPolicies(prevPolicies => prevPolicies.filter(p => p.id !== selectedPolicy.id));
-    setDeleteDialogOpen(false);
-    setSelectedPolicy(null); // Clear selected policy after deletion
-    setSnackbar({
-      open: true,
-      message: 'Policy deleted successfully',
-      severity: 'success'
-    });
+  const handleConfirmDelete = async () => {
+    try {
+      setLoading(true);
+      await deletePolicy(selectedPolicy.id);
+      
+      setPolicies(prevPolicies => prevPolicies.filter(p => p.id !== selectedPolicy.id));
+      setDeleteDialogOpen(false);
+      setSelectedPolicy(null);
+      
+      setSnackbar({
+        open: true,
+        message: 'Policy deleted successfully',
+        severity: 'success'
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.message || 'Error deleting policy',
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle Update Policy
-  const handleUpdatePolicy = () => {
-    if (!newPolicy.policyNumber || !newPolicy.insuredName || !newPolicy.endDate || !newPolicy.company || !newPolicy.business) {
+  const handleUpdatePolicy = async () => {
+    try {
+      setLoading(true);
+      const updatedPolicy = await updatePolicy(selectedPolicy.id, {
+        ...newPolicy,
+        sumInsured: newPolicy.sumInsured ? Number(newPolicy.sumInsured) : null,
+        tripDuration: newPolicy.tripDuration ? Number(newPolicy.tripDuration) : null,
+        height: newPolicy.height ? Number(newPolicy.height) : null,
+        weight: newPolicy.weight ? Number(newPolicy.weight) : null,
+        year: newPolicy.year ? Number(newPolicy.year) : null,
+        basicPremium: newPolicy.basicPremium ? Number(newPolicy.basicPremium) : null,
+        odPremium: newPolicy.odPremium ? Number(newPolicy.odPremium) : null,
+        tpPremium: newPolicy.tpPremium ? Number(newPolicy.tpPremium) : null,
+        ncbDiscount: newPolicy.ncbDiscount ? Number(newPolicy.ncbDiscount) : null,
+        addonPremium: newPolicy.addonPremium ? Number(newPolicy.addonPremium) : null,
+        gst: newPolicy.gst ? Number(newPolicy.gst) : null,
+        totalPremium: newPolicy.totalPremium ? Number(newPolicy.totalPremium) : null,
+        netPremium: newPolicy.netPremium ? Number(newPolicy.netPremium) : null,
+        odCommissionPercentage: newPolicy.odCommissionPercentage ? Number(newPolicy.odCommissionPercentage) : null,
+        tpCommissionPercentage: newPolicy.tpCommissionPercentage ? Number(newPolicy.tpCommissionPercentage) : null,
+        addonCommissionPercentage: newPolicy.addonCommissionPercentage ? Number(newPolicy.addonCommissionPercentage) : null,
+        commissionAmount: newPolicy.commissionAmount ? Number(newPolicy.commissionAmount) : null,
+        totalCommissionAmount: newPolicy.totalCommissionAmount ? Number(newPolicy.totalCommissionAmount) : null,
+        effectiveCommissionPercentage: newPolicy.effectiveCommissionPercentage ? Number(newPolicy.effectiveCommissionPercentage) : null,
+        age: newPolicy.age ? Number(newPolicy.age) : null,
+      });
+      setPolicies(prevPolicies =>
+        prevPolicies.map(policy =>
+          policy.id === selectedPolicy.id ? updatedPolicy : policy
+        )
+      );
       setSnackbar({
         open: true,
-        message: 'Please fill in all required fields',
+        message: 'Policy updated successfully',
+        severity: 'success'
+      });
+      setEditModalOpen(false);
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.message || 'Error updating policy',
         severity: 'error'
       });
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    setPolicies(prevPolicies => 
-      prevPolicies.map(policy => 
-        policy.id === selectedPolicy.id ? { ...newPolicy, id: policy.id } : policy
-      )
-    );
-
-    setSnackbar({
-      open: true,
-      message: 'Policy updated successfully',
-      severity: 'success'
-    });
-
-    setEditModalOpen(false);
-    setNewPolicy({
-      policyNumber: '',
-      insuredName: '',
-      endDate: '',
-      company: '',
-      business: 'New',
-      type: 'vehicle',
-      vehicleType: '',
-      vehicleNumber: '',
-      make: '',
-      model: '',
-      year: '',
-      healthPlan: '',
-      sumInsured: '',
-      age: '',
-      preExisting: 'No',
-      travelType: '',
-      destination: '',
-      tripDuration: '',
-      premium: '',
-      nominee: '',
-      documents: [],
-      commissionAmount: '',
-      commissionPercentage: '',
-    });
   };
 
   // Add cleanup for modal closes
@@ -1609,7 +1699,7 @@ const PolicyStatus = ({ leads = [] }) => {
                           value={newPolicy.company}
                           onChange={handleNewPolicyChange('company')}
                           label="Insurance Company"
-                          sx={{ color: '#ffffff',width: '200px' }}
+                          sx={{ color: '#ffffff' }}
                         >
                           {insuranceCompanies.map((company) => (
                             <MenuItem key={company} value={company}>{company}</MenuItem>
@@ -2306,7 +2396,7 @@ const PolicyStatus = ({ leads = [] }) => {
                       <FormControl fullWidth error={!!errors.healthPlan}>
                         <InputLabel sx={{ color: '#ffffff' }}>Health Plan</InputLabel>
                         <Select
-                          value={newPolicy.healthPlan}
+                          value={newPolicy.healthPlan || ''}
                           onChange={handleNewPolicyChange('healthPlan')}
                           label="Health Plan"
                           sx={{ color: '#ffffff' }}
@@ -2330,11 +2420,6 @@ const PolicyStatus = ({ leads = [] }) => {
                         }}
                         error={!!errors.sumInsured}
                         helperText={errors.sumInsured}
-                        required
-                        sx={{ 
-                          '& .MuiInputLabel-root': { color: '#ffffff' },
-                          '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                        }}
                       />
                     </Grid>
                     <Grid item xs={12} md={6}>
@@ -2447,168 +2532,38 @@ const PolicyStatus = ({ leads = [] }) => {
                   </Grid>
                 </Box>
 
-                {/* Section 2: Premium Details */}
+                {/* Section 2: Commission Details */}
                 <Box sx={{ mb: 4 }}>
                   <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', borderBottom: '2px solid #1976d2', pb: 1 }}>
-                    2. Premium Details
+                    2. Commission Details
                   </Typography>
                   <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
-                        label="Basic Premium"
-                        value={newPolicy.basicPremium}
-                        onChange={handleNewPolicyChange('basicPremium')}
-                        type="number"
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                        label="Commission Percentage"
+                        value={newPolicy.commissionPercentage}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          handleNewPolicyChange('commissionPercentage')({ target: { value } });
+                          
+                          // Calculate commission amount based on sum insured
+                          const sumInsured = parseFloat(newPolicy.sumInsured) || 0;
+                          const commissionAmount = sumInsured * (parseFloat(value) || 0) / 100;
+                          
+                          setNewPolicy(prev => ({
+                            ...prev,
+                            commissionAmount: commissionAmount.toFixed(2),
+                            totalCommissionAmount: commissionAmount.toFixed(2)
+                          }));
                         }}
-                        error={!!errors.basicPremium}
-                        helperText={errors.basicPremium}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="NCB Discount (%)"
-                        value={newPolicy.ncbDiscount}
-                        onChange={handleNewPolicyChange('ncbDiscount')}
-                        type="number"
-                        InputProps={{
-                          endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                        }}
-                        error={!!errors.ncbDiscount}
-                        helperText={errors.ncbDiscount}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="TP Premium"
-                        value={newPolicy.tpPremium}
-                        onChange={handleNewPolicyChange('tpPremium')}
-                        type="number"
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                        }}
-                        error={!!errors.tpPremium}
-                        helperText={errors.tpPremium}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Add-on Premium"
-                        value={newPolicy.addonPremium}
-                        onChange={handleNewPolicyChange('addonPremium')}
-                        type="number"
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                        }}
-                        error={!!errors.addonPremium}
-                        helperText={errors.addonPremium}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Net Premium"
-                        value={newPolicy.netPremium}
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                          readOnly: true
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="GST (18%)"
-                        value={newPolicy.gst}
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                          readOnly: true
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Total Premium"
-                        value={newPolicy.totalPremium}
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                          readOnly: true
-                        }}
-                        error={!!errors.totalPremium}
-                        helperText={errors.totalPremium}
-                      />
-                    </Grid>
-                  </Grid>
-                </Box>
-
-                {/* Section 3: Commission Details */}
-                <Box sx={{ mb: 4 }}>
-                  <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', borderBottom: '2px solid #1976d2', pb: 1 }}>
-                    3. Commission Details
-                  </Typography>
-                  <Grid container spacing={3}>
-                    <Grid item xs={12} md={6}>
-                      <FormControl fullWidth error={!!errors.commissionType}>
-                        <InputLabel sx={{ color: '#ffffff' }}>Commission Type</InputLabel>
-                        <Select
-                          value={newPolicy.commissionType || ''}
-                          onChange={handleNewPolicyChange('commissionType')}
-                          label="Commission Type"
-                          sx={{ color: '#ffffff' }}
-                        >
-                          <MenuItem value="OD">Own Damage Only</MenuItem>
-                          <MenuItem value="TP_OD_ADDON">TP + OD + Add-on</MenuItem>
-                          <MenuItem value="BOTH">Both (TP + OD%)</MenuItem>
-                        </Select>
-                        {errors.commissionType && <FormHelperText error>{errors.commissionType}</FormHelperText>}
-                      </FormControl>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="OD Commission Percentage"
-                        value={newPolicy.odCommissionPercentage}
-                        onChange={handleNewPolicyChange('odCommissionPercentage')}
                         type="number"
                         InputProps={{
                           endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                          inputProps: { min: 0, max: 100 }
                         }}
-                        error={!!errors.odCommissionPercentage}
-                        helperText={errors.odCommissionPercentage}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="TP Commission Percentage"
-                        value={newPolicy.tpCommissionPercentage}
-                        onChange={handleNewPolicyChange('tpCommissionPercentage')}
-                        type="number"
-                        InputProps={{
-                          endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                        }}
-                        error={!!errors.tpCommissionPercentage}
-                        helperText={errors.tpCommissionPercentage}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Add-on Commission Percentage"
-                        value={newPolicy.addonCommissionPercentage}
-                        onChange={handleNewPolicyChange('addonCommissionPercentage')}
-                        type="number"
-                        InputProps={{
-                          endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                        }}
-                        error={!!errors.addonCommissionPercentage}
-                        helperText={errors.addonCommissionPercentage}
+                        error={!!errors.commissionPercentage}
+                        helperText={errors.commissionPercentage}
                       />
                     </Grid>
                     <Grid item xs={12} md={6}>
@@ -2616,17 +2571,6 @@ const PolicyStatus = ({ leads = [] }) => {
                         fullWidth
                         label="Commission Amount"
                         value={newPolicy.commissionAmount}
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                          readOnly: true
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Total Commission Amount"
-                        value={newPolicy.totalCommissionAmount}
                         InputProps={{
                           startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                           readOnly: true
@@ -2785,7 +2729,7 @@ const PolicyStatus = ({ leads = [] }) => {
                       <FormControl fullWidth error={!!errors.travelType}>
                         <InputLabel sx={{ color: '#ffffff' }}>Travel Type</InputLabel>
                         <Select
-                          value={newPolicy.travelType}
+                          value={newPolicy.travelType || ''}
                           onChange={handleNewPolicyChange('travelType')}
                           label="Travel Type"
                           sx={{ color: '#ffffff' }}
@@ -2800,32 +2744,36 @@ const PolicyStatus = ({ leads = [] }) => {
                     <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
-                        label="Destination"
-                        value={newPolicy.destination}
-                        onChange={handleNewPolicyChange('destination')}
-                        error={!!errors.destination}
-                        helperText={errors.destination}
-                        required
-                        sx={{ 
-                          '& .MuiInputLabel-root': { color: '#ffffff' },
-                          '& .MuiOutlinedInput-root': { color: '#ffffff' }
+                        label="Sum Insured"
+                        value={newPolicy.sumInsured}
+                        onChange={handleNewPolicyChange('sumInsured')}
+                        type="number"
+                        InputProps={{
+                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                         }}
+                        error={!!errors.sumInsured}
+                        helperText={errors.sumInsured}
                       />
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
-                        label="Trip Duration (Days)"
+                        label="Destination"
+                        value={newPolicy.destination}
+                        onChange={handleNewPolicyChange('destination')}
+                        error={!!errors.destination}
+                        helperText={errors.destination}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Trip Duration (days)"
                         value={newPolicy.tripDuration}
                         onChange={handleNewPolicyChange('tripDuration')}
                         type="number"
                         error={!!errors.tripDuration}
                         helperText={errors.tripDuration}
-                        required
-                        sx={{ 
-                          '& .MuiInputLabel-root': { color: '#ffffff' },
-                          '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                        }}
                       />
                     </Grid>
                     <Grid item xs={12} md={6}>
@@ -2846,159 +2794,38 @@ const PolicyStatus = ({ leads = [] }) => {
                   </Grid>
                 </Box>
 
-                {/* Section 2: Premium Details */}
+                {/* Section 2: Commission Details */}
                 <Box sx={{ mb: 4 }}>
                   <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', borderBottom: '2px solid #1976d2', pb: 1 }}>
-                    2. Premium Details
+                    2. Commission Details
                   </Typography>
                   <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
-                        label="Basic Premium"
-                        value={newPolicy.basicPremium}
-                        onChange={handleNewPolicyChange('basicPremium')}
-                        type="number"
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                        label="Commission Percentage"
+                        value={newPolicy.commissionPercentage}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          handleNewPolicyChange('commissionPercentage')({ target: { value } });
+                          
+                          // Calculate commission amount based on sum insured
+                          const sumInsured = parseFloat(newPolicy.sumInsured) || 0;
+                          const commissionAmount = sumInsured * (parseFloat(value) || 0) / 100;
+                          
+                          setNewPolicy(prev => ({
+                            ...prev,
+                            commissionAmount: commissionAmount.toFixed(2),
+                            totalCommissionAmount: commissionAmount.toFixed(2)
+                          }));
                         }}
-                        error={!!errors.basicPremium}
-                        helperText={errors.basicPremium}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <FormControl fullWidth error={!!errors.commissionType}>
-                        <InputLabel sx={{ color: '#ffffff' }}>Commission Type</InputLabel>
-                        <Select
-                          value={newPolicy.commissionType || ''}
-                          onChange={handleNewPolicyChange('commissionType')}
-                          label="Commission Type"
-                          sx={{ color: '#ffffff' }}
-                        >
-                          <MenuItem value="OD">Own Damage Only</MenuItem>
-                          <MenuItem value="TP_OD_ADDON">TP + OD + Add-on</MenuItem>
-                          <MenuItem value="BOTH">Both (TP + OD%)</MenuItem>
-                        </Select>
-                        {errors.commissionType && <FormHelperText error>{errors.commissionType}</FormHelperText>}
-                      </FormControl>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Add-on Premium"
-                        value={newPolicy.addonPremium}
-                        onChange={handleNewPolicyChange('addonPremium')}
-                        type="number"
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                        }}
-                        sx={{ 
-                          '& .MuiInputLabel-root': { color: '#ffffff' },
-                          '& .MuiOutlinedInput-root': { color: '#ffffff' }
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="GST (18%)"
-                        value={newPolicy.gst}
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                          readOnly: true,
-                        }}
-                        sx={{ 
-                          '& .MuiInputLabel-root': { color: '#ffffff' },
-                          '& .MuiOutlinedInput-root': { 
-                            color: '#ffffff',
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                          }
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Total Premium"
-                        value={newPolicy.totalPremium}
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                          readOnly: true,
-                        }}
-                        sx={{ 
-                          '& .MuiInputLabel-root': { color: '#ffffff' },
-                          '& .MuiOutlinedInput-root': { 
-                            color: '#ffffff',
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                          }
-                        }}
-                      />
-                    </Grid>
-                  </Grid>
-                </Box>
-
-                {/* Section 3: Commission Details */}
-                <Box sx={{ mb: 4 }}>
-                  <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', borderBottom: '2px solid #1976d2', pb: 1 }}>
-                    3. Commission Details
-                  </Typography>
-                  <Grid container spacing={3}>
-                    <Grid item xs={12} md={6}>
-                      <FormControl fullWidth error={!!errors.commissionType}>
-                        <InputLabel sx={{ color: '#ffffff' }}>Commission Type</InputLabel>
-                        <Select
-                          value={newPolicy.commissionType || ''}
-                          onChange={handleNewPolicyChange('commissionType')}
-                          label="Commission Type"
-                          sx={{ color: '#ffffff' }}
-                        >
-                          <MenuItem value="OD">Own Damage Only</MenuItem>
-                          <MenuItem value="TP_OD_ADDON">TP + OD + Add-on</MenuItem>
-                          <MenuItem value="BOTH">Both (TP + OD%)</MenuItem>
-                        </Select>
-                        {errors.commissionType && <FormHelperText error>{errors.commissionType}</FormHelperText>}
-                      </FormControl>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="OD Commission Percentage"
-                        value={newPolicy.odCommissionPercentage}
-                        onChange={handleNewPolicyChange('odCommissionPercentage')}
                         type="number"
                         InputProps={{
                           endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                          inputProps: { min: 0, max: 100 }
                         }}
-                        error={!!errors.odCommissionPercentage}
-                        helperText={errors.odCommissionPercentage}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="TP Commission Percentage"
-                        value={newPolicy.tpCommissionPercentage}
-                        onChange={handleNewPolicyChange('tpCommissionPercentage')}
-                        type="number"
-                        InputProps={{
-                          endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                        }}
-                        error={!!errors.tpCommissionPercentage}
-                        helperText={errors.tpCommissionPercentage}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Add-on Commission Percentage"
-                        value={newPolicy.addonCommissionPercentage}
-                        onChange={handleNewPolicyChange('addonCommissionPercentage')}
-                        type="number"
-                        InputProps={{
-                          endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                        }}
-                        error={!!errors.addonCommissionPercentage}
-                        helperText={errors.addonCommissionPercentage}
+                        error={!!errors.commissionPercentage}
+                        helperText={errors.commissionPercentage}
                       />
                     </Grid>
                     <Grid item xs={12} md={6}>
@@ -3006,17 +2833,6 @@ const PolicyStatus = ({ leads = [] }) => {
                         fullWidth
                         label="Commission Amount"
                         value={newPolicy.commissionAmount}
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                          readOnly: true
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Total Commission Amount"
-                        value={newPolicy.totalCommissionAmount}
                         InputProps={{
                           startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                           readOnly: true
@@ -3068,7 +2884,7 @@ const PolicyStatus = ({ leads = [] }) => {
         onClose={() => setViewModalOpen(false)}
         aria-labelledby="view-policy-modal"
       >
-                        <Box sx={{ 
+        <Box sx={{ 
           position: 'absolute',
           top: '50%',
           left: '50%',
@@ -3089,14 +2905,14 @@ const PolicyStatus = ({ leads = [] }) => {
           </Box>
           {selectedPolicy && (
             <>
-                          <Grid container spacing={3}>
+              <Grid container spacing={3}>
                 {/* Basic Information */}
                 <Grid item xs={12}>
                   <Typography variant="subtitle1" sx={{ mb: 2, color: 'primary.main', fontWeight: 'bold' }}>
                     Basic Information
                   </Typography>
                   <Grid container spacing={2}>
-                            <Grid item xs={12} md={6}>
+                    <Grid item xs={12} md={6}>
                       <Box sx={{ mb: 2 }}>
                         <Typography variant="subtitle2" color="text.secondary">Policy Number</Typography>
                         <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.policyNumber}</Typography>
@@ -3106,12 +2922,6 @@ const PolicyStatus = ({ leads = [] }) => {
                         <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.insuredName}</Typography>
                       </Box>
                       <Box sx={{ mb: 2 }}>
-                        <Typography variant="subtitle2" color="text.secondary">Client Name</Typography>
-                        <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.clientName}</Typography>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <Box sx={{ mb: 2 }}>
                         <Typography variant="subtitle2" color="text.secondary">Mobile Number</Typography>
                         <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.mobile || 'N/A'}</Typography>
                       </Box>
@@ -3119,24 +2929,15 @@ const PolicyStatus = ({ leads = [] }) => {
                         <Typography variant="subtitle2" color="text.secondary">Email</Typography>
                         <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.email || 'N/A'}</Typography>
                       </Box>
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="subtitle2" color="text.secondary">Nominee</Typography>
-                        <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.nominee || 'N/A'}</Typography>
-                      </Box>
                     </Grid>
-                  </Grid>
-                </Grid>
-
-                {/* Policy Details */}
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" sx={{ mb: 2, color: 'primary.main', fontWeight: 'bold' }}>
-                    Policy Details
-                  </Typography>
-                  <Grid container spacing={2}>
                     <Grid item xs={12} md={6}>
                       <Box sx={{ mb: 2 }}>
-                        <Typography variant="subtitle2" color="text.secondary">Insurance Company</Typography>
+                        <Typography variant="subtitle2" color="text.secondary">Company</Typography>
                         <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.company}</Typography>
+                      </Box>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">Business Type</Typography>
+                        <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.business}</Typography>
                       </Box>
                       <Box sx={{ mb: 2 }}>
                         <Typography variant="subtitle2" color="text.secondary">Start Date</Typography>
@@ -3147,44 +2948,14 @@ const PolicyStatus = ({ leads = [] }) => {
                         <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.endDate}</Typography>
                       </Box>
                     </Grid>
-                    <Grid item xs={12} md={6}>
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="subtitle2" color="text.secondary">Business Type</Typography>
-                        <Chip 
-                          label={selectedPolicy.business} 
-                          size="small"
-                          color={selectedPolicy.business === 'New' ? 'primary' : 'default'}
-                          sx={{ mt: 0.5 }}
-                        />
-                      </Box>
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="subtitle2" color="text.secondary">Premium Amount</Typography>
-                        <Typography variant="body1" sx={{ mt: 0.5 }}>
-                          {selectedPolicy.premium ? `₹${selectedPolicy.premium}` : 'N/A'}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="subtitle2" color="text.secondary">Status</Typography>
-                        <Chip 
-                          label={selectedPolicy.status} 
-                          size="small"
-                          color={
-                            selectedPolicy.status === 'Live Policy' ? 'success' :
-                            selectedPolicy.status === 'Quotation' ? 'warning' :
-                            'error'
-                          }
-                          sx={{ mt: 0.5 }}
-                        />
-                      </Box>
-                    </Grid>
                   </Grid>
                 </Grid>
 
-                {/* Type Specific Details */}
+                {/* Vehicle Policy Details */}
                 {selectedPolicy.type === 'vehicle' && (
                   <Grid item xs={12}>
                     <Typography variant="subtitle1" sx={{ mb: 2, color: 'primary.main', fontWeight: 'bold' }}>
-                      Vehicle Details
+                      Vehicle & Premium Details
                     </Typography>
                     <Grid container spacing={2}>
                       <Grid item xs={12} md={6}>
@@ -3196,24 +2967,105 @@ const PolicyStatus = ({ leads = [] }) => {
                           <Typography variant="subtitle2" color="text.secondary">Vehicle Number</Typography>
                           <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.vehicleNumber || 'N/A'}</Typography>
                         </Box>
-                      </Grid>
-                      <Grid item xs={12} md={6}>
                         <Box sx={{ mb: 2 }}>
-                          <Typography variant="subtitle2" color="text.secondary">Make & Model</Typography>
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {selectedPolicy.make && selectedPolicy.model ? 
-                              `${selectedPolicy.make} ${selectedPolicy.model}` : 'N/A'}
-                          </Typography>
+                          <Typography variant="subtitle2" color="text.secondary">Make</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.make || 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Model</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.model || 'N/A'}</Typography>
                         </Box>
                         <Box sx={{ mb: 2 }}>
                           <Typography variant="subtitle2" color="text.secondary">Manufacturing Year</Typography>
                           <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.year || 'N/A'}</Typography>
                         </Box>
                       </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Basic Premium</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.basicPremium ? `₹${selectedPolicy.basicPremium}` : 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">OD Premium</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.odPremium ? `₹${selectedPolicy.odPremium}` : 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">TP Premium</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.tpPremium ? `₹${selectedPolicy.tpPremium}` : 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">NCB Discount (%)</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.ncbDiscount || 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Add-on Premium</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.addonPremium ? `₹${selectedPolicy.addonPremium}` : 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">GST</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.gst ? `₹${selectedPolicy.gst}` : 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Total Premium</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.totalPremium ? `₹${selectedPolicy.totalPremium}` : 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Net Premium</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.netPremium ? `₹${selectedPolicy.netPremium}` : 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Payment Mode</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.paymentMode || 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Payment Reference</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.paymentReference || 'N/A'}</Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                    {/* Commission Details */}
+                    <Divider sx={{ my: 2 }} />
+                    <Typography variant="subtitle1" sx={{ mb: 2, color: 'primary.main', fontWeight: 'bold' }}>
+                      Commission Details
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Commission Type</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.commissionType || 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">OD Commission (%)</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.odCommissionPercentage || 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">TP Commission (%)</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.tpCommissionPercentage || 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Add-on Commission (%)</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.addonCommissionPercentage || 'N/A'}</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Commission Amount</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.commissionAmount ? `₹${selectedPolicy.commissionAmount}` : 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Total Commission Amount</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.totalCommissionAmount ? `₹${selectedPolicy.totalCommissionAmount}` : 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Effective Commission (%)</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.effectiveCommissionPercentage || 'N/A'}</Typography>
+                        </Box>
+                      </Grid>
                     </Grid>
                   </Grid>
                 )}
 
+                {/* Health Policy Details */}
                 {selectedPolicy.type === 'health' && (
                   <Grid item xs={12}>
                     <Typography variant="subtitle1" sx={{ mb: 2, color: 'primary.main', fontWeight: 'bold' }}>
@@ -3239,13 +3091,31 @@ const PolicyStatus = ({ leads = [] }) => {
                         </Box>
                         <Box sx={{ mb: 2 }}>
                           <Typography variant="subtitle2" color="text.secondary">Pre-existing Conditions</Typography>
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.preExisting || 'N/A'}</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{Array.isArray(selectedPolicy.preExistingConditions) ? selectedPolicy.preExistingConditions.join(', ') : (selectedPolicy.preExisting || 'N/A')}</Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                    {/* Commission Details */}
+                    <Divider sx={{ my: 2 }} />
+                    <Typography variant="subtitle1" sx={{ mb: 2, color: 'primary.main', fontWeight: 'bold' }}>
+                      Commission Details
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Commission Percentage</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.commissionPercentage || 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Commission Amount</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.commissionAmount ? `₹${selectedPolicy.commissionAmount}` : 'N/A'}</Typography>
                         </Box>
                       </Grid>
                     </Grid>
                   </Grid>
                 )}
 
+                {/* Travel Policy Details */}
                 {selectedPolicy.type === 'travel' && (
                   <Grid item xs={12}>
                     <Typography variant="subtitle1" sx={{ mb: 2, color: 'primary.main', fontWeight: 'bold' }}>
@@ -3261,13 +3131,25 @@ const PolicyStatus = ({ leads = [] }) => {
                           <Typography variant="subtitle2" color="text.secondary">Destination</Typography>
                           <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.destination || 'N/A'}</Typography>
                         </Box>
-                      </Grid>
-                      <Grid item xs={12} md={6}>
                         <Box sx={{ mb: 2 }}>
                           <Typography variant="subtitle2" color="text.secondary">Trip Duration</Typography>
                           <Typography variant="body1" sx={{ mt: 0.5 }}>
                             {selectedPolicy.tripDuration ? `${selectedPolicy.tripDuration} Days` : 'N/A'}
                           </Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Sum Insured</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.sumInsured ? `₹${selectedPolicy.sumInsured}` : 'N/A'}</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Commission Percentage</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.commissionPercentage || 'N/A'}</Typography>
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Commission Amount</Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{selectedPolicy.commissionAmount ? `₹${selectedPolicy.commissionAmount}` : 'N/A'}</Typography>
                         </Box>
                       </Grid>
                     </Grid>
@@ -3284,7 +3166,7 @@ const PolicyStatus = ({ leads = [] }) => {
                       {selectedPolicy.documents.map((doc, index) => (
                         <Chip
                           key={index}
-                          label={doc}
+                          label={typeof doc === 'string' ? doc : doc.name}
                           variant="outlined"
                           size="small"
                           icon={<DownloadIcon />}
@@ -3442,6 +3324,13 @@ const PolicyStatus = ({ leads = [] }) => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Add loading indicator */}
+      {loading && (
+        <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999 }}>
+          <LinearProgress />
+        </Box>
+      )}
     </Box>
   );
 };

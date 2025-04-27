@@ -22,11 +22,13 @@ import {
 } from "@mui/material";
 import { Edit, Delete, Search, FilterList } from "@mui/icons-material";
 import dayjs from "dayjs";
+import { updatePolicy } from '../../services/policyService';
 
 const Customers = ({ customers, setCustomers }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPolicy, setFilterPolicy] = useState("All");
   const [editingCustomer, setEditingCustomer] = useState(null);
+  const [editForm, setEditForm] = useState({});
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
 
   const policyTypes = ["Life Insurance", "Health Insurance", "Auto Insurance", "Home Insurance", "Travel Insurance"];
@@ -40,15 +42,38 @@ const Customers = ({ customers, setCustomers }) => {
   };
 
   const handleEditCustomer = (customer) => {
-    setEditingCustomer(customer);
+    setEditingCustomer(customer.id);
+    setEditForm({ ...customer });
   };
 
-  const handleSaveEdit = () => {
-    setCustomers(customers.map(c => 
-      c.id === editingCustomer.id ? editingCustomer : c
-    ));
-    setSnackbar({ open: true, message: "Customer updated successfully", severity: "success" });
+  const handleEditFormChange = (field, value) => {
+    setEditForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      await updatePolicy(editForm.id, {
+        insuredName: editForm.name,
+        mobile: editForm.phone,
+        email: editForm.email,
+        type: editForm.policy,
+        startDate: editForm.conversionDate,
+        // Add more fields if needed
+      });
+      setCustomers(customers.map(c => 
+        c.id === editForm.id ? { ...editForm } : c
+      ));
+      setSnackbar({ open: true, message: "Customer updated successfully", severity: "success" });
+      setEditingCustomer(null);
+      setEditForm({});
+    } catch (error) {
+      setSnackbar({ open: true, message: "Failed to update customer in database", severity: "error" });
+    }
+  };
+
+  const handleCancelEdit = () => {
     setEditingCustomer(null);
+    setEditForm({});
   };
 
   const handleDeleteCustomer = (id) => {
@@ -132,12 +157,12 @@ const Customers = ({ customers, setCustomers }) => {
                 <TableRow key={customer.id} hover>
                   <TableCell>
                     <Typography fontWeight="bold">{customer.name}</Typography>
-                    {editingCustomer?.id === customer.id && (
+                    {editingCustomer === customer.id && (
                       <TextField
                         fullWidth
                         size="small"
-                        value={editingCustomer.name}
-                        onChange={(e) => setEditingCustomer({...editingCustomer, name: e.target.value})}
+                        value={editForm.name}
+                        onChange={(e) => handleEditFormChange('name', e.target.value)}
                         sx={{ mt: 1 }}
                       />
                     )}
@@ -147,33 +172,33 @@ const Customers = ({ customers, setCustomers }) => {
                       <div>{customer.phone}</div>
                       {customer.email && <div style={{ fontSize: '0.8rem', color: '#666' }}>{customer.email}</div>}
                     </Box>
-                    {editingCustomer?.id === customer.id && (
+                    {editingCustomer === customer.id && (
                       <>
                         <TextField
                           fullWidth
                           size="small"
-                          value={editingCustomer.phone}
-                          onChange={(e) => setEditingCustomer({...editingCustomer, phone: e.target.value})}
+                          value={editForm.phone}
+                          onChange={(e) => handleEditFormChange('phone', e.target.value)}
                           sx={{ mt: 1 }}
                         />
                         <TextField
                           fullWidth
                           size="small"
-                          value={editingCustomer.email || ''}
-                          onChange={(e) => setEditingCustomer({...editingCustomer, email: e.target.value})}
+                          value={editForm.email || ''}
+                          onChange={(e) => handleEditFormChange('email', e.target.value)}
                           sx={{ mt: 1 }}
                         />
                       </>
                     )}
                   </TableCell>
                   <TableCell>
-                    {editingCustomer?.id === customer.id ? (
+                    {editingCustomer === customer.id ? (
                       <TextField
                         select
                         fullWidth
                         size="small"
-                        value={editingCustomer.policy}
-                        onChange={(e) => setEditingCustomer({...editingCustomer, policy: e.target.value})}
+                        value={editForm.policy}
+                        onChange={(e) => handleEditFormChange('policy', e.target.value)}
                       >
                         {policyTypes.map(policy => (
                           <MenuItem key={policy} value={policy}>{policy}</MenuItem>
@@ -195,21 +220,33 @@ const Customers = ({ customers, setCustomers }) => {
                     />
                   </TableCell>
                   <TableCell>
-                    {editingCustomer?.id === customer.id ? (
-                      <Button 
-                        variant="contained" 
-                        size="small" 
-                        color="primary"
-                        onClick={handleSaveEdit}
-                      >
-                        Save
-                      </Button>
+                    {editingCustomer === customer.id ? (
+                      <>
+                        <Button 
+                          variant="contained" 
+                          size="small" 
+                          color="primary"
+                          onClick={handleSaveEdit}
+                        >
+                          Save
+                        </Button>
+                        <Button 
+                          variant="contained" 
+                          size="small" 
+                          color="error"
+                          onClick={handleCancelEdit}
+                        >
+                          Cancel
+                        </Button>
+                      </>
                     ) : (
                       <>
                         <Tooltip title="Edit customer">
-                          <IconButton color="primary" onClick={() => handleEditCustomer(customer)}>
-                            <Edit />
-                          </IconButton>
+                          <span>
+                            <IconButton color="primary" onClick={() => handleEditCustomer(customer)} disabled={!customer.id}>
+                              <Edit />
+                            </IconButton>
+                          </span>
                         </Tooltip>
                         <Tooltip title="Delete customer">
                           <IconButton color="error" onClick={() => handleDeleteCustomer(customer.id)}>
