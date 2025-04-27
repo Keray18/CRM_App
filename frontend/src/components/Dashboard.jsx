@@ -758,7 +758,7 @@ const Dashboard = () => {
               <Grid item xs={12} md={3}>
                 <Card sx={{ bgcolor: primaryColor, color: "white", p: 2 }}>
                   <CardContent>
-                    <Typography variant="h6">Total Employees</Typography>
+                    <Typography variant="h6">Total Employees </Typography>
                     {dashboardStats.isLoading ? (
                       <CircularProgress size={40} sx={{ color: 'white', mt: 1 }} />
                     ) : dashboardStats.error ? (
