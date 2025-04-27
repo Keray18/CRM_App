@@ -1200,8 +1200,8 @@ const PolicyStatus = ({ leads = [] }) => {
                       }}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Avatar sx={{ bgcolor: '#1976d2', width: 32, height: 32, fontSize: '0.875rem' }}>
-                          {lead.name.charAt(0)}
+                        <Avatar sx={{ mr: 2, bgcolor: "primary.main" }}>
+                          {lead.name ? lead.name.charAt(0) : '?'}
                         </Avatar>
                         <Box sx={{ flex: 1 }}>
                           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'black' }}>
@@ -1246,8 +1246,8 @@ const PolicyStatus = ({ leads = [] }) => {
                     Selected Lead
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Avatar sx={{ bgcolor: '#2e7d32', width: 40, height: 40, fontSize: '1rem' }}>
-                      {selectedLead.name.charAt(0)}
+                    <Avatar sx={{ mr: 2, bgcolor: "primary.main" }}>
+                      {selectedLead.name ? selectedLead.name.charAt(0) : '?'}
                     </Avatar>
                     <Box>
                       <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'black' }}>

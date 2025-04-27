@@ -28,6 +28,9 @@ import {
   Snackbar,
   Alert,
   CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
 } from "@mui/material";
 import {
   Dashboard as DashboardIcon,
@@ -62,6 +65,8 @@ import PolicyStatus from "./AdminDash/PolicyStatus";
 import PolicyManagement from './AdminDash/PolicyManagement';
 import Commission from './AdminDash/Commission';
 import axios from 'axios';
+
+const API_URL = "http://localhost:8080/api";
 
 const primaryColor = "#1976d2";
 const secondaryColor = "#f50057";
@@ -139,6 +144,7 @@ const Dashboard = () => {
   const [tasks, setTasks] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [documentFiles, setDocumentFiles] = useState({});
+  const [policies, setPolicies] = useState([]);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -160,6 +166,8 @@ const Dashboard = () => {
     description: "",
     dueDate: "",
     status: "Pending",
+    leadId: "",
+    policyId: ""
   });
   const [openModal, setOpenModal] = useState(false);
   const [openTaskModal, setOpenTaskModal] = useState(false);
@@ -188,6 +196,7 @@ const Dashboard = () => {
     }
   });
   const navigate = useNavigate();
+  const [localLeads, setLocalLeads] = useState([]);
 
   const departments = ["Sales", "Support", "Development", "Marketing", "HR"];
   const taskTypes = [
@@ -434,7 +443,7 @@ const Dashboard = () => {
   // Password reset functionality
   const handlePasswordReset = async () => {
     try {
-      const newPassword = generatePassword();
+    const newPassword = generatePassword();
       
       // Make API call to update password
       const response = await axios.post('http://localhost:8080/api/auth/resetPassword', {
@@ -444,13 +453,13 @@ const Dashboard = () => {
 
       if (response.data) {
         // Update the employee's password in the UI
-        setEmployees(
-          employees.map((emp) =>
-            emp === selectedEmployee
-              ? { ...emp, password: newPassword }
-              : emp
-          )
-        );
+    setEmployees(
+      employees.map((emp) =>
+        emp === selectedEmployee
+          ? { ...emp, password: newPassword }
+          : emp
+      )
+    );
         
         setSnackbar({
           open: true,
@@ -525,24 +534,59 @@ const Dashboard = () => {
     ]);
   };
 
-  const handleTaskSubmit = () => {
-    setTasks([
-      ...tasks,
-      {
-        ...taskForm,
-        id: Date.now(),
-        assignedDate: new Date().toLocaleDateString(),
-      },
-    ]);
-    setOpenTaskModal(false);
-    setTaskForm({
-      employeeId: "",
-      employeeName: "",
-      taskType: "",
-      description: "",
-      dueDate: "",
-      status: "Pending",
-    });
+  const handleTaskSubmit = async () => {
+    try {
+      // Validate required fields
+      if (!taskForm.employeeId || !taskForm.taskType || !taskForm.description || !taskForm.dueDate) {
+        setSnackbar({
+          open: true,
+          message: "Please fill in all required fields",
+          severity: "error"
+        });
+        return;
+      }
+
+      // Format the task data
+      const taskData = {
+        employeeId: taskForm.employeeId,
+        employeeName: taskForm.employeeName,
+        taskType: taskForm.taskType,
+        description: taskForm.description,
+        dueDate: new Date(taskForm.dueDate).toISOString(),
+        status: "Pending"
+      };
+
+      const response = await axios.post('http://localhost:8080/api/tasks/create', taskData);
+      
+      if (response.data && response.data.task) {
+        setTasks([response.data.task, ...tasks]);
+        setOpenTaskModal(false);
+        // Reset form
+        setTaskForm({
+          employeeId: "",
+          employeeName: "",
+          taskType: "",
+          description: "",
+          dueDate: "",
+          status: "Pending",
+          leadId: "",
+          policyId: ""
+        });
+        
+        setSnackbar({
+          open: true,
+          message: "Task assigned successfully",
+          severity: "success"
+        });
+      }
+    } catch (error) {
+      console.error("Task creation error:", error);
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || "Error creating task. Please try again.",
+        severity: "error"
+      });
+    }
   };
 
   // Filter employees for search
@@ -619,6 +663,28 @@ const Dashboard = () => {
     localStorage.removeItem('userRole');
     navigate('/');
   };
+
+  // Add fetchLeads function
+  const fetchLeads = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/leads`);
+      setLocalLeads(response.data.leads || []);
+    } catch (error) {
+      console.error('Error fetching leads:', error);
+      setSnackbar({
+        open: true,
+        message: "Error fetching leads",
+        severity: "error"
+      });
+    }
+  };
+
+  // Update useEffect to fetch leads when task modal opens
+  useEffect(() => {
+    if (openTaskModal) {
+      fetchLeads();
+    }
+  }, [openTaskModal]);
 
   return (
     <Box
@@ -1228,7 +1294,7 @@ const Dashboard = () => {
                         <TableCell>
                           <Box sx={{ display: "flex", alignItems: "center" }}>
                             <Avatar sx={{ mr: 2, bgcolor: "#0C47A0" }}>
-                              {emp.name.charAt(0)}
+                              {emp.name ? emp.name.charAt(0) : '?'}
                             </Avatar>
                             {emp.name}
                           </Box>
@@ -1281,7 +1347,11 @@ const Dashboard = () => {
         )}
 
         {/* Task Assignment Modal */}
-        <Modal open={openTaskModal} onClose={() => setOpenTaskModal(false)}>
+        <Modal
+          open={openTaskModal}
+          onClose={() => setOpenTaskModal(false)}
+          aria-labelledby="task-assignment-modal"
+        >
           <Box
             sx={{
               position: "absolute",
@@ -1300,40 +1370,87 @@ const Dashboard = () => {
             </Typography>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
-                <TextField
-                  select
-                  fullWidth
-                  label="Task Type"
-                  value={taskForm.taskType}
-                  onChange={(e) =>
-                    setTaskForm({ ...taskForm, taskType: e.target.value })
-                  }
-                >
-                  {taskTypes.map((type) => (
-                    <MenuItem key={type} value={type}>
-                      {type}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                <FormControl fullWidth>
+                  <InputLabel>Task Type</InputLabel>
+                  <Select
+                    value={taskForm.taskType}
+                    onChange={(e) =>
+                      setTaskForm({ ...taskForm, taskType: e.target.value })
+                    }
+                    label="Task Type"
+                  >
+                    {taskTypes.map((type) => (
+                      <MenuItem key={type} value={type}>
+                        {type}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
                   type="date"
+                  label="Due Date"
                   value={taskForm.dueDate}
                   onChange={(e) =>
                     setTaskForm({ ...taskForm, dueDate: e.target.value })
                   }
-                  sx={{ 
-                    backgroundColor: "white",
-                    borderRadius: 1,
-                    "& .MuiInputLabel-root": { color: "black" },
-                    "& .MuiOutlinedInput-root": { color: "black" }
-                  }}
+                  InputLabelProps={{ shrink: true }}
                   inputProps={{
                     min: new Date().toISOString().split('T')[0]
                   }}
                 />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Select Lead</InputLabel>
+                  <Select
+                    value={taskForm.leadId}
+                    onChange={(e) =>
+                      setTaskForm({ ...taskForm, leadId: e.target.value })
+                    }
+                    label="Select Lead"
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
+                    {localLeads.map((lead) => (
+                      <MenuItem key={lead.id} value={lead.id}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Avatar sx={{ width: 24, height: 24, bgcolor: 'primary.main' }}>
+                            {lead.leadName ? lead.leadName.charAt(0) : '?'}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body1">{lead.leadName}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {lead.leadPhone} • {lead.leadEmail}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Related Policy</InputLabel>
+                  <Select
+                    value={taskForm.policyId}
+                    onChange={(e) =>
+                      setTaskForm({ ...taskForm, policyId: e.target.value })
+                    }
+                    label="Related Policy"
+                  >
+                    <MenuItem value="">None</MenuItem>
+                    {policies.map((policy) => (
+                      <MenuItem key={policy.id} value={policy.id}>
+                        {policy.policyNumber} - {policy.insuredName}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
               <Grid item xs={12}>
                 <TextField
@@ -1348,9 +1465,7 @@ const Dashboard = () => {
                 />
               </Grid>
               <Grid item xs={12}>
-                <Box
-                  sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}
-                >
+                <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
                   <Button onClick={() => setOpenTaskModal(false)}>
                     Cancel
                   </Button>
@@ -1358,10 +1473,6 @@ const Dashboard = () => {
                     variant="contained"
                     onClick={handleTaskSubmit}
                     disabled={!taskForm.taskType || !taskForm.description || !taskForm.dueDate}
-                    sx={{
-                      bgcolor: "#0C47A0",
-                      "&:hover": { bgcolor: "#1565c0" },
-                    }}
                   >
                     Assign Task
                   </Button>

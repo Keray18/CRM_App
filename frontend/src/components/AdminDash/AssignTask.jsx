@@ -59,10 +59,14 @@ const AssignTask = ({
     message: "",
     severity: "success"
   });
+  const [localLeads, setLocalLeads] = useState([]);
+  const [localEmployees, setLocalEmployees] = useState([]);
 
   // Fetch tasks on component mount
   useEffect(() => {
     fetchTasks();
+    fetchLeads();
+    fetchEmployees();
   }, []);
 
   const fetchTasks = async () => {
@@ -73,6 +77,34 @@ const AssignTask = ({
       setSnackbar({
         open: true,
         message: "Error fetching tasks",
+        severity: "error"
+      });
+    }
+  };
+
+  const fetchLeads = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/leads`);
+      setLocalLeads(response.data.leads || []);
+    } catch (error) {
+      console.error('Error fetching leads:', error);
+      setSnackbar({
+        open: true,
+        message: "Error fetching leads",
+        severity: "error"
+      });
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/auth/getAllEmployees`);
+      setLocalEmployees(response.data.employees || []);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      setSnackbar({
+        open: true,
+        message: "Error fetching employees",
         severity: "error"
       });
     }
@@ -202,11 +234,11 @@ const AssignTask = ({
     }
   };
 
-  const filteredEmployees = employees.filter(
+  const filteredEmployees = localEmployees.filter(
     (emp) =>
-      emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.phone.includes(searchTerm)
+      emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.phone?.includes(searchTerm)
   );
 
   return (
@@ -275,7 +307,7 @@ const AssignTask = ({
                   }}
                 >
                   <Avatar sx={{ mr: 2, bgcolor: "primary.main" }}>
-                    {employee.name.charAt(0)}
+                    {employee.name ? employee.name.charAt(0) : '?'}
                   </Avatar>
                   <Box>
                     <Typography variant="subtitle1">{employee.name}</Typography>
@@ -359,16 +391,16 @@ const AssignTask = ({
                   <MenuItem value="">
                     <em>None</em>
                   </MenuItem>
-                  {leads.map((lead) => (
+                  {localLeads.map((lead) => (
                     <MenuItem key={lead.id} value={lead.id}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Avatar sx={{ width: 24, height: 24, bgcolor: 'primary.main' }}>
-                          {lead.name.charAt(0)}
+                          {lead.leadName ? lead.leadName.charAt(0) : '?'}
                         </Avatar>
                         <Box>
-                          <Typography variant="body1">{lead.name}</Typography>
+                          <Typography variant="body1">{lead.leadName}</Typography>
                           <Typography variant="caption" color="text.secondary">
-                            {lead.phone} • {lead.email}
+                            {lead.leadPhone} • {lead.leadEmail}
                           </Typography>
                         </Box>
                       </Box>
@@ -457,8 +489,8 @@ const AssignTask = ({
                 <TableRow key={task.id} hover>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
-                        {task.employeeName.charAt(0)}
+                      <Avatar sx={{ mr: 2, bgcolor: "primary.main" }}>
+                        {task.employeeName ? task.employeeName.charAt(0) : '?'}
                       </Avatar>
                       {task.employeeName}
                     </Box>
@@ -469,7 +501,7 @@ const AssignTask = ({
                     {task.leadId && (
                       <Chip
                         icon={<LeadIcon />}
-                        label={`Lead: ${leads.find(l => l.id === task.leadId)?.name || 'N/A'}`}
+                        label={`Lead: ${localLeads.find(l => l.id === task.leadId)?.leadName || 'N/A'}`}
                         size="small"
                         sx={{ mr: 1 }}
                       />

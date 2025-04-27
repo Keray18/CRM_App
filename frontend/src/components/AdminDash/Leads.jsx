@@ -374,8 +374,8 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
                 <TableRow key={lead.id} hover>
                   <TableCell>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                      <Avatar sx={{ bgcolor: "#0C47A0" }}>
-                        {lead.leadName.charAt(0)}
+                      <Avatar sx={{ mr: 2, bgcolor: "primary.main" }}>
+                        {lead.leadName ? lead.leadName.charAt(0) : '?'}
                       </Avatar>
                       {lead.leadName}
                     </Box>

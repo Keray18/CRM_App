@@ -22,10 +22,28 @@ app.use('/api/auth', authRoutes)
 app.use('/api/leads', leadRoutes)
 app.use('/api/tasks', taskRoutes)
 
-// Warning: Use force: true only in dev
-sequelize.sync({ force: true }) 
-    .then(() => {
-        console.log('✅ Database synced with force');
-        app.listen(process.env.PORT, () => console.log(`🚀 Server is running on port ${process.env.PORT}`));
-    })
-    .catch((err) => console.error('❌ Error syncing database', err));
+// Sync database and start server
+const startServer = async () => {
+    try {
+        // Disable foreign key checks
+        await sequelize.query('SET FOREIGN_KEY_CHECKS = 0;');
+        
+        // Sync all models
+        await sequelize.sync({ force: true });
+        
+        // Re-enable foreign key checks
+        await sequelize.query('SET FOREIGN_KEY_CHECKS = 1;');
+        
+        console.log('✅ Database synced successfully');
+        
+        // Start server
+        app.listen(process.env.PORT, () => {
+            console.log(`🚀 Server is running on port ${process.env.PORT}`);
+        });
+    } catch (error) {
+        console.error('❌ Error starting server:', error);
+        process.exit(1);
+    }
+};
+
+startServer();

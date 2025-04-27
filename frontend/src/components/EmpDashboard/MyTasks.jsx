@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -20,6 +20,8 @@ import {
   DialogActions,
   TextField,
   MenuItem,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -27,15 +29,41 @@ import {
   Visibility as ViewIcon,
   CheckCircle as CompleteIcon,
 } from '@mui/icons-material';
+import axios from 'axios';
 
-const MyTasks = ({ tasks, setTasks }) => {
+const MyTasks = () => {
+  const [tasks, setTasks] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [openViewDialog, setOpenViewDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
-  const [editTask, setEditTask] = useState(null);
+  const [editForm, setEditForm] = useState({
+    status: '',
+    description: ''
+  });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  const fetchTasks = async () => {
+    try {
+      const response = await axios.get('http://localhost:8080/api/tasks');
+      if (response.data && response.data.tasks) {
+        setTasks(response.data.tasks);
+      }
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error fetching tasks. Please try again.',
+        severity: 'error'
+      });
+    }
+  };
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -47,13 +75,13 @@ const MyTasks = ({ tasks, setTasks }) => {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'Pending':
-        return 'warning';
-      case 'In Progress':
-        return 'info';
-      case 'Completed':
+    switch (status.toLowerCase()) {
+      case 'completed':
         return 'success';
+      case 'pending':
+        return 'warning';
+      case 'in progress':
+        return 'info';
       default:
         return 'default';
     }
@@ -65,7 +93,10 @@ const MyTasks = ({ tasks, setTasks }) => {
   };
 
   const handleEdit = (task) => {
-    setEditTask({ ...task });
+    setEditForm({
+      status: task.status,
+      description: task.description
+    });
     setOpenEditDialog(true);
   };
 
@@ -74,33 +105,79 @@ const MyTasks = ({ tasks, setTasks }) => {
     setOpenDeleteDialog(true);
   };
 
-  const handleComplete = (taskId) => {
-    setTasks(tasks.map(task => 
-      task.id === taskId 
-        ? { ...task, status: 'Completed' }
-        : task
-    ));
+  const handleComplete = async (taskId) => {
+    try {
+      const response = await axios.put(`http://localhost:8080/api/tasks/${taskId}`, {
+        status: 'Completed'
+      });
+      if (response.data && response.data.task) {
+        setTasks(tasks.map(task => 
+          task.id === taskId ? response.data.task : task
+        ));
+        setSnackbar({
+          open: true,
+          message: 'Task marked as completed',
+          severity: 'success'
+        });
+      }
+    } catch (error) {
+      console.error('Error updating task:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error updating task. Please try again.',
+        severity: 'error'
+      });
+    }
   };
 
-  const handleSaveEdit = () => {
-    if (!editTask) return;
-
-    setTasks(tasks.map(task => 
-      task.id === editTask.id 
-        ? { ...editTask }
-        : task
-    ));
-
-    setOpenEditDialog(false);
-    setEditTask(null);
+  const handleSaveEdit = async () => {
+    try {
+      const response = await axios.put(`http://localhost:8080/api/tasks/${selectedTask.id}`, {
+        status: editForm.status,
+        description: editForm.description
+      });
+      if (response.data && response.data.task) {
+        setTasks(tasks.map(task => 
+          task.id === selectedTask.id ? response.data.task : task
+        ));
+        setOpenEditDialog(false);
+        setSnackbar({
+          open: true,
+          message: 'Task updated successfully',
+          severity: 'success'
+        });
+      }
+    } catch (error) {
+      console.error('Error updating task:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error updating task. Please try again.',
+        severity: 'error'
+      });
+    }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!selectedTask) return;
 
-    setTasks(tasks.filter(task => task.id !== selectedTask.id));
-    setOpenDeleteDialog(false);
-    setSelectedTask(null);
+    try {
+      await axios.delete(`http://localhost:8080/api/tasks/${selectedTask.id}`);
+      setTasks(tasks.filter(task => task.id !== selectedTask.id));
+      setOpenDeleteDialog(false);
+      setSelectedTask(null);
+      setSnackbar({
+        open: true,
+        message: 'Task deleted successfully',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error deleting task. Please try again.',
+        severity: 'error'
+      });
+    }
   };
 
   return (
@@ -230,35 +307,13 @@ const MyTasks = ({ tasks, setTasks }) => {
       <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
         <DialogTitle>Edit Task</DialogTitle>
         <DialogContent>
-          {editTask && (
+          {selectedTask && (
             <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
               <TextField
-                label="Title"
-                value={editTask.title}
-                onChange={(e) => setEditTask({ ...editTask, title: e.target.value })}
-                fullWidth
-              />
-              <TextField
-                label="Description"
-                value={editTask.description}
-                onChange={(e) => setEditTask({ ...editTask, description: e.target.value })}
-                multiline
-                rows={4}
-                fullWidth
-              />
-              <TextField
-                label="Due Date"
-                type="date"
-                value={editTask.dueDate}
-                onChange={(e) => setEditTask({ ...editTask, dueDate: e.target.value })}
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-              />
-              <TextField
-                select
                 label="Status"
-                value={editTask.status}
-                onChange={(e) => setEditTask({ ...editTask, status: e.target.value })}
+                select
+                value={editForm.status}
+                onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
                 fullWidth
               >
                 <MenuItem value="Pending">Pending</MenuItem>
@@ -266,16 +321,13 @@ const MyTasks = ({ tasks, setTasks }) => {
                 <MenuItem value="Completed">Completed</MenuItem>
               </TextField>
               <TextField
-                select
-                label="Priority"
-                value={editTask.priority}
-                onChange={(e) => setEditTask({ ...editTask, priority: e.target.value })}
+                label="Description"
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                multiline
+                rows={4}
                 fullWidth
-              >
-                <MenuItem value="Low">Low</MenuItem>
-                <MenuItem value="Medium">Medium</MenuItem>
-                <MenuItem value="High">High</MenuItem>
-              </TextField>
+              />
             </Box>
           )}
         </DialogContent>
@@ -302,6 +354,20 @@ const MyTasks = ({ tasks, setTasks }) => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
