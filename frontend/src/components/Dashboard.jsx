@@ -62,6 +62,7 @@ import PolicyStatus from "./AdminDash/PolicyStatus";
 import PolicyManagement from './AdminDash/PolicyManagement';
 import Commission from './AdminDash/Commission';
 import axios from 'axios';
+import { getAllPolicies } from '../services/policyService';
 
 const primaryColor = "#1976d2";
 const secondaryColor = "#f50057";
@@ -619,6 +620,27 @@ const Dashboard = () => {
     localStorage.removeItem('userRole');
     navigate('/');
   };
+
+  useEffect(() => {
+    // Fetch all policies and populate customers
+    const fetchCustomersFromPolicies = async () => {
+      try {
+        const policies = await getAllPolicies();
+        const customersFromPolicies = policies.map(policy => ({
+          id: policy.id,
+          name: policy.insuredName,
+          phone: policy.mobile,
+          email: policy.email,
+          policy: policy.type,
+          conversionDate: policy.startDate || new Date().toISOString(),
+        }));
+        setCustomers(customersFromPolicies);
+      } catch (error) {
+        // Optionally handle error
+      }
+    };
+    fetchCustomersFromPolicies();
+  }, []);
 
   return (
     <Box
