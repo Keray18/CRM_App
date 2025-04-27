@@ -66,8 +66,7 @@ import PolicyManagement from './AdminDash/PolicyManagement';
 import Commission from './AdminDash/Commission';
 import axios from 'axios';
 import { getAllPolicies } from '../services/policyService';
-
-const API_URL = "http://localhost:8080/api";
+import { API_URL } from '../config/config';
 
 const primaryColor = "#1976d2";
 const secondaryColor = "#f50057";
@@ -198,6 +197,8 @@ const Dashboard = () => {
   });
   const navigate = useNavigate();
   const [localLeads, setLocalLeads] = useState([]);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedLead, setSelectedLead] = useState(null);
 
   const departments = ["Sales", "Support", "Development", "Marketing", "HR"];
   const taskTypes = [
@@ -665,7 +666,6 @@ const Dashboard = () => {
     navigate('/');
   };
 
-<<<<<<< HEAD
   // Add fetchLeads function
   const fetchLeads = async () => {
     try {
@@ -687,9 +687,9 @@ const Dashboard = () => {
       fetchLeads();
     }
   }, [openTaskModal]);
-=======
+
+  // Fetch all policies and populate customers
   useEffect(() => {
-    // Fetch all policies and populate customers
     const fetchCustomersFromPolicies = async () => {
       try {
         const policies = await getAllPolicies();
@@ -708,7 +708,6 @@ const Dashboard = () => {
     };
     fetchCustomersFromPolicies();
   }, []);
->>>>>>> 17002c191c1cb3000f3be1749a178cafea99220d
 
   return (
     <Box

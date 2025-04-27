@@ -27,9 +27,7 @@ import {
 import { CheckCircle, Delete, Upload as UploadIcon } from "@mui/icons-material";
 import dayjs from "dayjs";
 import axios from 'axios';
-
-// API base URL
-const API_URL = 'http://localhost:8080/api';
+import { API_URL } from "../../config/config";
 
 const Leads = ({ leads, setLeads, addCustomer }) => {
   const [leadData, setLeadData] = useState({ 

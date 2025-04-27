@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_URL = 'http://localhost:8080/api';
+import { API_URL } from '../config/config';
 
 // Get all policies with filtering
 export const getAllPolicies = async (filters = {}) => {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API_URL } from "../../config/config";
 import axios from "axios";
 import {
   Box,
@@ -32,8 +33,6 @@ import {
   Description as PolicyIcon,
   Business as LeadIcon
 } from "@mui/icons-material";
-
-const API_URL = "http://localhost:8080/api";
 
 const AssignTask = ({ 
   employees = [], 

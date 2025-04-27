@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Box, TextField, FormControl, InputLabel, Select, MenuItem, Button, Snackbar, Alert } from '@mui/material';
-
-const API_URL = 'http://localhost:8080/api';
+import { API_URL } from "../config/config";
 
 const AddEmployee = () => {
     const [formData, setFormData] = useState({

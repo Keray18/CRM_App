@@ -76,6 +76,8 @@ import {
   deletePolicy,
   updatePolicyStatus
 } from '../../services/policyService';
+import axios from 'axios';
+import { API_URL } from '../../config/config';
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
@@ -120,6 +122,7 @@ const PolicyStatus = ({ leads = [], addCustomer }) => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState(null);
+  const [localLeads, setLocalLeads] = useState([]);
 
   // Insurance companies
   const insuranceCompanies = [
@@ -318,19 +321,36 @@ const PolicyStatus = ({ leads = [], addCustomer }) => {
     }
   };
 
-  // Add lead selection handler
+  // Add fetchLeads function
+  const fetchLeads = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/leads`);
+      setLocalLeads(response.data.leads || []);
+    } catch (error) {
+      console.error('Error fetching leads:', error);
+      setSnackbar({
+        open: true,
+        message: "Error fetching leads",
+        severity: "error"
+      });
+    }
+  };
+
+  // Add useEffect to fetch leads when component mounts
+  useEffect(() => {
+    fetchLeads();
+  }, []);
+
+  // Update handleLeadSelect function
   const handleLeadSelect = (lead) => {
     setSelectedLead(lead);
+    // Update the newPolicy form with lead details
     setNewPolicy(prev => ({
       ...prev,
-      insuredName: lead.leadName,
-      mobile: lead.leadPhone,
-      email: lead.leadEmail,
-      type: lead.leadPolicyType || 'vehicle'
+      insuredName: lead?.leadName || '',
+      mobile: lead?.mobile || '',
+      email: lead?.email || ''
     }));
-    setInsuranceType(lead.leadPolicyType || 'vehicle');
-    setFilteredLeads([]);
-    setLeadSearchTerm('');
   };
 
   // First, update the handleTabChange function to be more explicit
@@ -1290,31 +1310,31 @@ const PolicyStatus = ({ leads = [], addCustomer }) => {
                       }}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Avatar sx={{ mr: 2, bgcolor: "primary.main" }}>
-                          {lead.name ? lead.name.charAt(0) : '?'}
+                        <Avatar sx={{ bgcolor: '#1976d2', width: 32, height: 32, fontSize: '0.875rem' }}>
+                          {lead?.name ? lead.name.charAt(0) : '?'}
                         </Avatar>
                         <Box sx={{ flex: 1 }}>
                           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'black' }}>
-                            {lead.name}
+                            {lead?.name || 'N/A'}
                           </Typography>
                           <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
-                            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
+                            <Typography key="phone" variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
                               <PhoneIcon sx={{ mr: 0.5, color: '#1976d2', fontSize: 16 }} />
-                              {lead.phone}
+                              {lead?.phone || 'N/A'}
                             </Typography>
-                            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
+                            <Typography key="email" variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
                               <EmailIcon sx={{ mr: 0.5, color: '#1976d2', fontSize: 16 }} />
-                              {lead.email}
+                              {lead?.email || 'N/A'}
                             </Typography>
                           </Box>
                           <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
-                            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
+                            <Typography key="date" variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
                               <CalendarTodayIcon sx={{ mr: 0.5, color: '#1976d2', fontSize: 16 }} />
-                              Added: {new Date(lead.date).toLocaleDateString()}
+                              Added: {lead?.date ? new Date(lead.date).toLocaleDateString() : 'N/A'}
                             </Typography>
-                            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
+                            <Typography key="remarks" variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
                               <InfoIcon sx={{ mr: 0.5, color: '#1976d2', fontSize: 16 }} />
-                              {lead.remarks}
+                              {lead?.remarks || 'N/A'}
                             </Typography>
                           </Box>
                         </Box>
@@ -1336,26 +1356,26 @@ const PolicyStatus = ({ leads = [], addCustomer }) => {
                     Selected Lead
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Avatar sx={{ mr: 2, bgcolor: "primary.main" }}>
-                      {selectedLead.name ? selectedLead.name.charAt(0) : '?'}
+                    <Avatar sx={{ bgcolor: '#2e7d32', width: 40, height: 40, fontSize: '1rem' }}>
+                      {selectedLead?.name ? selectedLead.name.charAt(0) : '?'}
                     </Avatar>
                     <Box>
                       <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'black' }}>
-                        {selectedLead.name}
+                        {selectedLead?.name || 'N/A'}
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
-                        <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
+                        <Typography key="selected-phone" variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
                           <PhoneIcon sx={{ mr: 0.5, color: '#2e7d32', fontSize: 16 }} />
-                          {selectedLead.phone}
+                          {selectedLead?.phone || 'N/A'}
                         </Typography>
-                        <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
+                        <Typography key="selected-email" variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
                           <EmailIcon sx={{ mr: 0.5, color: '#2e7d32', fontSize: 16 }} />
-                          {selectedLead.email}
+                          {selectedLead?.email || 'N/A'}
                         </Typography>
                       </Box>
                       <Typography variant="body2" sx={{ mt: 0.5, display: 'flex', alignItems: 'center', color: 'black' }}>
                         <InfoIcon sx={{ mr: 0.5, color: '#2e7d32', fontSize: 16 }} />
-                        {selectedLead.remarks}
+                        {selectedLead?.remarks || 'N/A'}
                       </Typography>
                     </Box>
                   </Box>
@@ -1446,12 +1466,12 @@ const PolicyStatus = ({ leads = [], addCustomer }) => {
                           <Box sx={{ p: 1 }}>
                             <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Required documents:</Typography>
                             <Box component="ul" sx={{ m: 0, pl: 2 }}>
-                              <li>Registration Certificate (RC)</li>
-                              <li>Previous Insurance Policy</li>
-                              <li>Vehicle Photos</li>
-                              <li>Invoice (new vehicles)</li>
-                              <li>Driving License</li>
-                              <li>ID & Address Proof</li>
+                              <li key="rc">Registration Certificate (RC)</li>
+                              <li key="prev-policy">Previous Insurance Policy</li>
+                              <li key="photos">Vehicle Photos</li>
+                              <li key="invoice">Invoice (new vehicles)</li>
+                              <li key="license">Driving License</li>
+                              <li key="id-proof">ID & Address Proof</li>
                             </Box>
                           </Box>
                         }
@@ -1572,7 +1592,7 @@ const PolicyStatus = ({ leads = [], addCustomer }) => {
                           {uploadedFiles.length > 0 ? (
                             uploadedFiles.map((file, index) => (
                               <Chip
-                                key={index}
+                                key={`${file.file.name}-${index}`}
                                 label={file.file.name}
                                 onDelete={() => removeFile(index)}
                                 size="small"
@@ -2475,11 +2495,14 @@ const PolicyStatus = ({ leads = [], addCustomer }) => {
                       <FormControl fullWidth error={!!errors.bloodGroup}>
                         <InputLabel sx={{ color: '#ffffff' }}>Blood Group</InputLabel>
                         <Select
-                          value={newPolicy.bloodGroup}
+                          value={newPolicy.bloodGroup || ''}
                           onChange={handleNewPolicyChange('bloodGroup')}
                           label="Blood Group"
                           sx={{ color: '#ffffff' }}
                         >
+                          <MenuItem value="">
+                            <em>None</em>
+                          </MenuItem>
                           {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map((group) => (
                             <MenuItem key={group} value={group}>{group}</MenuItem>
                           ))}
