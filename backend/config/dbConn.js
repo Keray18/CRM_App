@@ -12,7 +12,18 @@ const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
     }
 })
 
-// Authenticate connection
+// Function to sync database
+const syncDatabase = async () => {
+    try {
+        // Sync without force to preserve data
+        await sequelize.sync({ alter: true });
+        console.log('✅ Database synchronized successfully');
+    } catch (error) {
+        console.error('❌ Error syncing database', error);
+    }
+};
+
+// Authenticate and sync
 sequelize.authenticate()
     .then(() => {
         console.log('✅ Connected to MySQL successfully');
