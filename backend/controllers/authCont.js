@@ -26,17 +26,39 @@ const register = async (req, res) => {
             education: education,
             experience: experience,
             password: hashedPassword,
+            originalPassword: password // Store the original password
         })
         res.status(201).json({
             message: 'Employee registered successfully',
-            
+            employee: {
+                ...newEmployee.toJSON(),
+                password: password 
+            }
         })
     } catch (error) {
         res.status(500).json({
             message: 'Error registering employee',
             error: error.message
         })
-        
+    }
+}
+
+// Get all employees
+const getAllEmployees = async (req, res) => {
+    try {
+        const employees = await Employee.findAll()
+        const employeesWithOriginalPasswords = employees.map(emp => ({
+            ...emp.toJSON(),
+            password: emp.originalPassword // Return original password instead of hashed
+        }))
+        res.status(200).json({
+            employees: employeesWithOriginalPasswords
+        })
+    } catch (error) {
+        res.status(500).json({
+            message: 'Error fetching employees',
+            error: error.message
+        })
     }
 }
 
@@ -64,7 +86,10 @@ const login = async (req, res) => {
         const token = jwt.sign({ id: employee.id }, process.env.JWT_SECRET, { expiresIn: '7d'})
         res.status(200).json({
             message: 'Login successful',
-            employee: employee,
+            employee: {
+                ...employee.toJSON(),
+                password: employee.originalPassword // Return original password
+            },
             token: token
         })
     } catch (error) {
@@ -75,21 +100,38 @@ const login = async (req, res) => {
     }
 }
 
-// Get all employees
-const getAllEmployees = async (req, res) => {
+// Reset password
+const resetPassword = async (req, res) => {
     try {
-        const employees = await Employee.findAll()
+        const { employeeId, newPassword } = req.body
+        const hashedPassword = await bcrypt.hash(newPassword, 10)
+        
+        const employee = await Employee.findByPk(employeeId)
+        if (!employee) {
+            return res.status(404).json({
+                message: 'Employee not found'
+            })
+        }
+
+        await employee.update({
+            password: hashedPassword,
+            originalPassword: newPassword
+        })
+
         res.status(200).json({
-            message: 'Employees fetched successfully',
-            employees: employees
+            message: 'Password reset successfully',
+            employee: {
+                ...employee.toJSON(),
+                password: newPassword // Return the new original password
+            }
         })
     } catch (error) {
         res.status(500).json({
-            message: 'Error fetching employees',
+            message: 'Error resetting password',
             error: error.message
         })
     }
 }
 
 
-module.exports = { register, login, getAllEmployees }
+module.exports = { register, login, getAllEmployees, resetPassword }
