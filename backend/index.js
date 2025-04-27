@@ -22,10 +22,5 @@ app.use('/api/auth', authRoutes)
 app.use('/api/leads', leadRoutes)
 app.use('/api/tasks', taskRoutes)
 
-// Warning: Use force: true only in dev
-sequelize.sync({ force: true }) 
-    .then(() => {
-        console.log('✅ Database synced with force');
-        app.listen(process.env.PORT, () => console.log(`🚀 Server is running on port ${process.env.PORT}`));
-    })
-    .catch((err) => console.error('❌ Error syncing database', err));
+// Start server
+app.listen(process.env.PORT, () => console.log(`🚀 Server is running on port ${process.env.PORT}`));

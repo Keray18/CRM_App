@@ -12,22 +12,11 @@ const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
     }
 })
 
-// Function to sync database with force option
+// Function to sync database
 const syncDatabase = async () => {
     try {
-        // Disable foreign key checks
-        await sequelize.query('SET FOREIGN_KEY_CHECKS = 0;');
-        
-        // Drop all tables
-        await sequelize.query('DROP TABLE IF EXISTS `documents`;');
-        await sequelize.query('DROP TABLE IF EXISTS `leads`;');
-        
-        // Re-enable foreign key checks
-        await sequelize.query('SET FOREIGN_KEY_CHECKS = 1;');
-        
-        // Create tables first
-        await sequelize.sync({ force: true });
-        
+        // Sync without force to preserve data
+        await sequelize.sync({ alter: true });
         console.log('✅ Database synchronized successfully');
     } catch (error) {
         console.error('❌ Error syncing database', error);
