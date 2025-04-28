@@ -62,7 +62,7 @@ import Customers from "./AdminDash/Customers";
 import AssignTask from "./AdminDash/AssignTask";
 import Documents from "./AdminDash/Documents";
 import PolicyStatus from "./AdminDash/PolicyStatus";
-import PolicyManagement from './AdminDash/PolicyManagement';
+import MasterData from './AdminDash/MasterData';
 import Commission from './AdminDash/Commission';
 import axios from 'axios';
 import { getAllPolicies } from '../services/policyService';
@@ -1531,7 +1531,7 @@ const Dashboard = () => {
         {section === "Policy Status" && <PolicyStatus leads={leads} />}
 
         {/* Master Data */}
-        {section === "Master Data" && <PolicyManagement />}
+        {section === "Master Data" && <MasterData/>}
 
         {/* Documents */}
         {section === "Documents" && (

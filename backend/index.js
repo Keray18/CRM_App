@@ -4,6 +4,7 @@ const dotenv = require('dotenv').config()
 const authRoutes = require('./routes/authRoutes.js')
 const leadRoutes = require('./routes/leadRoutes.js')
 const taskRoutes = require('./routes/taskRoutes.js')
+const masterDataRoutes = require('./routes/masterDataRoutes.js')
 
 const cors = require('cors')
 
@@ -19,11 +20,16 @@ app.use(cors({
     origin: 'http://localhost:3000'
 }))
 
+// Sync MasterData model to auto-create table if not exists
+const MasterData = require('./models/MasterData');
+MasterData.sync({ alter: true });
+
 // Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/leads', leadRoutes)
 app.use('/api/tasks', taskRoutes)
 app.use('/api/policies', require('./routes/policyRoutes'))
+app.use('/api/masterdata', masterDataRoutes)
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -32,5 +38,5 @@ app.use((err, req, res, next) => {
 })
 
 // Start server
-const PORT = process.env.PORT || 5000
+const PORT = process.env.PORT || 8080
 app.listen(PORT, () => console.log(`🚀 Server is running on port ${PORT}`))
