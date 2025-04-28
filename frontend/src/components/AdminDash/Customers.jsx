@@ -31,7 +31,8 @@ const Customers = ({ customers, setCustomers }) => {
   const [editForm, setEditForm] = useState({});
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
 
-  const policyTypes = ["Life Insurance", "Health Insurance", "Auto Insurance", "Home Insurance", "Travel Insurance"];
+  // Updated policy types to match creation form options
+  const policyTypes = ["Vehicle", "Health", "Travel"];
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -52,21 +53,28 @@ const Customers = ({ customers, setCustomers }) => {
 
   const handleSaveEdit = async () => {
     try {
+      // Send all required fields, not just the edited ones
       await updatePolicy(editForm.id, {
+        policyNumber: editForm.policyNumber,
         insuredName: editForm.name,
         mobile: editForm.phone,
         email: editForm.email,
-        type: editForm.policy,
         startDate: editForm.conversionDate,
-        // Add more fields if needed
+        endDate: editForm.endDate,
+        company: editForm.company,
+        business: editForm.business,
+        type: editForm.policy,
+        status: editForm.status,
       });
-      setCustomers(customers.map(c => 
+
+      setCustomers(customers.map(c =>
         c.id === editForm.id ? { ...editForm } : c
       ));
       setSnackbar({ open: true, message: "Customer updated successfully", severity: "success" });
       setEditingCustomer(null);
       setEditForm({});
     } catch (error) {
+      console.error("Update error:", error);
       setSnackbar({ open: true, message: "Failed to update customer in database", severity: "error" });
     }
   };
@@ -81,13 +89,13 @@ const Customers = ({ customers, setCustomers }) => {
     setSnackbar({ open: true, message: "Customer deleted successfully", severity: "info" });
   };
 
-  const filteredCustomers = customers.filter(customer => {
+  const filteredCustomers = Array.isArray(customers) ? customers.filter(customer => {
     const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         customer.phone.includes(searchTerm) ||
-                         customer.email?.toLowerCase().includes(searchTerm.toLowerCase());
+                       customer.phone.includes(searchTerm) ||
+                       customer.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterPolicy === "All" || customer.policy === filterPolicy;
     return matchesSearch && matchesFilter;
-  });
+  }) : [];
 
   return (
     <Box sx={{ p: 3 }}>
@@ -148,12 +156,12 @@ const Customers = ({ customers, setCustomers }) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredCustomers.length === 0 ? (
+            {Array.isArray(filteredCustomers) && filteredCustomers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} align="center">No customers found</TableCell>
               </TableRow>
             ) : (
-              filteredCustomers.map((customer) => (
+              Array.isArray(filteredCustomers) && filteredCustomers.map((customer) => (
                 <TableRow key={customer.id} hover>
                   <TableCell>
                     <Typography fontWeight="bold">{customer.name}</Typography>
@@ -205,51 +213,81 @@ const Customers = ({ customers, setCustomers }) => {
                         ))}
                       </TextField>
                     ) : (
-                      customer.policy || '-'
+                      <Chip 
+                        label={customer.policy} 
+                        size="small" 
+                        color={
+                          customer.policy === "Vehicle" ? "primary" :
+                          customer.policy === "Health" ? "success" :
+                          customer.policy === "Travel" ? "info" : "default"
+                        }
+                      />
                     )}
                   </TableCell>
                   <TableCell>
-                    {dayjs(customer.conversionDate || customer.date).format('MMM D, YYYY')}
+                    {editingCustomer === customer.id ? (
+                      <TextField
+                        type="date"
+                        fullWidth
+                        size="small"
+                        value={editForm.conversionDate}
+                        onChange={(e) => handleEditFormChange('conversionDate', e.target.value)}
+                      />
+                    ) : (
+                      customer.conversionDate
+                    )}
                   </TableCell>
                   <TableCell>
                     <Chip 
-                      label="Active" 
-                      color="success" 
-                      size="small"
-                      sx={{ color: 'white' }}
+                      label={customer.status || "Unknown"} 
+                      size="small" 
+                      color={
+                        customer.status === "Active"
+                          ? "success"
+                          : customer.status === "Pending"
+                          ? "warning"
+                          : customer.status === "Lapsed"
+                          ? "default"
+                          : "error"
+                      }
+                      sx={{ color: "#fff", fontWeight: "bold" }}
                     />
                   </TableCell>
                   <TableCell>
                     {editingCustomer === customer.id ? (
-                      <>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
                         <Button 
                           variant="contained" 
-                          size="small" 
-                          color="primary"
+                          color="primary" 
+                          size="small"
                           onClick={handleSaveEdit}
                         >
                           Save
                         </Button>
                         <Button 
-                          variant="contained" 
-                          size="small" 
-                          color="error"
+                          variant="outlined" 
+                          color="error" 
+                          size="small"
                           onClick={handleCancelEdit}
                         >
                           Cancel
                         </Button>
-                      </>
+                      </Box>
                     ) : (
                       <>
-                        <Tooltip title="Edit customer">
-                          <span>
-                            <IconButton color="primary" onClick={() => handleEditCustomer(customer)} disabled={!customer.id}>
-                              <Edit />
-                            </IconButton>
-                          </span>
+                        <Tooltip title="Edit Customer">
+                          <IconButton 
+                            color="primary" 
+                            onClick={() => handleEditCustomer(customer)}
+                          >
+                            <Edit />
+                          </IconButton>
                         </Tooltip>
-                        <Tooltip title="Delete customer">
-                          <IconButton color="error" onClick={() => handleDeleteCustomer(customer.id)}>
+                        <Tooltip title="Delete Customer">
+                          <IconButton 
+                            color="error" 
+                            onClick={() => handleDeleteCustomer(customer.id)}
+                          >
                             <Delete />
                           </IconButton>
                         </Tooltip>
@@ -263,36 +301,15 @@ const Customers = ({ customers, setCustomers }) => {
         </Table>
       </TableContainer>
 
-      {/* Stats Summary */}
-      <Box sx={{ mt: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-        <Card sx={{ minWidth: 150, backgroundColor: "primary.main", color: "white" }}>
-          <CardContent>
-            <Typography variant="h6">Total Customers</Typography>
-            <Typography variant="h4">{customers.length}</Typography>
-          </CardContent>
-        </Card>
-        {policyTypes.map(policy => {
-          const count = customers.filter(c => c.policy === policy).length;
-          if (count === 0) return null;
-          return (
-            <Card key={policy} sx={{ minWidth: 150 }}>
-              <CardContent>
-                <Typography variant="subtitle1">{policy}</Typography>
-                <Typography variant="h5">{count}</Typography>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </Box>
-
-      {/* Snackbar for notifications */}
       <Snackbar 
         open={snackbar.open} 
         autoHideDuration={6000} 
         onClose={() => setSnackbar({...snackbar, open: false})}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert onClose={() => setSnackbar({...snackbar, open: false})} severity={snackbar.severity}>
+        <Alert 
+          onClose={() => setSnackbar({...snackbar, open: false})} 
+          severity={snackbar.severity}
+        >
           {snackbar.message}
         </Alert>
       </Snackbar>

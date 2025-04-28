@@ -20,13 +20,17 @@ import {
   Phone as PhoneIcon,
   Email as EmailIcon,
 } from '@mui/icons-material';
+import Leads from 'components/AdminDash/Leads';
 
 const MyLeads = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Sample data - replace with actual data from your backend
-  const leads = [
+  // Replace this:
+  // const leads = [ ... ];
+  // With this:
+  const [leads, setLeads] = useState([
     {
       id: 1,
       name: 'John Doe',
@@ -57,7 +61,7 @@ const MyLeads = () => {
       assignedDate: '2024-03-13',
       lastContact: '2024-03-14',
     },
-  ];
+  ]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -105,99 +109,9 @@ const MyLeads = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" gutterBottom color="primary">
-        My Leads
-      </Typography>
-      
-      <Paper sx={{ width: '100%', mb: 2, boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)' }}>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Contact</TableCell>
-                <TableCell>Source</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Assigned Date</TableCell>
-                <TableCell>Last Contact</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {leads
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((lead) => (
-                  <TableRow key={lead.id} hover>
-                    <TableCell>{lead.name}</TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Tooltip title="Call">
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => handleCall(lead.phone)}
-                          >
-                            <PhoneIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Email">
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => handleEmail(lead.email)}
-                          >
-                            <EmailIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    </TableCell>
-                    <TableCell>{lead.source}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={lead.status}
-                        color={getStatusColor(lead.status)}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>{lead.assignedDate}</TableCell>
-                    <TableCell>{lead.lastContact}</TableCell>
-                    <TableCell>
-                      <Tooltip title="View Lead">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => handleView(lead.id)}
-                        >
-                          <ViewIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Edit Lead">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => handleEdit(lead.id)}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={leads.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
-      </Paper>
+      <Leads leads={leads} setLeads={setLeads} />
     </Box>
   );
 };
 
-export default MyLeads; 
+export default MyLeads;

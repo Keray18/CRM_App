@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios'; // Import axios
+import { List, ListItem, ListItemIcon, ListItemText } from '@mui/material';
+import PersonIcon from '@mui/icons-material/Person';
 import {
   Box,
   Typography,
@@ -64,7 +67,7 @@ import {
   CalendarToday as CalendarTodayIcon,
   Info as InfoIcon,
   Description,
-  Refresh as RenewIcon
+  Autorenew as RenewIcon, // Change 'Renew' to 'Autorenew'
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import {
@@ -76,7 +79,7 @@ import {
   deletePolicy,
   updatePolicyStatus
 } from '../../services/policyService';
-import axios from 'axios';
+// import axios from 'axios'; // Already imported above
 import { API_URL } from '../../config/config';
 
 const VisuallyHiddenInput = styled('input')({
@@ -91,7 +94,7 @@ const VisuallyHiddenInput = styled('input')({
   width: 1,
 });
 
-const PolicyStatus = ({ leads = [], addCustomer }) => {
+const PolicyStatus = ({ addCustomer }) => { // Removed leads prop
   const [searchTerm, setSearchTerm] = useState('');
   const [currentTab, setCurrentTab] = useState('all');
   const [anchorEl, setAnchorEl] = useState(null);
@@ -123,6 +126,7 @@ const PolicyStatus = ({ leads = [], addCustomer }) => {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState(null);
   const [localLeads, setLocalLeads] = useState([]);
+  const [allLeadsForSearch, setAllLeadsForSearch] = useState([]); // State to hold all leads for search
 
   // Insurance companies
   const insuranceCompanies = [
@@ -261,11 +265,38 @@ const PolicyStatus = ({ leads = [], addCustomer }) => {
     setPolicies(initialPolicies);
   }, []);
 
-  // Fetch policies on component mount
+  // Fetch policies on component mount and leads when modal opens
   useEffect(() => {
+    const fetchAllLeads = async () => {
+      try {
+        // Use the provided API endpoint
+        const response = await axios.get(`http://localhost:8080/api/leads`);
+        if (response.data && Array.isArray(response.data.leads)) {
+          setAllLeadsForSearch(response.data.leads);
+        } else {
+           setAllLeadsForSearch([]); // Ensure it's an empty array if data is not as expected
+           console.error("Fetched leads data is not an array:", response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching all leads:', error);
+        setSnackbar({
+          open: true,
+          message: 'Error fetching leads for search',
+          severity: 'error',
+        });
+         setAllLeadsForSearch([]); // Reset on error
+      }
+    };
+
+    // Fetch leads when the new policy modal is opened
+    if (openNewPolicy) {
+        fetchAllLeads();
+    }
+    // Fetch policies and stats (existing logic)
     fetchPolicies();
-    fetchStats();
-  }, [currentTab, searchTerm, currentMonth]);
+    fetchStats(); // Renamed from fetchPolicyStats if that was intended
+
+  }, [openNewPolicy, currentTab, searchTerm, currentMonth]); // Add openNewPolicy dependency
 
   // Fetch policies with filters
   const fetchPolicies = async () => {
@@ -299,25 +330,21 @@ const PolicyStatus = ({ leads = [], addCustomer }) => {
     }
   };
 
-  // Handle lead search
-  const handleLeadSearch = async (event) => {
-    const searchTerm = event.target.value;
-    setLeadSearchTerm(searchTerm);
-    
-    if (searchTerm.trim() === '') {
-      setFilteredLeads([]);
-      return;
-    }
-
-    try {
-      const leads = await getLeadsForPolicy(searchTerm);
-      setFilteredLeads(leads);
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: error.message || 'Error fetching leads',
-        severity: 'error'
-      });
+  // Update lead search handler
+  const handleLeadSearch = (event) => {
+    const term = event.target.value;
+    setLeadSearchTerm(term);
+    if (term) {
+      const lowerCaseTerm = term.toLowerCase();
+      // Filter from the locally stored allLeadsForSearch
+      const results = allLeadsForSearch.filter(lead =>
+        (lead.leadName && lead.leadName.toLowerCase().includes(lowerCaseTerm)) ||
+        (lead.leadEmail && lead.leadEmail.toLowerCase().includes(lowerCaseTerm)) ||
+        (lead.leadPhone && lead.leadPhone.includes(term)) // Phone might not need lowercasing
+      );
+      setFilteredLeads(results);
+    } else {
+      setFilteredLeads([]); // Clear results if search term is empty
     }
   };
 
@@ -341,16 +368,19 @@ const PolicyStatus = ({ leads = [], addCustomer }) => {
     fetchLeads();
   }, []);
 
-  // Update handleLeadSelect function
+  // Update lead selection handler
   const handleLeadSelect = (lead) => {
     setSelectedLead(lead);
-    // Update the newPolicy form with lead details
     setNewPolicy(prev => ({
       ...prev,
-      insuredName: lead?.leadName || '',
-      mobile: lead?.mobile || '',
-      email: lead?.email || ''
+      insuredName: lead.leadName || '', // Use leadName from the lead object
+      mobile: lead.leadPhone || '',    // Use leadPhone
+      email: lead.leadEmail || '',      // Use leadEmail
+      // Reset other fields if needed or pre-fill based on lead type
+      type: lead.leadPolicyType || insuranceType, // Pre-fill type if available
     }));
+    setLeadSearchTerm(''); // Clear search term
+    setFilteredLeads([]); // Clear search results
   };
 
   // First, update the handleTabChange function to be more explicit
@@ -1157,13 +1187,8 @@ const PolicyStatus = ({ leads = [], addCustomer }) => {
                     <Tooltip title="Renew Policy">
                       <IconButton
                         size="small"
+                        color="success"
                         onClick={() => handleRenew(policy)}
-                        sx={{ 
-                          color: '#2E7D32',
-                          '&:hover': {
-                            backgroundColor: 'rgba(46, 125, 50, 0.04)',
-                          },
-                        }}
                       >
                         <RenewIcon />
                       </IconButton>
@@ -1206,13 +1231,14 @@ const PolicyStatus = ({ leads = [], addCustomer }) => {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: '95%',
-          maxWidth: '1200px',
+          width: '95%', // Adjusted width
+          maxWidth: '1200px', // Adjusted maxWidth
           maxHeight: '90vh',
           bgcolor: 'background.paper',
           boxShadow: 24,
           borderRadius: 1,
           overflow: 'auto',
+          // p: 3 // Padding moved to inner boxes
         }}>
           <Box sx={{ 
             position: 'sticky', 
@@ -1232,7 +1258,7 @@ const PolicyStatus = ({ leads = [], addCustomer }) => {
               setOpenNewPolicy(false);
               resetForm();
               handleReset();
-              setSelectedLead(null);
+              setSelectedLead(null); // Ensure selectedLead is reset
             }} size="small">
               <CloseIcon />
             </IconButton>
@@ -1253,9 +1279,9 @@ const PolicyStatus = ({ leads = [], addCustomer }) => {
               </Typography>
               <TextField
                 fullWidth
-                placeholder="Search by name, phone, or email"
+                placeholder="Search by name, email, or phone..."
                 value={leadSearchTerm}
-                onChange={handleLeadSearch}
+                onChange={handleLeadSearch} // Use updated handler
                 sx={{
                   backgroundColor: 'white',
                   borderRadius: 1,
@@ -1281,105 +1307,50 @@ const PolicyStatus = ({ leads = [], addCustomer }) => {
                   ),
                 }}
               />
-              {filteredLeads.length > 0 && (
-                <Box sx={{ 
-                  mt: 2, 
-                  maxHeight: 300, 
-                  overflow: 'auto',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: 1,
-                  backgroundColor: 'white',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                }}>
-                  {filteredLeads.map((lead) => (
-                    <Box
-                      key={lead._id}
-                      onClick={() => handleLeadSelect(lead)}
-                      sx={{
-                        p: 1.5,
-                        cursor: 'pointer',
-                        borderBottom: '1px solid #e0e0e0',
-                        '&:last-child': {
-                          borderBottom: 'none'
-                        },
-                        '&:hover': {
-                          backgroundColor: '#f0f7ff',
-                          transform: 'scale(1.01)',
-                          transition: 'all 0.2s ease-in-out'
-                        },
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Avatar sx={{ bgcolor: '#1976d2', width: 32, height: 32, fontSize: '0.875rem' }}>
-                          {lead?.name ? lead.name.charAt(0) : '?'}
-                        </Avatar>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'black' }}>
-                            {lead?.name || 'N/A'}
-                          </Typography>
-                          <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
-                            <Typography key="phone" variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
-                              <PhoneIcon sx={{ mr: 0.5, color: '#1976d2', fontSize: 16 }} />
-                              {lead?.phone || 'N/A'}
-                            </Typography>
-                            <Typography key="email" variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
-                              <EmailIcon sx={{ mr: 0.5, color: '#1976d2', fontSize: 16 }} />
-                              {lead?.email || 'N/A'}
-                            </Typography>
-                          </Box>
-                          <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
-                            <Typography key="date" variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
-                              <CalendarTodayIcon sx={{ mr: 0.5, color: '#1976d2', fontSize: 16 }} />
-                              Added: {lead?.date ? new Date(lead.date).toLocaleDateString() : 'N/A'}
-                            </Typography>
-                            <Typography key="remarks" variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
-                              <InfoIcon sx={{ mr: 0.5, color: '#1976d2', fontSize: 16 }} />
-                              {lead?.remarks || 'N/A'}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </Box>
-                    </Box>
-                  ))}
-                </Box>
+              {/* Display Search Results */}
+              {leadSearchTerm && (
+                 <Paper sx={{ maxHeight: 200, overflow: 'auto', mt: 1 }}>
+                   <List dense>
+                     {filteredLeads.length > 0 ? (
+                       filteredLeads.map((lead) => (
+                         <ListItem
+                           key={lead._id || lead.id} // Use a unique key like lead.id or _id
+                           button
+                           onClick={() => handleLeadSelect(lead)} // Use updated handler
+                         >
+                           <ListItemIcon>
+                             <PersonIcon />
+                           </ListItemIcon>
+                           {/* Display actual lead data */}
+                           <ListItemText
+                             primary={lead.leadName || 'N/A'} // Show name
+                             secondary={
+                               <>
+                                 <Typography component="span" variant="body2" color="text.primary">
+                                   {lead.leadEmail || 'No Email'}
+                                 </Typography>
+                                 {` — ${lead.leadPhone || 'No Phone'}`}
+                               </>
+                             }
+                           />
+                         </ListItem>
+                       ))
+                     ) : (
+                       <ListItem>
+                         <ListItemText primary="No leads found" />
+                       </ListItem>
+                     )}
+                   </List>
+                 </Paper>
               )}
+              {/* Display Selected Lead Info */}
               {selectedLead && (
-                <Box sx={{ 
-                  mt: 2, 
-                  p: 2, 
-                  backgroundColor: '#e8f5e9', 
-                  borderRadius: 2,
-                  border: '2px solid #2e7d32',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                }}>
-                  <Typography variant="subtitle1" sx={{ color: '#2e7d32', fontWeight: 'bold', mb: 1 }}>
-                    Selected Lead
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Avatar sx={{ bgcolor: '#2e7d32', width: 40, height: 40, fontSize: '1rem' }}>
-                      {selectedLead?.name ? selectedLead.name.charAt(0) : '?'}
-                    </Avatar>
-                    <Box>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'black' }}>
-                        {selectedLead?.name || 'N/A'}
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
-                        <Typography key="selected-phone" variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
-                          <PhoneIcon sx={{ mr: 0.5, color: '#2e7d32', fontSize: 16 }} />
-                          {selectedLead?.phone || 'N/A'}
-                        </Typography>
-                        <Typography key="selected-email" variant="body2" sx={{ display: 'flex', alignItems: 'center', color: 'black' }}>
-                          <EmailIcon sx={{ mr: 0.5, color: '#2e7d32', fontSize: 16 }} />
-                          {selectedLead?.email || 'N/A'}
-                        </Typography>
-                      </Box>
-                      <Typography variant="body2" sx={{ mt: 0.5, display: 'flex', alignItems: 'center', color: 'black' }}>
-                        <InfoIcon sx={{ mr: 0.5, color: '#2e7d32', fontSize: 16 }} />
-                        {selectedLead?.remarks || 'N/A'}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Box>
+                <Card variant="outlined" sx={{ mb: 2, p: 1.5, bgcolor: 'action.hover', border: '1px solid #ccc', color: '#1976d2' }}>
+                   <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 0.5 }}>Selected Lead:</Typography>
+                   <Typography variant="body2">Name: {selectedLead.leadName || 'N/A'}</Typography>
+                   <Typography variant="body2">Email: {selectedLead.leadEmail || 'N/A'}</Typography>
+                   <Typography variant="body2">Phone: {selectedLead.leadPhone || 'N/A'}</Typography>
+                </Card>
               )}
             </Box>
 
@@ -2875,6 +2846,7 @@ const PolicyStatus = ({ leads = [], addCustomer }) => {
                   setOpenNewPolicy(false);
                   resetForm();
                   handleReset();
+                  setSelectedLead(null); // Reset selected lead on cancel
                 }}
                 sx={{ textTransform: 'none', color: '#ffffff' }}
                 disabled={isSubmitting}
