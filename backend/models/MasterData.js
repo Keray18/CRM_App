@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/dbConn.js');
+const { sequelize } = require('../config/dbConn.js');
 
 const MasterData = sequelize.define('MasterData', {
   id: {

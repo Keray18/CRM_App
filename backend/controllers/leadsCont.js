@@ -1,7 +1,7 @@
 const Leads = require('../models/LeadsModel.js');
 const { upload } = require('../config/cloudinary.js');
 const { cloudinary } = require('../config/cloudinary.js');
-const sequelize = require('../config/dbConn.js'); 
+const { sequelize } = require('../config/dbConn.js'); 
 
 const leadsController = {
    

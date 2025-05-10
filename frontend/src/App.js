@@ -1,11 +1,21 @@
-import React from 'react';
-import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import React, { lazy, Suspense, useMemo } from 'react';
+import { ThemeProvider, createTheme, CssBaseline, CircularProgress, Box } from '@mui/material';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './components/Login';
-import Dashboard from './components/Dashboard';
-import EmpDashboard from './components/EmpDashboard';
 
-const theme = createTheme({
+// Lazy load components
+const Login = lazy(() => import('./components/Login'));
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const EmpDashboard = lazy(() => import('./components/EmpDashboard'));
+
+// Loading component
+const LoadingFallback = () => (
+  <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+    <CircularProgress />
+  </Box>
+);
+
+// Memoized theme creation
+const theme = useMemo(() => createTheme({
   palette: {
     mode: 'dark',
     primary: {
@@ -78,38 +88,10 @@ const theme = createTheme({
       },
     },
   },
-});
+}), []);
 
-function App() {
-  return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Login />} />
-          <Route 
-            path="/dashboard" 
-            element={
-              <RequireAuth role="admin">
-                <Dashboard />
-              </RequireAuth>
-            } 
-          />
-          <Route 
-            path="/emp-dashboard" 
-            element={
-              <RequireAuth role="employee">
-                <EmpDashboard />
-              </RequireAuth>
-            } 
-          />
-        </Routes>
-      </BrowserRouter>
-    </ThemeProvider>
-  );
-}
-
-function RequireAuth({ children, role }) {
+// Memoized RequireAuth component
+const RequireAuth = React.memo(({ children, role }) => {
   const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
   const userRole = localStorage.getItem('userRole');
   
@@ -122,6 +104,37 @@ function RequireAuth({ children, role }) {
   }
 
   return children;
+});
+
+function App() {
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <BrowserRouter>
+        <Suspense fallback={<LoadingFallback />}>
+          <Routes>
+            <Route path="/" element={<Login />} />
+            <Route 
+              path="/dashboard" 
+              element={
+                <RequireAuth role="admin">
+                  <Dashboard />
+                </RequireAuth>
+              } 
+            />
+            <Route 
+              path="/emp-dashboard" 
+              element={
+                <RequireAuth role="employee">
+                  <EmpDashboard />
+                </RequireAuth>
+              } 
+            />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </ThemeProvider>
+  );
 }
 
-export default App;
+export default React.memo(App);

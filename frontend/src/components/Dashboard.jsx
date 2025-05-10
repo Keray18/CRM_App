@@ -220,15 +220,16 @@ const Dashboard = () => {
     try {
       const [employeesRes, leadsRes, tasksRes, paymentsRes] = await Promise.all([
         axios.get('http://localhost:8080/api/auth/getAllEmployees'),
-        // Add other API calls here when available
-        Promise.resolve({ data: { leads: leads.filter(lead => !lead.isDeleted && !lead.isConverted) } }),
-        Promise.resolve({ data: { tasks: tasks.filter(task => task.status !== 'Completed') } }),
+        axios.get(`${API_URL}/leads`),
+        axios.get(`${API_URL}/tasks`),
         Promise.resolve({ data: { payments } })
       ]);
 
       const employeesArray = employeesRes.data.employees || [];
-      const activeLeads = leadsRes.data.leads || [];
-      const activeTasks = tasksRes.data.tasks || [];
+      // Only leads that are not deleted and not converted are active
+      const activeLeads = (leadsRes.data.leads || []).filter(lead => !lead.isDeleted && !lead.isConverted);
+      // Only tasks that are not completed are active
+      const activeTasks = (tasksRes.data.tasks || []).filter(task => task.status !== 'Completed');
       const totalPayments = paymentsRes.data.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0;
 
       setDashboardStats({

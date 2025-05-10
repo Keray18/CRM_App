@@ -18,13 +18,17 @@
     "react-router-dom": "^6.22.1",
     "react-scripts": "5.0.1",
     "recharts": "^2.15.3",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "react-query": "^3.39.3",
+    "react-window": "^1.8.9",
+    "react-virtualized": "^9.22.5"
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "GENERATE_SOURCEMAP=false react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "analyze": "source-map-explorer 'build/static/js/*.js'"
   },
   "eslintConfig": {
     "extends": [
@@ -43,5 +47,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "source-map-explorer": "^2.5.3"
   }
 }
