@@ -1,6 +1,7 @@
 const Policy = require('../models/Policy');
 const Leads = require('../models/LeadsModel');
 const { Op } = require('sequelize');
+const { sendEmail } = require('../utils/emailService');
 
 // Get all policies with optional filtering
 exports.getAllPolicies = async (req, res) => {
@@ -73,6 +74,15 @@ exports.createPolicy = async (req, res) => {
     // (Not implemented here)
 
     const policy = await Policy.create(policyData);
+
+    // Send email notification
+    try {
+      await sendEmail(policy.email, 'policyCreated', policy);
+    } catch (emailError) {
+      console.error('Failed to send email notification:', emailError);
+      // Don't fail the request if email fails
+    }
+
     res.status(201).json(policy);
   } catch (error) {
     console.log(error);
@@ -83,18 +93,17 @@ exports.createPolicy = async (req, res) => {
 // Update a policy
 exports.updatePolicy = async (req, res) => {
   try {
-    const [updatedRows] = await Policy.update(
+    const [updatedRows, [updatedPolicy]] = await Policy.update(
       { ...req.body },
       {
         where: { id: req.params.id },
+        returning: true,
         individualHooks: true
       }
     );
     if (!updatedRows) {
       return res.status(404).json({ message: 'Policy not found' });
     }
-    // Fetch the updated policy and return it
-    const updatedPolicy = await Policy.findByPk(req.params.id);
     res.status(200).json(updatedPolicy);
   } catch (error) {
     res.status(500).json({ message: error.message });
