@@ -230,41 +230,6 @@ const PolicyStatus = ({ addCustomer }) => { // Removed leads prop
     }));
   }, [insuranceType]);
 
-  // Add useEffect to initialize policies
-  useEffect(() => {
-    // Initialize with some dummy policies for testing
-    const initialPolicies = [
-      {
-        id: 'P1',
-        policyNumber: 'POL001',
-        insuredName: 'Test User',
-        clientName: 'Test Client',
-        mobile: '9876543210',
-        email: 'test@example.com',
-        startDate: '2024-03-01',
-        endDate: '2025-03-01',
-        company: 'TATA AIG GIC',
-        business: 'New',
-        type: 'vehicle',
-        status: 'Live Policy',
-        vehicleType: 'Private Car',
-        vehicleNumber: 'MH01AB1234'
-      },
-      {
-        id: 'P2',
-        policyNumber: '212',
-        insuredName: 'ANmol',
-        startDate: '2024-03-01',
-        endDate: '2027-06-08',
-        company: 'ICICI Lombard GIC',
-        business: 'New',
-        type: 'vehicle',
-        status: 'Live Policy',
-      }
-    ];
-    setPolicies(initialPolicies);
-  }, []);
-
   // Fetch policies on component mount and leads when modal opens
   useEffect(() => {
     const fetchAllLeads = async () => {
@@ -303,10 +268,17 @@ const PolicyStatus = ({ addCustomer }) => { // Removed leads prop
     try {
       setLoading(true);
       const filters = {
-        status: currentTab !== 'all' ? currentTab : undefined,
-        search: searchTerm,
-        month: currentMonth !== 'All' ? currentMonth : undefined
+        // Only include status filter if not on 'all' tab
+        ...(currentTab !== 'all' && {
+          status: currentTab === 'active' ? 'Live Policy' : 
+                  currentTab === 'lapsed' ? 'Lapsed' : 
+                  currentTab === 'pending' ? 'Pending' : undefined
+        }),
+        // Include search and month filters only if they have values
+        ...(searchTerm && { search: searchTerm }),
+        ...(currentMonth !== 'All' && { month: currentMonth })
       };
+
       const data = await getAllPolicies(filters);
       setPolicies(data);
     } catch (error) {
@@ -689,7 +661,15 @@ const PolicyStatus = ({ addCustomer }) => { // Removed leads prop
       };
 
       const createdPolicy = await createPolicy(policyToAdd);
-      setPolicies(prevPolicies => [...prevPolicies, createdPolicy]);
+      
+      // Reset filters to show all policies
+      setCurrentTab('all');
+      setSearchTerm('');
+      setCurrentMonth('All');
+      
+      // Fetch updated policies list
+      await fetchPolicies();
+      
       // Add to customers if addCustomer is provided
       if (addCustomer) {
         addCustomer({
@@ -807,20 +787,7 @@ const PolicyStatus = ({ addCustomer }) => { // Removed leads prop
   // Update the filteredPolicies logic to properly filter based on status
   const getFilteredPolicies = () => {
     return policies.filter(policy => {
-      // First filter by tab/status
-      if (currentTab !== 'all') {
-        const statusMap = {
-          'active': 'Live Policy',
-          'lapsed': 'Lapsed',
-          'pending': 'Pending'
-        };
-        const requiredStatus = statusMap[currentTab];
-        if (policy.status !== requiredStatus) {
-          return false;
-        }
-      }
-
-      // Then filter by search term if it exists
+      // Only apply search term filtering
       if (searchTerm.trim()) {
         const searchFields = [
           policy.policyNumber,
@@ -888,7 +855,9 @@ const PolicyStatus = ({ addCustomer }) => { // Removed leads prop
       setLoading(true);
       await deletePolicy(selectedPolicy.id);
       
-      setPolicies(prevPolicies => prevPolicies.filter(p => p.id !== selectedPolicy.id));
+      // Instead of just updating local state, refetch all policies
+      await fetchPolicies();
+      
       setDeleteDialogOpen(false);
       setSelectedPolicy(null);
       

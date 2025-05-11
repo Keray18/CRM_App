@@ -2,6 +2,11 @@ const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/dbConn');
 
 const Policy = sequelize.define('Policy', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
   // Basic Information
   policyNumber: {
     type: DataTypes.STRING,
