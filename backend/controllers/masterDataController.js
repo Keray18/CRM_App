@@ -1,4 +1,5 @@
 const MasterData = require('../models/MasterData');
+const { Op } = require('sequelize');
 
 // Get all master data entries
 exports.getAllMasterData = async (req, res) => {
@@ -17,14 +18,26 @@ exports.getAllMasterData = async (req, res) => {
 exports.getMasterDataByType = async (req, res) => {
   try {
     const { type } = req.params;
+    console.log('Fetching master data for type:', type);
+
+    if (!type) {
+      return res.status(400).json({ message: 'Type parameter is required' });
+    }
+
     const masterData = await MasterData.findAll({
       where: { type },
       order: [['name', 'ASC']]
     });
+
+    console.log(`Found ${masterData.length} entries for type ${type}`);
     res.json(masterData);
   } catch (error) {
     console.error('Error fetching master data by type:', error);
-    res.status(500).json({ message: 'Error fetching master data', error: error.message });
+    res.status(500).json({ 
+      message: 'Error fetching master data', 
+      error: error.message,
+      details: error.stack 
+    });
   }
 };
 
@@ -35,6 +48,15 @@ exports.createMasterData = async (req, res) => {
     
     if (!type || !name) {
       return res.status(400).json({ message: 'Type and name are required' });
+    }
+
+    // Check if entry already exists
+    const existingEntry = await MasterData.findOne({
+      where: { type, name }
+    });
+
+    if (existingEntry) {
+      return res.status(400).json({ message: 'Entry with this type and name already exists' });
     }
 
     const masterData = await MasterData.create({
@@ -64,6 +86,19 @@ exports.updateMasterData = async (req, res) => {
 
     if (!type || !name) {
       return res.status(400).json({ message: 'Type and name are required' });
+    }
+
+    // Check if another entry with same type and name exists
+    const existingEntry = await MasterData.findOne({
+      where: {
+        type,
+        name,
+        id: { [Op.ne]: id } // Exclude current entry
+      }
+    });
+
+    if (existingEntry) {
+      return res.status(400).json({ message: 'Another entry with this type and name already exists' });
     }
 
     await masterData.update({

@@ -1,5 +1,11 @@
 import React, { lazy, Suspense, useMemo } from 'react';
-import { ThemeProvider, createTheme, CssBaseline, CircularProgress, Box } from '@mui/material';
+import {
+  ThemeProvider,
+  createTheme,
+  CssBaseline,
+  CircularProgress,
+  Box,
+} from '@mui/material';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Lazy load components
@@ -18,7 +24,7 @@ const LoadingFallback = () => (
 const RequireAuth = React.memo(({ children, role }) => {
   const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
   const userRole = localStorage.getItem('userRole');
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/" />;
   }
@@ -36,14 +42,14 @@ function App() {
     palette: {
       mode: 'dark',
       primary: {
-        main: '#0C47A0', 
+        main: '#0C47A0',
       },
       secondary: {
-        main: '#000000', 
+        main: '#000000',
       },
       background: {
-        default: '#000000', 
-        paper: '#111111', 
+        default: '#000000',
+        paper: '#111111',
       },
       text: {
         primary: '#FFFFFF',
@@ -114,21 +120,21 @@ function App() {
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
             <Route path="/" element={<Login />} />
-            <Route 
-              path="/dashboard" 
+            <Route
+              path="/dashboard"
               element={
                 <RequireAuth role="admin">
                   <Dashboard />
                 </RequireAuth>
-              } 
+              }
             />
-            <Route 
-              path="/emp-dashboard" 
+            <Route
+              path="/emp-dashboard"
               element={
                 <RequireAuth role="employee">
                   <EmpDashboard />
                 </RequireAuth>
-              } 
+              }
             />
           </Routes>
         </Suspense>

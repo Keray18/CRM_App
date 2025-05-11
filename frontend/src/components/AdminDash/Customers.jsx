@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Typography, 
   Box, 
@@ -17,12 +17,16 @@ import {
   Snackbar,
   Alert,
   Chip,
-  Card,
-  CardContent
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from "@mui/material";
 import { Edit, Delete, Search, FilterList } from "@mui/icons-material";
 import dayjs from "dayjs";
 import { updatePolicy } from '../../services/policyService';
+import { deleteCustomer } from '../../services/customerService';
 
 const Customers = ({ customers, setCustomers }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -30,6 +34,8 @@ const Customers = ({ customers, setCustomers }) => {
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState(null);
 
   // Updated policy types to match creation form options
   const policyTypes = ["Vehicle", "Health", "Travel"];
@@ -84,9 +90,28 @@ const Customers = ({ customers, setCustomers }) => {
     setEditForm({});
   };
 
-  const handleDeleteCustomer = (id) => {
-    setCustomers(customers.filter(c => c.id !== id));
-    setSnackbar({ open: true, message: "Customer deleted successfully", severity: "info" });
+  const handleDeleteClick = (customer) => {
+    setCustomerToDelete(customer);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await deleteCustomer(customerToDelete.id);
+      setCustomers(customers.filter(c => c.id !== customerToDelete.id));
+      setSnackbar({ open: true, message: "Customer and associated policies deleted successfully", severity: "success" });
+    } catch (error) {
+      console.error("Delete error:", error);
+      setSnackbar({ open: true, message: error.message || "Failed to delete customer", severity: "error" });
+    } finally {
+      setDeleteDialogOpen(false);
+      setCustomerToDelete(null);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setCustomerToDelete(null);
   };
 
   const filteredCustomers = Array.isArray(customers) ? customers.filter(customer => {
@@ -162,7 +187,7 @@ const Customers = ({ customers, setCustomers }) => {
               </TableRow>
             ) : (
               Array.isArray(filteredCustomers) && filteredCustomers.map((customer) => (
-                <TableRow key={customer.id} hover>
+                <TableRow key={customer.id}>
                   <TableCell>
                     <Typography fontWeight="bold">{customer.name}</Typography>
                     {editingCustomer === customer.id && (
@@ -286,7 +311,7 @@ const Customers = ({ customers, setCustomers }) => {
                         <Tooltip title="Delete Customer">
                           <IconButton 
                             color="error" 
-                            onClick={() => handleDeleteCustomer(customer.id)}
+                            onClick={() => handleDeleteClick(customer)}
                           >
                             <Delete />
                           </IconButton>
@@ -300,6 +325,25 @@ const Customers = ({ customers, setCustomers }) => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+      >
+        <DialogTitle>Delete Customer</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this customer? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar 
         open={snackbar.open} 

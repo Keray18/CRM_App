@@ -27,7 +27,7 @@ import {
   Visibility as ViewIcon,
   CheckCircle as RenewIcon,
 } from '@mui/icons-material';
-import PolicyStatus from 'components/AdminDash/PolicyStatus';
+import PolicyStatus from '../AdminDash/PolicyStatus';
 
 const MyPolicies = ({ policies, setPolicies }) => {
   const [page, setPage] = useState(0);
