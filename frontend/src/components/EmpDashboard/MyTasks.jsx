@@ -18,7 +18,7 @@ import {
 import { API_URL } from '../../config/config';
 import axios from 'axios';
 
-const MyTasks = () => {
+const MyTasks = ({ employeeId, employeeName }) => {
   const [tasks, setTasks] = useState([]);
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -34,12 +34,8 @@ const MyTasks = () => {
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      // Get the employee ID from localStorage or context
-      const employeeId = localStorage.getItem('employeeId');
-      
-      // Use the tasks endpoint with employee ID filter
-      const response = await axios.get(`${API_URL}/tasks`, {
-        params: { employeeId },
+      // Use the correct endpoint to fetch tasks for the employee
+      const response = await axios.get(`${API_URL}/tasks/employee/${employeeId}`, {
         withCredentials: true
       });
 

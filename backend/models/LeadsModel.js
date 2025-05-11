@@ -1,4 +1,4 @@
-const sequelize = require('../config/dbConn.js')
+const { sequelize } = require('../config/dbConn.js')
 const { DataTypes } = require('sequelize')
 
 const Leads = sequelize.define('Leads', {

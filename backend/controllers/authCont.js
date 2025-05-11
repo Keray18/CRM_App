@@ -86,6 +86,7 @@ const login = async (req, res) => {
         const token = jwt.sign({ id: employee.id }, process.env.JWT_SECRET, { expiresIn: '7d'})
         res.status(200).json({
             message: 'Login successful',
+            name: employee.name,
             employee: {
                 ...employee.toJSON(),
                 password: employee.originalPassword // Return original password

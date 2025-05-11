@@ -1,5 +1,25 @@
 const { Sequelize } = require('sequelize')
+const mysql = require('mysql2/promise');
 const dbConfig = require('./db.config.js')
+
+// Function to ensure database exists
+async function ensureDatabaseExists() {
+    const connection = await mysql.createConnection({
+        host: dbConfig.HOST,
+        user: dbConfig.USER,
+        password: dbConfig.PASSWORD
+    });
+    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.DB}\`;`);
+    await connection.end();
+}
+
+// Ensure DB exists before Sequelize connects
+const dbReady = ensureDatabaseExists().then(() => {
+    console.log(`✅ Database '${dbConfig.DB}' exists or was created.`);
+}).catch((err) => {
+    console.error('❌ Error creating database:', err);
+    process.exit(1);
+});
 
 const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
     host: dbConfig.HOST,
@@ -10,7 +30,7 @@ const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
         underscored: true, // Use snake_case for column names
         freezeTableName: true // Don't pluralize table names
     }
-})
+});
 
 // Function to sync database
 const syncDatabase = async () => {
@@ -30,4 +50,4 @@ sequelize.authenticate()
     })
     .catch((err) => console.log('❌ Error connecting to MySQL', err));
 
-module.exports = sequelize
+module.exports = { sequelize, dbReady };

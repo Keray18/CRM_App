@@ -44,6 +44,10 @@ function Login() {
       localStorage.setItem('isAuthenticated', 'true');
       localStorage.setItem('userRole', 'employee');
       localStorage.setItem('userData', JSON.stringify(data));
+      localStorage.setItem('employeeName', data.name || '');
+      if (data.employee && data.employee.id) {
+        localStorage.setItem('employeeId', data.employee.id);
+      }
       navigate('/emp-dashboard');
     } catch (error) {
       setError(error.response?.data?.message || 'Invalid email or password');

@@ -67,7 +67,7 @@ const StyledDrawer = styled(Drawer)({
   },
 });
 
-const Sidebar = ({ section, setSection }) => {
+const Sidebar = ({ section, setSection, name }) => {
   const menuItems = [
     { text: "Dashboard", icon: <DashboardIcon /> },
     { text: "My Tasks", icon: <TaskIcon /> },
@@ -80,7 +80,7 @@ const Sidebar = ({ section, setSection }) => {
     <StyledDrawer variant="permanent">
       <Box sx={{ p: 3, textAlign: "center" }}>
         <Typography variant="h5" fontWeight="bold">
-          Employee Portal
+          {name ? `Welcome ${name}` : 'Employee Portal'}
         </Typography>
       </Box>
       <List>
@@ -139,6 +139,10 @@ const EmpDashboard = () => {
   // State for commissions
   const [commissions, setCommissions] = useState([]);
   const [totalCommission, setTotalCommission] = useState(0);
+
+  // Get employee name and id from localStorage
+  const employeeName = localStorage.getItem('employeeName') || '';
+  const employeeId = localStorage.getItem('employeeId') || '';
 
   // Fetch data on component mount
   useEffect(() => {
@@ -225,7 +229,7 @@ const EmpDashboard = () => {
   const renderSection = () => {
     switch (section) {
       case "My Tasks":
-        return <MyTasks tasks={tasks} setTasks={setTasks} />;
+        return <MyTasks employeeId={employeeId} employeeName={employeeName} />;
       case "My Documents":
         return <MyDocuments documents={documents} setDocuments={setDocuments} />;
       case "My Policies":
@@ -450,7 +454,7 @@ const EmpDashboard = () => {
       backgroundColor: "#ffffff",
       color: "#000000"
     }}>
-      <Sidebar section={section} setSection={setSection} />
+      <Sidebar section={section} setSection={setSection} name={employeeName} />
       
       <Box component="main" sx={{ flexGrow: 1, p: 4, pl: 35 }}>
         {/* Header */}

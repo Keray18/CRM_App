@@ -1,5 +1,5 @@
 const Task = require('../models/TaskModel.js');
-const sequelize = require('../config/dbConn.js');
+const { sequelize } = require('../config/dbConn.js');
 
 const taskController = {
     // Get all tasks

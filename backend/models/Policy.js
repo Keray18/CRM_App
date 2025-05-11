@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/dbConn');
+const { sequelize } = require('../config/dbConn');
 
 const Policy = sequelize.define('Policy', {
   // Basic Information
