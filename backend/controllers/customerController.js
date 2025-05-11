@@ -140,7 +140,7 @@ exports.updateCustomer = async (req, res) => {
   }
 };
 
-// Delete a customer
+// Delete a customer and their associated policies
 exports.deleteCustomer = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
@@ -153,11 +153,17 @@ exports.deleteCustomer = async (req, res) => {
       return res.status(404).json({ message: 'Customer not found' });
     }
 
-    // Delete only the customer, not the associated policies
+    // Delete associated policies
+    await Policy.destroy({
+      where: { insuredName: customer.name },
+      transaction
+    });
+
+    // Delete customer
     await customer.destroy({ transaction });
 
     await transaction.commit();
-    res.status(200).json({ message: 'Customer deleted successfully' });
+    res.status(200).json({ message: 'Customer and associated policies deleted successfully' });
   } catch (error) {
     await transaction.rollback();
     res.status(500).json({ message: error.message });

@@ -275,11 +275,13 @@ const PolicyStatus = ({ addCustomer }) => { // Removed leads prop
     try {
       setLoading(true);
       const filters = {
+        // Only include status filter if not on 'all' tab
         ...(currentTab !== 'all' && {
           status: currentTab === 'active' ? 'Live Policy' : 
                   currentTab === 'lapsed' ? 'Lapsed' : 
                   currentTab === 'pending' ? 'Pending' : undefined
         }),
+        // Include search and month filters only if they have values
         ...(searchTerm && { search: searchTerm }),
         ...(currentMonth !== 'All' && { month: currentMonth })
       };
@@ -864,12 +866,10 @@ const PolicyStatus = ({ addCustomer }) => { // Removed leads prop
     try {
       setLoading(true);
       await deletePolicy(selectedPolicy.id);
-  
-      // ✅ Just reset filters — useEffect will trigger fetchPolicies()
-      setCurrentTab('all');
-      setSearchTerm('');
-      setCurrentMonth('All');
-  
+      
+      // Instead of just updating local state, refetch all policies
+      await fetchPolicies();
+      
       setDeleteDialogOpen(false);
       setSelectedPolicy(null);
       setSnackbar({
