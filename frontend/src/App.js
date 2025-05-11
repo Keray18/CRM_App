@@ -1,5 +1,11 @@
 import React, { lazy, Suspense, useMemo } from 'react';
-import { ThemeProvider, createTheme, CssBaseline, CircularProgress, Box } from '@mui/material';
+import {
+  ThemeProvider,
+  createTheme,
+  CssBaseline,
+  CircularProgress,
+  Box,
+} from '@mui/material';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Lazy load components
@@ -14,87 +20,11 @@ const LoadingFallback = () => (
   </Box>
 );
 
-// Memoized theme creation
-const theme = useMemo(() => createTheme({
-  palette: {
-    mode: 'dark',
-    primary: {
-      main: '#0C47A0', 
-    },
-    secondary: {
-      main: '#000000', 
-    },
-    background: {
-      default: '#000000', 
-      paper: '#111111', 
-    },
-    text: {
-      primary: '#FFFFFF',
-      secondary: 'rgba(255, 255, 255, 0.7)',
-    },
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    h1: {
-      fontSize: '2.5rem',
-      fontWeight: 600,
-    },
-    h5: {
-      fontWeight: 500,
-    },
-    subtitle1: {
-      color: 'rgba(255, 255, 255, 0.7)',
-    },
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: 'none',
-          borderRadius: '8px',
-          padding: '10px 20px',
-        },
-        containedPrimary: {
-          background: '#0C47A0',
-          '&:hover': {
-            background: '#0A3A82',
-          },
-        },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          borderRadius: '12px',
-          backgroundColor: '#111111',
-        },
-      },
-    },
-    MuiTextField: {
-      styleOverrides: {
-        root: {
-          '& .MuiOutlinedInput-root': {
-            '& fieldset': {
-              borderColor: 'rgba(255, 255, 255, 0.23)',
-            },
-            '&:hover fieldset': {
-              borderColor: '#0C47A0',
-            },
-            '&.Mui-focused fieldset': {
-              borderColor: '#0C47A0',
-            },
-          },
-        },
-      },
-    },
-  },
-}), []);
-
 // Memoized RequireAuth component
 const RequireAuth = React.memo(({ children, role }) => {
   const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
   const userRole = localStorage.getItem('userRole');
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/" />;
   }
@@ -107,6 +37,82 @@ const RequireAuth = React.memo(({ children, role }) => {
 });
 
 function App() {
+  const theme = useMemo(() =>
+    createTheme({
+      palette: {
+        mode: 'dark',
+        primary: {
+          main: '#0C47A0',
+        },
+        secondary: {
+          main: '#000000',
+        },
+        background: {
+          default: '#000000',
+          paper: '#111111',
+        },
+        text: {
+          primary: '#FFFFFF',
+          secondary: 'rgba(255, 255, 255, 0.7)',
+        },
+      },
+      typography: {
+        fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+        h1: {
+          fontSize: '2.5rem',
+          fontWeight: 600,
+        },
+        h5: {
+          fontWeight: 500,
+        },
+        subtitle1: {
+          color: 'rgba(255, 255, 255, 0.7)',
+        },
+      },
+      components: {
+        MuiButton: {
+          styleOverrides: {
+            root: {
+              textTransform: 'none',
+              borderRadius: '8px',
+              padding: '10px 20px',
+            },
+            containedPrimary: {
+              background: '#0C47A0',
+              '&:hover': {
+                background: '#0A3A82',
+              },
+            },
+          },
+        },
+        MuiPaper: {
+          styleOverrides: {
+            root: {
+              borderRadius: '12px',
+              backgroundColor: '#111111',
+            },
+          },
+        },
+        MuiTextField: {
+          styleOverrides: {
+            root: {
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.23)',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#0C47A0',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#0C47A0',
+                },
+              },
+            },
+          },
+        },
+      },
+    }), []);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -114,21 +120,21 @@ function App() {
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
             <Route path="/" element={<Login />} />
-            <Route 
-              path="/dashboard" 
+            <Route
+              path="/dashboard"
               element={
                 <RequireAuth role="admin">
                   <Dashboard />
                 </RequireAuth>
-              } 
+              }
             />
-            <Route 
-              path="/emp-dashboard" 
+            <Route
+              path="/emp-dashboard"
               element={
                 <RequireAuth role="employee">
                   <EmpDashboard />
                 </RequireAuth>
-              } 
+              }
             />
           </Routes>
         </Suspense>
