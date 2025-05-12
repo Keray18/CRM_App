@@ -93,17 +93,17 @@ exports.createPolicy = async (req, res) => {
 // Update a policy
 exports.updatePolicy = async (req, res) => {
   try {
-    const [updatedRows, [updatedPolicy]] = await Policy.update(
+    const [updatedRows] = await Policy.update(
       { ...req.body },
       {
         where: { id: req.params.id },
-        returning: true,
         individualHooks: true
       }
     );
     if (!updatedRows) {
       return res.status(404).json({ message: 'Policy not found' });
     }
+    const updatedPolicy = await Policy.findByPk(req.params.id);
     res.status(200).json(updatedPolicy);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -127,17 +127,17 @@ exports.deletePolicy = async (req, res) => {
 exports.updatePolicyStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const [updatedRows, [updatedPolicy]] = await Policy.update(
+    const [updatedRows] = await Policy.update(
       { status },
       {
         where: { id: req.params.id },
-        returning: true,
         individualHooks: true
       }
     );
     if (!updatedRows) {
       return res.status(404).json({ message: 'Policy not found' });
     }
+    const updatedPolicy = await Policy.findByPk(req.params.id);
     res.status(200).json(updatedPolicy);
   } catch (error) {
     res.status(500).json({ message: error.message });

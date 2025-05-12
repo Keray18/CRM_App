@@ -306,52 +306,65 @@ const MasterData = () => {
           </TableBody>
         </Table>
       </TableContainer>
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: '#111', fontWeight: 700, fontSize: 22 }}>
-          {selectedItem ? `Edit ${activeTab}` : `Add New ${activeTab}`}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              fullWidth
-              label="Name"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              sx={{ background: '#f9f9f9', borderRadius: 1, color: '#111' }}
-              InputLabelProps={{ style: { fontSize: 16, color: '#111' } }}
-              inputProps={{ style: { fontSize: 16, color: '#111' } }}
-            />
-            <TextField
-              fullWidth
-              label="Description"
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              multiline
-              rows={3}
-              sx={{ background: '#f9f9f9', borderRadius: 1, color: '#111' }}
-              InputLabelProps={{ style: { fontSize: 16, color: '#111' } }}
-              inputProps={{ style: { fontSize: 16, color: '#111' } }}
-            />
-            <FormControl fullWidth>
-              <InputLabel sx={{ fontSize: 16, color: '#111' }}>Status</InputLabel>
-              <Select
-                name="isActive"
-                value={formData.isActive}
-                onChange={handleInputChange}
-                label="Status"
-                sx={{ fontSize: 16, color: '#111' }}
-              >
-                <MenuItem value={true} sx={{ color: '#111' }}>Active</MenuItem>
-                <MenuItem value={false} sx={{ color: '#111' }}>Inactive</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
+      <Dialog
+        open={openDialog}
+        onClose={handleCloseDialog}
+        PaperProps={{
+          sx: {
+            backgroundColor: '#181818',
+            color: '#fff',
+            borderRadius: 2,
+            boxShadow: 24
+          }
+        }}
+      >
+        <DialogTitle sx={{ backgroundColor: '#111', color: '#fff' }}>{selectedItem ? 'Edit Master Data' : 'Add Master Data'}</DialogTitle>
+        <DialogContent sx={{ backgroundColor: '#181818', color: '#fff' }}>
+          <TextField
+            autoFocus
+            margin="dense"
+            name="name"
+            label="Name"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={formData.name}
+            onChange={handleInputChange}
+            sx={{
+              input: { color: '#fff' },
+              label: { color: '#aaa' },
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': { borderColor: '#333' },
+                '&:hover fieldset': { borderColor: '#1976d2' },
+                '&.Mui-focused fieldset': { borderColor: '#1976d2' }
+              }
+            }}
+            InputLabelProps={{ style: { color: '#aaa' } }}
+          />
+          <TextField
+            margin="dense"
+            name="description"
+            label="Description"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={formData.description}
+            onChange={handleInputChange}
+            sx={{
+              input: { color: '#fff' },
+              label: { color: '#aaa' },
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': { borderColor: '#333' },
+                '&:hover fieldset': { borderColor: '#1976d2' },
+                '&.Mui-focused fieldset': { borderColor: '#1976d2' }
+              }
+            }}
+            InputLabelProps={{ style: { color: '#aaa' } }}
+          />
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={handleCloseDialog} sx={{ fontWeight: 600, fontSize: 16, color: '#111' }}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained" color="primary" sx={{ fontWeight: 600, fontSize: 16, color: '#111' }}>
+        <DialogActions sx={{ p: 2, backgroundColor: '#181818' }}>
+          <Button onClick={handleCloseDialog} sx={{ fontWeight: 600, fontSize: 16, color: '#fff', backgroundColor: '#333', '&:hover': { backgroundColor: '#222' } }}>Cancel</Button>
+          <Button onClick={handleSubmit} variant="contained" color="primary" sx={{ fontWeight: 600, fontSize: 16, color: '#fff', backgroundColor: '#1976d2', '&:hover': { backgroundColor: '#1565c0' } }}>
             {selectedItem ? 'Update' : 'Create'}
           </Button>
         </DialogActions>
@@ -360,11 +373,12 @@ const MasterData = () => {
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Alert
           onClose={handleCloseSnackbar}
           severity={snackbar.severity}
-          sx={{ width: '100%', color: '#111' }}
+          sx={{ width: '100%', backgroundColor: '#222', color: '#fff', border: '1px solid #1976d2' }}
         >
           {snackbar.message}
         </Alert>

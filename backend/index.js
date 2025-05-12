@@ -26,7 +26,16 @@ app.use(cors({
     credentials: true,
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'cache-control']
+    allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'cache-control',
+        'pragma',
+        'if-modified-since',
+        'if-none-match',
+        'x-requested-with',
+        'accept'
+    ]
 }))
 
 // Cache control middleware
