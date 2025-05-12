@@ -190,13 +190,29 @@ const Documents = () => {
   };
 
   const handleDownload = (document) => {
-    // Open the document in a new tab for download
-    window.open(document.url, '_blank');
+    if (document.url && document.url.startsWith('http')) {
+      // Open the document in a new tab for download
+      window.open(document.url, '_blank');
+    } else {
+      setSnackbar({
+        open: true,
+        message: 'Document URL is invalid or missing.',
+        severity: 'error'
+      });
+    }
   };
 
   const handleView = (document) => {
-    setViewUrl(document.url);
-    setViewDialog(true);
+    if (document.url && document.url.startsWith('http')) {
+      setViewUrl(document.url);
+      setViewDialog(true);
+    } else {
+      setSnackbar({
+        open: true,
+        message: 'Document URL is invalid or missing.',
+        severity: 'error'
+      });
+    }
   };
 
   const handleDelete = async (documentId) => {
@@ -403,13 +419,17 @@ const Documents = () => {
         <DialogTitle>View Document</DialogTitle>
         <DialogContent>
           <Box sx={{ height: '80vh' }}>
-            <iframe
-              src={viewUrl}
-              title="Document Preview"
-              width="100%"
-              height="100%"
-              style={{ border: 'none' }}
-            />
+            {viewUrl ? (
+              <iframe
+                src={viewUrl}
+                title="Document Preview"
+                width="100%"
+                height="100%"
+                style={{ border: 'none' }}
+              />
+            ) : (
+              <Typography color="error">No document to display.</Typography>
+            )}
           </Box>
         </DialogContent>
         <DialogActions>

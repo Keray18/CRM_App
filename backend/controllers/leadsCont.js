@@ -2,6 +2,7 @@ const Leads = require('../models/LeadsModel.js');
 const { upload } = require('../config/cloudinary.js');
 const { cloudinary } = require('../config/cloudinary.js');
 const { sequelize } = require('../config/dbConn.js'); 
+const Document = require('../models/documentModel');
 
 const leadsController = {
    
@@ -42,9 +43,18 @@ const leadsController = {
             
             // Handle document upload if present
             if (req.file) {
+                // req.file already contains Cloudinary info
                 await newLead.update({
-                    documentUrl: req.file.path,
+                    documentUrl: req.file.path, // Cloudinary URL
                     documentOriginalName: req.file.originalname
+                }, { transaction });
+                // Also create a record in the Document table
+                await Document.create({
+                    leadId: newLead.id,
+                    name: req.file.originalname,
+                    type: 'Proposal Document',
+                    url: req.file.path, // Cloudinary URL
+                    cloudinaryId: req.file.filename // Cloudinary public_id
                 }, { transaction });
             }
             
