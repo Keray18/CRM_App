@@ -171,6 +171,7 @@ const Dashboard = () => {
   });
   const [openModal, setOpenModal] = useState(false);
   const [openTaskModal, setOpenTaskModal] = useState(false);
+  const [openDeleteModal, setOpenDeleteModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [snackbar, setSnackbar] = useState({
@@ -709,6 +710,30 @@ const Dashboard = () => {
     };
     fetchCustomersFromPolicies();
   }, []);
+
+  // Delete employee functionality
+  const handleDeleteEmployee = async (employeeId) => {
+    try {
+      await axios.delete(`${API_URL}/auth/${employeeId}`);
+      
+      // Remove the employee from the local state
+      setEmployees(employees.filter(emp => emp.id !== employeeId));
+      
+      setSnackbar({
+        open: true,
+        message: "Employee deleted successfully",
+        severity: "success"
+      });
+      setOpenDeleteModal(false);
+    } catch (error) {
+      console.error('Error deleting employee:', error);
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || "Error deleting employee",
+        severity: "error"
+      });
+    }
+  };
 
   return (
     <Box
@@ -1353,12 +1378,23 @@ const Dashboard = () => {
                           <Button
                             variant="outlined"
                             color="error"
+                            sx={{ mr: 1 }}
                             onClick={() => {
                               setSelectedEmployee(emp);
                               setOpenModal(true);
                             }}
                           >
                             Reset Password
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            onClick={() => {
+                              setSelectedEmployee(emp);
+                              setOpenDeleteModal(true);
+                            }}
+                          >
+                            Delete
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -1574,6 +1610,41 @@ const Dashboard = () => {
               <Button onClick={() => setOpenModal(false)}>Cancel</Button>
               <Button variant="contained" onClick={handlePasswordReset}>
                 Confirm Reset
+              </Button>
+            </Box>
+          </Box>
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal open={openDeleteModal} onClose={() => setOpenDeleteModal(false)}>
+          <Box
+            sx={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: 400,
+              bgcolor: "background.paper",
+              boxShadow: 24,
+              p: 4,
+              borderRadius: 2,
+              textAlign: "center",
+            }}
+          >
+            <Typography variant="h6" gutterBottom fontWeight="bold">
+              Delete Employee
+            </Typography>
+            <Typography sx={{ mb: 3 }}>
+              Are you sure you want to delete <strong>{selectedEmployee?.name}</strong>? This action cannot be undone.
+            </Typography>
+            <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
+              <Button onClick={() => setOpenDeleteModal(false)}>Cancel</Button>
+              <Button 
+                variant="contained" 
+                color="error" 
+                onClick={() => handleDeleteEmployee(selectedEmployee?.id)}
+              >
+                Delete
               </Button>
             </Box>
           </Box>

@@ -134,5 +134,19 @@ const resetPassword = async (req, res) => {
     }
 }
 
+// Delete an employee
+const deleteEmployee = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const employee = await Employee.findByPk(id);
+        if (!employee) {
+            return res.status(404).json({ message: 'Employee not found' });
+        }
+        await employee.destroy();
+        res.status(200).json({ message: 'Employee deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting employee', error: error.message });
+    }
+};
 
-module.exports = { register, login, getAllEmployees, resetPassword }
+module.exports = { register, login, getAllEmployees, resetPassword, deleteEmployee }

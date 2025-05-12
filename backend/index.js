@@ -50,7 +50,7 @@ const Employee = require('./models/empModel');
 const Task = require('./models/TaskModel');
 const Leads = require('./models/LeadsModel');
 const Policy = require('./models/Policy');
-
+const Document = require('./models/documentModel');
 // Sync all models and start server
 async function startServer() {
     await dbReady;
@@ -61,7 +61,8 @@ async function startServer() {
             Employee.sync({ alter: true }),
             Task.sync({ alter: true }),
             Leads.sync({ alter: true }),
-            Policy.sync({ alter: true })
+            Policy.sync({ alter: true }),
+            Document.sync({ alter: true })
         ]);
         console.log('✅ All models synchronized successfully');
         const PORT = process.env.PORT || 8080;
@@ -81,6 +82,7 @@ app.use('/api/tasks', taskRoutes)
 app.use('/api/policies', require('./routes/policyRoutes'))
 app.use('/api/customers', require('./routes/customerRoutes'))
 app.use('/api/masterdata', masterDataRoutes)
+app.use('/api/documents', require('./routes/documentRoutes'))
 
 // Enhanced error handling middleware
 app.use((err, req, res, next) => {
