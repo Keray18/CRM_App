@@ -194,18 +194,18 @@ const Documents = () => {
       // Open the document in a new tab for download
       window.open(document.url, '_blank');
     } else {
-      setSnackbar({
-        open: true,
+    setSnackbar({ 
+      open: true, 
         message: 'Document URL is invalid or missing.',
         severity: 'error'
-      });
+    });
     }
   };
 
   const handleView = (document) => {
     if (document.url && document.url.startsWith('http')) {
       setViewUrl(document.url);
-      setViewDialog(true);
+    setViewDialog(true);
     } else {
       setSnackbar({
         open: true,
@@ -294,7 +294,7 @@ const Documents = () => {
             ))}
           </Select>
         </FormControl>
-      </Box>
+          </Box>
 
       {selectedLead && (
         <>
@@ -358,7 +358,7 @@ const Documents = () => {
                       </TableCell>
                     </TableRow>
                   ))
-                )}
+            )}
               </TableBody>
             </Table>
           </TableContainer>
@@ -420,14 +420,14 @@ const Documents = () => {
         <DialogContent>
           <Box sx={{ height: '80vh' }}>
             {viewUrl ? (
-              <iframe
+                      <iframe
                 src={viewUrl}
                 title="Document Preview"
-                width="100%"
+                        width="100%"
                 height="100%"
-                style={{ border: 'none' }}
-              />
-            ) : (
+                        style={{ border: 'none' }}
+                      />
+                    ) : (
               <Typography color="error">No document to display.</Typography>
             )}
           </Box>

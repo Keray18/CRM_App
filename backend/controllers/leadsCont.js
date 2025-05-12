@@ -114,6 +114,17 @@ const leadsController = {
                 });
             }
 
+            // Delete all documents for this lead from Cloudinary and DB
+            const documents = await Document.findAll({ where: { leadId: id } });
+            for (const doc of documents) {
+                try {
+                    await cloudinary.uploader.destroy(doc.cloudinaryId, { resource_type: 'raw' });
+                } catch (err) {
+                    console.error('Error deleting document from Cloudinary:', err);
+                }
+                await doc.destroy({ transaction });
+            }
+
             // If there's a document, delete it from Cloudinary
             if (lead.documentUrl) {
                 try {

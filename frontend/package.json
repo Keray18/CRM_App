@@ -13,6 +13,7 @@
     "axios": "^1.6.7",
     "dayjs": "^1.11.10",
     "frontend": "file:",
+    "lodash": "^4.17.21",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-query": "^3.39.3",
