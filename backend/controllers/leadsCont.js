@@ -43,9 +43,10 @@ const leadsController = {
             
             // Handle document upload if present
             if (req.file) {
-                // req.file already contains Cloudinary info
+                // Use the correct Cloudinary URL with .pdf extension
+                const pdfUrl = req.file.path && req.file.path.endsWith('.pdf') ? req.file.path : (req.file.secure_url || req.file.path);
                 await newLead.update({
-                    documentUrl: req.file.path, // Cloudinary URL
+                    documentUrl: pdfUrl,
                     documentOriginalName: req.file.originalname
                 }, { transaction });
                 // Also create a record in the Document table
@@ -53,7 +54,7 @@ const leadsController = {
                     leadId: newLead.id,
                     name: req.file.originalname,
                     type: 'Proposal Document',
-                    url: req.file.path, // Cloudinary URL
+                    url: pdfUrl,
                     cloudinaryId: req.file.filename // Cloudinary public_id
                 }, { transaction });
             }

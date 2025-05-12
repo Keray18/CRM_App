@@ -19,12 +19,8 @@ const storage = new CloudinaryStorage({
             return `leads/${leadName}_${leadId}`
         },
         allowed_formats: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
-        resource_type: 'auto',
-        public_id: (req, file) => {
-            // Keep original filename
-            const originalName = file.originalname.split('.')[0]
-            return originalName
-        }
+        resource_type: 'raw',
+        public_id: (req, file) => file.originalname
     }
 })
 
