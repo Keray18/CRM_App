@@ -18,26 +18,14 @@ exports.getAllMasterData = async (req, res) => {
 exports.getMasterDataByType = async (req, res) => {
   try {
     const { type } = req.params;
-    console.log('Fetching master data for type:', type);
-
-    if (!type) {
-      return res.status(400).json({ message: 'Type parameter is required' });
-    }
-
     const masterData = await MasterData.findAll({
       where: { type },
       order: [['name', 'ASC']]
     });
-
-    console.log(`Found ${masterData.length} entries for type ${type}`);
     res.json(masterData);
   } catch (error) {
     console.error('Error fetching master data by type:', error);
-    res.status(500).json({ 
-      message: 'Error fetching master data', 
-      error: error.message,
-      details: error.stack 
-    });
+    res.status(500).json({ message: 'Error fetching master data', error: error.message });
   }
 };
 

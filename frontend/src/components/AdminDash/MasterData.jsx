@@ -78,6 +78,11 @@ import {
 } from '@mui/icons-material';
 import axios from 'axios';
 
+// Configure axios defaults
+axios.defaults.headers.common['Cache-Control'] = 'no-cache';
+axios.defaults.headers.common['Pragma'] = 'no-cache';
+axios.defaults.headers.common['If-Modified-Since'] = '0';
+
 const types = [
   'Policy Type',
   'Department',
@@ -103,7 +108,6 @@ const MasterData = () => {
     message: '',
     severity: 'success'
   });
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchMasterDataByType(activeTab);
@@ -111,21 +115,35 @@ const MasterData = () => {
 
   const fetchMasterDataByType = async (type) => {
     try {
-      setLoading(true);
-      const response = await axios.get(`http://localhost:8080/api/masterdata/type/${encodeURIComponent(type)}`);
-      if (response.data) {
-        setMasterData(response.data);
-      } else {
-        setMasterData([]);
-      }
+      const timestamp = new Date().getTime();
+      const response = await axios.get(`http://localhost:8080/api/masterdata/type/${encodeURIComponent(type)}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'If-Modified-Since': '0'
+        },
+        params: {
+          _t: timestamp
+        }
+      });
+      console.log('Fetched data:', response.data);
+      setMasterData([]);
+      setTimeout(() => {
+        setMasterData([...response.data]);
+      }, 0);
     } catch (error) {
       console.error('Error fetching master data:', error);
-      showSnackbar(error.response?.data?.message || 'Error fetching master data', 'error');
-      setMasterData([]);
-    } finally {
-      setLoading(false);
+      showSnackbar('Error fetching master data', 'error');
     }
   };
+
+  useEffect(() => {
+    const refreshInterval = setInterval(() => {
+      fetchMasterDataByType(activeTab);
+    }, 5000);
+
+    return () => clearInterval(refreshInterval);
+  }, [activeTab]);
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -176,7 +194,7 @@ const MasterData = () => {
         if (response.data) {
           showSnackbar('Master data updated successfully');
           handleCloseDialog();
-          fetchMasterDataByType(activeTab);
+          await fetchMasterDataByType(activeTab);
         }
       } else {
         const response = await axios.post('http://localhost:8080/api/masterdata', {
@@ -186,7 +204,7 @@ const MasterData = () => {
         if (response.data) {
           showSnackbar('Master data created successfully');
           handleCloseDialog();
-          fetchMasterDataByType(activeTab);
+          await fetchMasterDataByType(activeTab);
         }
       }
     } catch (error) {
@@ -201,7 +219,7 @@ const MasterData = () => {
         const response = await axios.delete(`http://localhost:8080/api/masterdata/${id}`);
         if (response.data) {
           showSnackbar('Master data deleted successfully');
-          fetchMasterDataByType(activeTab);
+          await fetchMasterDataByType(activeTab);
         }
       } catch (error) {
         console.error('Error deleting master data:', error);
@@ -252,56 +270,41 @@ const MasterData = () => {
         </Button>
       </Box>
       <TableContainer component={Paper} sx={{ boxShadow: 3, background: '#fff', borderRadius: 2 }}>
-        {loading ? (
-          <Box sx={{ p: 3, textAlign: 'center' }}>
-            <LinearProgress />
-            <Typography sx={{ mt: 2 }}>Loading data...</Typography>
-          </Box>
-        ) : (
-          <Table>
-            <TableHead>
-              <TableRow sx={{ background: '#0C47A0' }}>
-                <TableCell sx={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>Name</TableCell>
-                <TableCell sx={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>Description</TableCell>
-                <TableCell sx={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>Status</TableCell>
-                <TableCell sx={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>Actions</TableCell>
+        <Table>
+          <TableHead>
+            <TableRow sx={{ background: '#0C47A0' }}>
+              <TableCell sx={{ color: '#111', fontWeight: 700, fontSize: 16 }}>Name</TableCell>
+              <TableCell sx={{ color: '#111', fontWeight: 700, fontSize: 16 }}>Description</TableCell>
+              <TableCell sx={{ color: '#111', fontWeight: 700, fontSize: 16 }}>Status</TableCell>
+              <TableCell sx={{ color: '#111', fontWeight: 700, fontSize: 16 }}>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {masterData.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell sx={{ fontSize: 15, color: '#111' }}>{item.name}</TableCell>
+                <TableCell sx={{ fontSize: 15, color: '#111' }}>{item.description}</TableCell>
+                <TableCell>
+                  <Typography color={item.isActive ? 'success.main' : 'error.main'} sx={{ fontWeight: 600, fontSize: 15, color: '#111' }}>
+                    {item.isActive ? 'Active' : 'Inactive'}
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  <Tooltip title="Edit">
+                    <IconButton color="primary" onClick={() => handleOpenDialog(item)}>
+                      <EditIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton color="error" onClick={() => handleDelete(item.id)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {masterData.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
-                    <Typography color="textSecondary">No data available</Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                masterData.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell sx={{ fontSize: 15, color: '#111' }}>{item.name}</TableCell>
-                    <TableCell sx={{ fontSize: 15, color: '#111' }}>{item.description}</TableCell>
-                    <TableCell>
-                      <Typography color={item.isActive ? 'success.main' : 'error.main'} sx={{ fontWeight: 600, fontSize: 15 }}>
-                        {item.isActive ? 'Active' : 'Inactive'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip title="Edit">
-                        <IconButton color="primary" onClick={() => handleOpenDialog(item)}>
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton color="error" onClick={() => handleDelete(item.id)}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        )}
+            ))}
+          </TableBody>
+        </Table>
       </TableContainer>
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ color: '#111', fontWeight: 700, fontSize: 22 }}>

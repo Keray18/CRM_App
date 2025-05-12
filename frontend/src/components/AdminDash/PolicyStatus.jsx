@@ -264,11 +264,13 @@ const PolicyStatus = ({ addCustomer }) => { // Removed leads prop
     if (openNewPolicy) {
         fetchAllLeads();
     }
-    // Fetch policies and stats (existing logic)
-    fetchPolicies();
-    fetchStats(); // Renamed from fetchPolicyStats if that was intended
+  }, [openNewPolicy]); // Only depend on openNewPolicy
 
-  }, [openNewPolicy, currentTab, searchTerm, currentMonth]); // Add openNewPolicy dependency
+  // Separate useEffect for fetching policies
+  useEffect(() => {
+    fetchPolicies();
+    fetchStats();
+  }, [currentTab, searchTerm, currentMonth]); // Only fetch when these filters change
 
   // Fetch policies with filters
   const fetchPolicies = async () => {
@@ -484,10 +486,6 @@ const PolicyStatus = ({ addCustomer }) => { // Removed leads prop
       return null;
     }
   };
-  useEffect(() => {
-    fetchPolicies();
-  }, [currentTab, searchTerm, currentMonth]);
-  
 
   // Add useEffect to calculate commission when relevant fields change
   useEffect(() => {

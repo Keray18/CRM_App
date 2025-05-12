@@ -130,7 +130,10 @@ const MyPolicies = ({ policies, setPolicies }) => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <PolicyStatus />
+      <PolicyStatus addCustomer={(customer) => {
+        // Handle adding customer if needed
+        console.log('New customer:', customer);
+      }} />
     </Box>
   );
 };

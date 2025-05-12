@@ -40,7 +40,8 @@ const Customer = sequelize.define('Customer', {
 }, {
   timestamps: true,
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  tableName: 'customers'
 });
 
 module.exports = Customer; 
