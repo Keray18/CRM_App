@@ -66,6 +66,20 @@ const Documents = () => {
     type: 'PDF',
     file: null
   });
+  const [viewDialog, setViewDialog] = useState(false);
+  const [viewUrl, setViewUrl] = useState('');
+
+  const DOCUMENT_TYPES = [
+    'Aadhar Card',
+    'PAN Card',
+    'Passport',
+    'Driving License',
+    'Voter ID',
+    'Policy Document',
+    'Claim Form',
+    'Medical Report',
+    'Other'
+  ];
 
   // Fetch leads
   useEffect(() => {
@@ -175,26 +189,14 @@ const Documents = () => {
     }
   };
 
-  const handleDownload = async (document) => {
-    try {
-      const response = await axios.get(document.url, {
-        responseType: 'blob'
-      });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', document.name);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error) {
-      console.error('Error downloading document:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error downloading document',
-        severity: 'error'
-      });
-    }
+  const handleDownload = (document) => {
+    // Open the document in a new tab for download
+    window.open(document.url, '_blank');
+  };
+
+  const handleView = (document) => {
+    setViewUrl(document.url);
+    setViewDialog(true);
   };
 
   const handleDelete = async (documentId) => {
@@ -334,6 +336,9 @@ const Documents = () => {
                         >
                             <DeleteIcon />
                           </IconButton>
+                        <IconButton color="primary" onClick={() => handleView(doc)}>
+                          <ViewIcon />
+                        </IconButton>
                       </TableCell>
                     </TableRow>
                   ))
@@ -349,41 +354,36 @@ const Documents = () => {
         <DialogTitle>Upload Document</DialogTitle>
         <DialogContent>
             <Box sx={{ mt: 2 }}>
-              <TextField
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Document Type</InputLabel>
+                <Select
+                  value={uploadForm.type}
+                  onChange={(e) => setUploadForm(prev => ({ ...prev, type: e.target.value }))}
+                  label="Document Type"
+                >
+                  {DOCUMENT_TYPES.map((type) => (
+                    <MenuItem key={type} value={type}>{type}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Button
+                variant="outlined"
+                component="label"
                 fullWidth
-              label="Document Name"
-              value={uploadForm.name}
-              onChange={(e) => setUploadForm(prev => ({ ...prev, name: e.target.value }))}
-              sx={{ mb: 2 }}
-            />
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>Document Type</InputLabel>
-              <Select
-                value={uploadForm.type}
-                onChange={(e) => setUploadForm(prev => ({ ...prev, type: e.target.value }))}
-                label="Document Type"
               >
-                <MenuItem value="PDF">PDF</MenuItem>
-              </Select>
-            </FormControl>
-            <Button
-              variant="outlined"
-              component="label"
-              fullWidth
-            >
-              Choose PDF File
-              <input
-                type="file"
-                hidden
-                accept=".pdf"
-                onChange={handleFileChange}
-              />
-            </Button>
-            {uploadForm.file && (
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                Selected file: {uploadForm.file.name}
-              </Typography>
-            )}
+                Choose PDF File
+                <input
+                  type="file"
+                  hidden
+                  accept=".pdf"
+                  onChange={handleFileChange}
+                />
+              </Button>
+              {uploadForm.file && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  Selected file: {uploadForm.file.name}
+                </Typography>
+              )}
             </Box>
         </DialogContent>
         <DialogActions>
@@ -395,6 +395,25 @@ const Documents = () => {
           >
             {uploading ? <CircularProgress size={24} /> : 'Upload'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* View Dialog */}
+      <Dialog open={viewDialog} onClose={() => setViewDialog(false)} maxWidth="md" fullWidth>
+        <DialogTitle>View Document</DialogTitle>
+        <DialogContent>
+          <Box sx={{ height: '80vh' }}>
+            <iframe
+              src={viewUrl}
+              title="Document Preview"
+              width="100%"
+              height="100%"
+              style={{ border: 'none' }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewDialog(false)}>Close</Button>
         </DialogActions>
       </Dialog>
 

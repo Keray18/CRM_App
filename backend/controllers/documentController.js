@@ -1,5 +1,5 @@
 const Document = require('../models/documentModel');
-const cloudinary = require('../config/cloudinary');
+const { cloudinary } = require('../config/cloudinary');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
 
