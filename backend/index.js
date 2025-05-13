@@ -51,18 +51,20 @@ const Task = require('./models/TaskModel');
 const Leads = require('./models/LeadsModel');
 const Policy = require('./models/Policy');
 const Document = require('./models/documentModel');
+const Payment = require('./models/Payment');
 // Sync all models and start server
 async function startServer() {
     await dbReady;
     try {
         await sequelize.authenticate();
         await Promise.all([
-            MasterData.sync({ alter: true }),
-            Employee.sync({ alter: true }),
-            Task.sync({ alter: true }),
-            Leads.sync({ alter: true }),
-            Policy.sync({ alter: true }),
-            Document.sync({ alter: true })
+            MasterData.sync(),
+            Employee.sync(),
+            Task.sync(),
+            Leads.sync(),
+            Policy.sync(),
+            Document.sync(),
+            Payment.sync()
         ]);
         console.log('✅ All models synchronized successfully');
         const PORT = process.env.PORT || 8080;
@@ -83,6 +85,8 @@ app.use('/api/policies', require('./routes/policyRoutes'))
 app.use('/api/customers', require('./routes/customerRoutes'))
 app.use('/api/masterdata', masterDataRoutes)
 app.use('/api/documents', require('./routes/documentRoutes'))
+app.use('/api/commissions', require('./routes/commissionRoutes'))
+app.use('/api/payments', require('./routes/paymentRoutes'));
 
 // Enhanced error handling middleware
 app.use((err, req, res, next) => {
