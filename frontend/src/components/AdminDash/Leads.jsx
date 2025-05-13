@@ -179,13 +179,19 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
   // Fetch leads on component mount
   useEffect(() => {
     fetchLeads();
+    // Fetch policy types from master data
+    const fetchPolicyTypes = async () => {
+      try {
+        const response = await axios.get('http://localhost:8080/api/masterdata/type/Policy Type');
+        setPolicyTypes(response.data.filter(item => item.isActive).map(item => ({ value: item.name, label: item.name })));
+      } catch (error) {
+        setPolicyTypes([]);
+      }
+    };
+    fetchPolicyTypes();
   }, [fetchLeads]);
 
-  const policyTypes = [
-    { value: "health", label: "Health Insurance" },
-    { value: "travel", label: "Travel Insurance" },
-    { value: "vehicle", label: "Vehicle Insurance" }
-  ];
+  const [policyTypes, setPolicyTypes] = useState([]);
 
   const handleLeadChange = (event) => {
     const { name, value } = event.target;

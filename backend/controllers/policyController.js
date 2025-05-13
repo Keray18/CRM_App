@@ -2,6 +2,7 @@ const Policy = require('../models/Policy');
 const Leads = require('../models/LeadsModel');
 const { Op } = require('sequelize');
 const { sendEmail } = require('../utils/emailService');
+const Commission = require('../models/Commission');
 
 // Get all policies with optional filtering
 exports.getAllPolicies = async (req, res) => {
@@ -74,6 +75,17 @@ exports.createPolicy = async (req, res) => {
     // (Not implemented here)
 
     const policy = await Policy.create(policyData);
+
+    // Upsert commission for this company and policy type
+    if (policy.company && policy.type && policy.effectiveCommissionPercentage) {
+      const [commission, created] = await Commission.findOrCreate({
+        where: { company: policy.company, policyType: policy.type },
+        defaults: { effectiveCommission: policy.effectiveCommissionPercentage }
+      });
+      if (!created) {
+        await commission.update({ effectiveCommission: policy.effectiveCommissionPercentage });
+      }
+    }
 
     // Send email notification
     try {

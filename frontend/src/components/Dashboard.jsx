@@ -200,8 +200,9 @@ const Dashboard = () => {
   const [localLeads, setLocalLeads] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
+  const [departments, setDepartments] = useState([]);
+  const [positions, setPositions] = useState([]);
 
-  const departments = ["Sales", "Support", "Development", "Marketing", "HR"];
   const taskTypes = [
     "Follow-up",
     "Documentation",
@@ -735,6 +736,29 @@ const Dashboard = () => {
     }
   };
 
+  useEffect(() => {
+    // Fetch departments
+    const fetchDepartments = async () => {
+      try {
+        const response = await axios.get('http://localhost:8080/api/masterdata/type/Department');
+        setDepartments(response.data.filter(item => item.isActive).map(item => item.name));
+      } catch (error) {
+        setDepartments([]);
+      }
+    };
+    // Fetch positions
+    const fetchPositions = async () => {
+      try {
+        const response = await axios.get('http://localhost:8080/api/masterdata/type/Position');
+        setPositions(response.data.filter(item => item.isActive).map(item => item.name));
+      } catch (error) {
+        setPositions([]);
+      }
+    };
+    fetchDepartments();
+    fetchPositions();
+  }, []);
+
   return (
     <Box
       sx={{
@@ -1135,6 +1159,7 @@ const Dashboard = () => {
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
+                    select
                     label="Position"
                     name="position"
                     value={formData.position}
@@ -1148,7 +1173,13 @@ const Dashboard = () => {
                         </InputAdornment>
                       ),
                     }}
-                  />
+                  >
+                    {positions.map((pos) => (
+                        <MenuItem key={pos} value={pos}>
+                          {pos}
+                        </MenuItem>
+                      ))}
+                  </TextField>
                 </Grid>
 
                 <Grid item xs={12} md={6}>

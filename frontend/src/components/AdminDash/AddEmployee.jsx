@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { Box, TextField, FormControl, InputLabel, Select, MenuItem, Button, Snackbar, Alert } from '@mui/material';
 import { API_URL } from "../config/config";
+import useMasterData from './useMasterData';
 
 const AddEmployee = () => {
     const [formData, setFormData] = useState({
@@ -22,7 +23,8 @@ const AddEmployee = () => {
     const [severity, setSeverity] = useState('success');
     const [errors, setErrors] = useState({});
 
-    const departments = ["Sales", "Support", "Development", "Marketing", "HR"];
+    const departments = useMasterData('Department');
+    const positions = useMasterData('Position');
 
     const validateForm = () => {
         const newErrors = {};
@@ -183,8 +185,8 @@ const AddEmployee = () => {
                     required
                 >
                     {departments.map((dept) => (
-                        <MenuItem key={dept} value={dept}>
-                            {dept}
+                        <MenuItem key={dept.id} value={dept.name}>
+                            {dept.name}
                         </MenuItem>
                     ))}
                 </Select>
@@ -194,17 +196,27 @@ const AddEmployee = () => {
                     </Box>
                 )}
             </FormControl>
-            <TextField
-                margin="normal"
-                required
-                fullWidth
-                label="Position"
-                name="position"
-                value={formData.position}
-                onChange={handleChange}
-                error={!!errors.position}
-                helperText={errors.position}
-            />
+            <FormControl fullWidth margin="normal" error={!!errors.position}>
+                <InputLabel>Position</InputLabel>
+                <Select
+                    name="position"
+                    value={formData.position}
+                    onChange={handleChange}
+                    label="Position"
+                    required
+                >
+                    {positions.map((pos) => (
+                        <MenuItem key={pos.id} value={pos.name}>
+                            {pos.name}
+                        </MenuItem>
+                    ))}
+                </Select>
+                {errors.position && (
+                    <Box component="span" sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.5 }}>
+                        {errors.position}
+                    </Box>
+                )}
+            </FormControl>
             <TextField
                 margin="normal"
                 required
