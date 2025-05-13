@@ -162,7 +162,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
     try {
       const response = await axios.get(`${API_URL}/leads`);
       if (response.data && response.data.leads) {
-        setLeads(response.data.leads);
+      setLeads(response.data.leads);
       }
     } catch (error) {
       console.error('Error fetching leads:', error);
@@ -325,24 +325,24 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
       });
       
       if (response.data && response.data.lead) {
-        setLeads(prevLeads => [...prevLeads, response.data.lead]);
-        
-        // Reset form
-        setLeadData({ 
-          leadName: "", 
-          leadPhone: "", 
-          leadEmail: "",
-          leadPolicyType: "",
-          leadCreateDate: dayjs().format('YYYY-MM-DD'),
-          remarks: "",
-          document: null
-        });
+      setLeads(prevLeads => [...prevLeads, response.data.lead]);
+      
+      // Reset form
+      setLeadData({ 
+        leadName: "", 
+        leadPhone: "", 
+        leadEmail: "",
+        leadPolicyType: "",
+        leadCreateDate: dayjs().format('YYYY-MM-DD'),
+        remarks: "",
+        document: null
+      });
 
-        setSnackbar({
-          open: true,
-          message: "Lead created successfully",
-          severity: "success"
-        });
+      setSnackbar({
+        open: true,
+        message: "Lead created successfully",
+        severity: "success"
+      });
       }
     } catch (error) {
       console.error('Error creating lead:', error);
@@ -374,11 +374,11 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
       
       if (response.status === 200) {
         setLeads(prevLeads => prevLeads.filter(lead => lead.id !== deleteDialog.leadId));
-        setSnackbar({
-          open: true,
+      setSnackbar({
+        open: true,
           message: `Lead "${deleteDialog.leadName}" deleted successfully`,
-          severity: "info"
-        });
+        severity: "info"
+      });
       }
     } catch (error) {
       console.error('Error deleting lead:', error);
@@ -481,8 +481,8 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
             />
           </Grid>
           <Grid item xs={12}>
-            <Button
-              variant="contained"
+            <Button 
+              variant="contained" 
               component="label"
               startIcon={<UploadIcon />}
               sx={{ mr: 2 }}
@@ -600,7 +600,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
               <CircularProgress />
             </Box>
           )}
-          <Table>
+        <Table>
             <TableHead>
               <TableRow>
                 <TableCell 
@@ -647,7 +647,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
                     <TableCell>{lead?.leadName || '-'}</TableCell>
                     <TableCell>{lead?.leadPhone || '-'}</TableCell>
                     <TableCell>{lead?.leadEmail || '-'}</TableCell>
-                    <TableCell>
+                  <TableCell>
                       <Chip 
                         label={lead?.leadPolicyType || 'Unknown'} 
                         color={
@@ -656,32 +656,32 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
                           'primary'
                         }
                       />
-                    </TableCell>
+                  </TableCell>
                     <TableCell>{lead?.leadCreateDate ? dayjs(lead.leadCreateDate).format('DD/MM/YYYY') : '-'}</TableCell>
-                    <TableCell>
-                      <TextField
-                        size="small"
+                  <TableCell>
+                    <TextField
+                      size="small"
                         value={lead?.remarks || ''}
                         onChange={(e) => handleUpdateRemarks(lead?.id, e.target.value)}
                         placeholder="Add remarks"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip title="Delete Lead">
-                        <IconButton 
-                          color="error" 
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Tooltip title="Delete Lead">
+                      <IconButton 
+                        color="error"
                           onClick={() => lead?.id && handleDeleteClick(lead)}
                           disabled={!lead?.id}
-                        >
-                          <Delete />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                      >
+                        <Delete />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
           
           {/* Pagination */}
           <TablePagination
@@ -693,7 +693,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
             onPageChange={handleChangePage}
             onRowsPerPageChange={handleChangeRowsPerPage}
           />
-        </TableContainer>
+      </TableContainer>
       </Box>
 
       {/* Delete Confirmation Dialog */}
@@ -736,8 +736,8 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
           sx={{ width: '100%' }}
         >
