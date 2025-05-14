@@ -102,6 +102,12 @@ function Commission() {
   const [reportStart, setReportStart] = useState('');
   const [reportEnd, setReportEnd] = useState('');
   const [reportStats, setReportStats] = useState(null);
+  const [partPaymentAmount, setPartPaymentAmount] = useState('');
+  const [partPaymentDate, setPartPaymentDate] = useState('');
+  const [partPaymentMethod, setPartPaymentMethod] = useState('');
+  const [partPaymentReference, setPartPaymentReference] = useState('');
+  const [partPaymentNotes, setPartPaymentNotes] = useState('');
+  const [selectedPaymentId, setSelectedPaymentId] = useState(null);
 
   // Fetch commissions from backend
   useEffect(() => {
@@ -123,10 +129,7 @@ function Commission() {
     axios.get(`${API_URL}/masterdata/type/Insurance Company`)
       .then(res => setCompanies(res.data.filter(item => item.isActive).map(item => item.name)));
   }, []);
-
-  // Fetch payments from backend
-  useEffect(() => {
-    const fetchPayments = async () => {
+  const fetchPayments = async () => {
       try {
         const response = await axios.get(`${API_URL}/payments`);
         setPayments(response.data);
@@ -134,6 +137,9 @@ function Commission() {
         setPayments([]);
       }
     };
+
+  // Fetch payments from backend
+  useEffect(() => {
     fetchPayments();
   }, []);
 
@@ -274,17 +280,25 @@ function Commission() {
   };
 
   const filteredCommissions = commissions.filter(commission => {
-    const matchesSearch = commission.companyName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (commission.companyName?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     const matchesFilter = !filterCompany || commission.companyName === filterCompany;
     return matchesSearch && matchesFilter;
   });
 
   const filteredPayments = payments.filter(payment => {
-    const matchesSearch = payment.companyName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (payment.companyName?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     const matchesCompany = !filterCompany || payment.companyName === filterCompany;
     const matchesStatus = !filterStatus || payment.status === filterStatus;
     return matchesSearch && matchesCompany && matchesStatus;
   });
+
+  const filteredCompanyPolicies = policies.filter(
+    policy => policy.company === selectedCompany &&
+      (
+        (policy.policyNumber?.toLowerCase() || '').includes(policySearch.toLowerCase()) ||
+        (policy.insuredName?.toLowerCase() || '').includes(policySearch.toLowerCase())
+      )
+  );
 
   // Add delete logic
   const handleDeleteCommission = async (id) => {
@@ -333,13 +347,6 @@ function Commission() {
     setCompanyDialogOpen(false);
   };
 
-  const filteredCompanyPolicies = policies.filter(
-    policy => policy.company === selectedCompany &&
-      (
-        policy.policyNumber?.toLowerCase().includes(policySearch.toLowerCase()) ||
-        policy.insuredName?.toLowerCase().includes(policySearch.toLowerCase())
-      )
-  );
   const paginatedPolicies = filteredCompanyPolicies.slice(policyPage * policyRowsPerPage, policyPage * policyRowsPerPage + policyRowsPerPage);
 
   // Calculate company stats
@@ -397,6 +404,7 @@ function Commission() {
   const totalPaid = payments.filter(p => p.status === 'Completed').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   const totalPending = payments.filter(p => p.status === 'Pending').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
+  
   function CommissionAgreementsTab() {
     return (
       <>
@@ -406,7 +414,11 @@ function Commission() {
   }
 
   function PaymentManagementTab() {
-    return <PaymentManagement policies={policies} />;
+    return (
+      <>
+        <PaymentManagement policies={policies} />
+      </>
+    );
   }
 
   function ReportsTab() {

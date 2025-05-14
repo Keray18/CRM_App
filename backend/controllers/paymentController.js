@@ -6,14 +6,18 @@ const { Op } = require('sequelize');
 exports.getAllPayments = async (req, res) => {
   try {
     const payments = await Payment.findAll({
-      include: [{
-        model: Policy,
-        attributes: ['policyNumber', 'insuredName', 'totalPremium']
-      }],
+      include: [
+        {
+          model: Policy,
+          as: 'policy', // Ensure this matches the alias in the association
+          attributes: ['policyNumber', 'insuredName', 'totalPremium']
+        }
+      ],
       order: [['paymentDate', 'DESC']]
     });
     res.json(payments);
   } catch (error) {
+    console.error('Error fetching payments:', error);
     res.status(500).json({ message: 'Error fetching payments', error: error.message });
   }
 };
@@ -135,4 +139,6 @@ exports.deletePayment = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Error deleting payment', error: error.message });
   }
-}; 
+};
+
+// Add part payment

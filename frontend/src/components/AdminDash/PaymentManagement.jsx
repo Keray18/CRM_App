@@ -26,13 +26,16 @@ import {
   IconButton,
   Tooltip,
   Alert,
-  Snackbar
+  Snackbar,
+  TablePagination,
+  InputAdornment
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Payment as PaymentIcon
+  Payment as PaymentIcon,
+  Search as SearchIcon
 } from '@mui/icons-material';
 import axios from 'axios';
 import { API_URL } from '../../config/config';
@@ -52,6 +55,9 @@ function PaymentManagement({ policies: propPolicies }) {
     notes: ''
   });
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchPayments();
@@ -85,6 +91,7 @@ function PaymentManagement({ policies: propPolicies }) {
   };
 
   const handleOpenDialog = (payment = null) => {
+    console.log('Opening dialog with payment:', payment); // Debugging
     if (payment) {
       setSelectedPayment(payment);
       setFormData({
@@ -125,8 +132,21 @@ function PaymentManagement({ policies: propPolicies }) {
   };
 
   const handleSubmit = async () => {
+    const remainingPayment = calculateRemainingPayment(formData.policyId);
+
+    if (remainingPayment === 0) {
+      showSnackbar('This policy is already fully paid!', 'error');
+      return;
+    }
+
+    if (formData.amount > remainingPayment) {
+      showSnackbar('Payment amount exceeds the remaining balance!', 'error');
+      return;
+    }
+
     try {
-      if (selectedPayment) {
+      if (selectedPayment && selectedPayment.id) {
+        // Use the correct ID for the PUT request
         await axios.put(`${API_URL}/payments/${selectedPayment.id}`, formData);
         showSnackbar('Payment updated successfully', 'success');
       } else {
@@ -174,191 +194,281 @@ function PaymentManagement({ policies: propPolicies }) {
     }
   };
 
+  const calculateRemainingPayment = (policyId) => {
+    const policy = policies.find(p => p.id === policyId);
+    if (!policy) return 0;
+
+    const totalPaid = payments
+      .filter(payment => payment.policyId === policyId)
+      .reduce((sum, payment) => sum + payment.amount, 0);
+
+    return Math.max(policy.totalPremium - totalPaid, 0); // Ensure it doesn't go below 0
+  };
+
+  const aggregatePaymentsByPolicy = () => {
+    return policies
+      .filter(policy => {
+        // Include only policies that have payments
+        const totalPaid = payments
+          .filter(payment => payment.policyId === policy.id)
+          .reduce((sum, payment) => sum + payment.amount, 0);
+        return totalPaid > 0; // Only include policies with payments
+      })
+      .map(policy => {
+        const totalPaid = payments
+          .filter(payment => payment.policyId === policy.id)
+          .reduce((sum, payment) => sum + payment.amount, 0);
+
+        return {
+          policyId: policy.id,
+          policyDetails: `${policy.policyNumber} - ${policy.insuredName}`,
+          totalPremium: policy.totalPremium,
+          totalPaid,
+          remainingPayment: Math.max(policy.totalPremium - totalPaid, 0)
+        };
+      });
+  };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Payment Management
-      </Typography>
+      <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+        <Typography variant="h4" gutterBottom>
+          Payment Management
+        </Typography>
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6">Payment List</Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+              <TextField
+                label="Search"
+                variant="outlined"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                sx={{ width: '300px' }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  )
+                }}
+              />
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => handleOpenDialog()}
+                sx={{ backgroundColor: '#1976d2', color: '#fff' }}
+              >
+                Add Payment
+              </Button>
+            </Box>
+
+            <TableContainer
+              component={Paper}
+              sx={{
+                borderRadius: 2,
+                boxShadow: 3,
+                backgroundColor: 'black',
+                color: 'black',
+                overflowX: 'auto',
+                maxWidth: '100%',
+                marginTop: 2, // Add margin at the top
+              }}
             >
-              Add Payment
-            </Button>
-          </Box>
-
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Policy</TableCell>
-                  <TableCell>Amount</TableCell>
-                  <TableCell>Payment Date</TableCell>
-                  <TableCell>Payment Type</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {payments.map((payment) => (
-                  <TableRow key={payment.id}>
-                    <TableCell>{getPolicyDetails(payment.policyId)}</TableCell>
-                    <TableCell>₹{payment.amount.toLocaleString('en-IN')}</TableCell>
-                    <TableCell>{new Date(payment.paymentDate).toLocaleDateString()}</TableCell>
-                    <TableCell>{payment.paymentType}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={payment.status}
-                        color={getStatusColor(payment.status)}
-                        size="small"
-                      />
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontSize: '14px', fontWeight: 'bold', backgroundColor: 'black' }}>
+                      Policy
                     </TableCell>
-                    <TableCell>
-                      <Tooltip title="Edit">
-                        <IconButton onClick={() => handleOpenDialog(payment)}>
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton onClick={() => handleDelete(payment.id)}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'black' }}>Total Paid</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'black' }}>Remaining Payment</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'black' }}>Total Premium</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'black' }}>Actions</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </CardContent>
-      </Card>
+                </TableHead>
+                <TableBody>
+                  {aggregatePaymentsByPolicy().length > 0 ? (
+                    aggregatePaymentsByPolicy()
+                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                      .map((policy, index) => (
+                        <TableRow
+                          key={policy.policyId}
+                          sx={{
+                            backgroundColor: 'black',
+                            '&:hover': { backgroundColor: 'burlywood' },
+                          }}
+                        >
+                          <TableCell>{policy.policyDetails}</TableCell>
+                          <TableCell>₹{policy.totalPaid.toLocaleString('en-IN')}</TableCell>
+                          <TableCell>₹{policy.remainingPayment.toLocaleString('en-IN')}</TableCell>
+                          <TableCell>₹{policy.totalPremium.toLocaleString('en-IN')}</TableCell>
+                          <TableCell>
+                            <Tooltip title="Add Payment">
+                              <IconButton onClick={() => handleOpenDialog({ policyId: policy.policyId })}>
+                                <AddIcon color="primary" />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center">
+                        No payments have been made yet.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              <TablePagination
+                rowsPerPageOptions={[5, 10, 25]}
+                component="div"
+                count={aggregatePaymentsByPolicy().length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+              />
+            </TableContainer>
+          </CardContent>
+        </Card>
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {selectedPayment ? 'Edit Payment' : 'Add New Payment'}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <FormControl fullWidth>
-                  <InputLabel>Policy</InputLabel>
-                  <Select
-                    name="policyId"
-                    value={formData.policyId}
+        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+          <DialogTitle sx={{ backgroundColor: 'black', fontWeight: 'bold' }}>
+            {selectedPayment ? 'Edit Payment' : 'Add New Payment'}
+          </DialogTitle>
+          <DialogContent sx={{ p: 3 }}>
+            <Box sx={{ mt: 2 }}>
+              <Grid container spacing={3}>
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Policy</InputLabel>
+                    <Select
+                      name="policyId"
+                      value={formData.policyId}
+                      onChange={handleInputChange}
+                      label="Policy"
+                    >
+                      {policies.map((policy) => (
+                        <MenuItem key={policy.id} value={policy.id}>
+                          {policy.policyNumber} - {policy.insuredName} (₹{policy.totalPremium.toLocaleString('en-IN')})
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Amount"
+                    name="amount"
+                    type="number"
+                    value={formData.amount}
                     onChange={handleInputChange}
-                    label="Policy"
-                  >
-                    {policies.map((policy) => (
-                      <MenuItem key={policy.id} value={policy.id}>
-                        {policy.policyNumber} - {policy.insuredName} (₹{policy.totalPremium.toLocaleString('en-IN')})
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Amount"
-                  name="amount"
-                  type="number"
-                  value={formData.amount}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Payment Date"
-                  name="paymentDate"
-                  type="date"
-                  value={formData.paymentDate}
-                  onChange={handleInputChange}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Payment Type</InputLabel>
-                  <Select
-                    name="paymentType"
-                    value={formData.paymentType}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Payment Date"
+                    name="paymentDate"
+                    type="date"
+                    value={formData.paymentDate}
                     onChange={handleInputChange}
-                    label="Payment Type"
-                  >
-                    <MenuItem value="Full">Full Payment</MenuItem>
-                    <MenuItem value="Part">Part Payment</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Payment Method</InputLabel>
-                  <Select
-                    name="paymentMethod"
-                    value={formData.paymentMethod}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Payment Type</InputLabel>
+                    <Select
+                      name="paymentType"
+                      value={formData.paymentType}
+                      onChange={handleInputChange}
+                      label="Payment Type"
+                    >
+                      <MenuItem value="Full">Full Payment</MenuItem>
+                      <MenuItem value="Part">Part Payment</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Payment Method</InputLabel>
+                    <Select
+                      name="paymentMethod"
+                      value={formData.paymentMethod}
+                      onChange={handleInputChange}
+                      label="Payment Method"
+                    >
+                      <MenuItem value="Cash">Cash</MenuItem>
+                      <MenuItem value="Cheque">Cheque</MenuItem>
+                      <MenuItem value="Online Transfer">Online Transfer</MenuItem>
+                      <MenuItem value="UPI">UPI</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Reference Number"
+                    name="referenceNumber"
+                    value={formData.referenceNumber}
                     onChange={handleInputChange}
-                    label="Payment Method"
-                  >
-                    <MenuItem value="Cash">Cash</MenuItem>
-                    <MenuItem value="Cheque">Cheque</MenuItem>
-                    <MenuItem value="Online Transfer">Online Transfer</MenuItem>
-                    <MenuItem value="UPI">UPI</MenuItem>
-                  </Select>
-                </FormControl>
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Notes"
+                    name="notes"
+                    multiline
+                    rows={2}
+                    value={formData.notes}
+                    onChange={handleInputChange}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="body2" sx={{ color: 'gray' }}>
+                    Remaining Payment: ₹{calculateRemainingPayment(formData.policyId).toLocaleString('en-IN')}
+                  </Typography>
+                </Grid>
               </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Reference Number"
-                  name="referenceNumber"
-                  value={formData.referenceNumber}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Notes"
-                  name="notes"
-                  multiline
-                  rows={2}
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-            </Grid>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained">
-            {selectedPayment ? 'Update' : 'Create'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={handleCloseDialog}>Cancel</Button>
+            <Button onClick={handleSubmit} variant="contained">
+              {selectedPayment ? 'Update' : 'Create'}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity}
         >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      </Paper>
     </Box>
   );
 }
 
-export default PaymentManagement; 
+export default PaymentManagement;
