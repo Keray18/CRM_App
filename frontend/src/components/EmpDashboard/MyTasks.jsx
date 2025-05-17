@@ -18,7 +18,7 @@ import {
 import { API_URL } from '../../config/config';
 import axios from 'axios';
 
-const MyTasks = ({ employeeId, employeeName }) => {
+const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
   const [tasks, setTasks] = useState([]);
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -29,12 +29,11 @@ const MyTasks = ({ employeeId, employeeName }) => {
 
   useEffect(() => {
     fetchTasks();
-  }, []);
+  }, [employeeId]);
 
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      // Use the correct endpoint to fetch tasks for the employee
       const response = await axios.get(`${API_URL}/tasks/employee/${employeeId}`, {
         withCredentials: true
       });
@@ -63,6 +62,10 @@ const MyTasks = ({ employeeId, employeeName }) => {
         withCredentials: true
       });
       setTasks(tasks.filter(task => task.id !== taskId));
+      // Notify parent component to update task count
+      if (onTaskUpdate) {
+        onTaskUpdate();
+      }
       setSnackbar({
         open: true,
         message: 'Task deleted successfully',
@@ -73,6 +76,38 @@ const MyTasks = ({ employeeId, employeeName }) => {
       setSnackbar({
         open: true,
         message: 'Error deleting task',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleStatusChange = async (taskId, newStatus) => {
+    try {
+      await axios.put(`${API_URL}/tasks/${taskId}`, {
+        status: newStatus
+      }, {
+        withCredentials: true
+      });
+      
+      setTasks(tasks.map(task => 
+        task.id === taskId ? { ...task, status: newStatus } : task
+      ));
+      
+      // Notify parent component to update task count
+      if (onTaskUpdate) {
+        onTaskUpdate();
+      }
+      
+      setSnackbar({
+        open: true,
+        message: 'Task status updated successfully',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error updating task status',
         severity: 'error'
       });
     }
@@ -106,7 +141,6 @@ const MyTasks = ({ employeeId, employeeName }) => {
         <Table>
           <TableHead>
             <TableRow sx={{ bgcolor: '#0C47A0' }}>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Employee</TableCell>
               <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Task</TableCell>
               <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Description</TableCell>
               <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Related To</TableCell>
@@ -118,23 +152,15 @@ const MyTasks = ({ employeeId, employeeName }) => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">Loading tasks...</TableCell>
+                <TableCell colSpan={6} align="center">Loading tasks...</TableCell>
               </TableRow>
             ) : tasks.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">No tasks assigned</TableCell>
+                <TableCell colSpan={6} align="center">No tasks assigned</TableCell>
               </TableRow>
             ) : (
               tasks.map((task) => (
                 <TableRow key={task.id} hover>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Avatar sx={{ mr: 2, bgcolor: '#0C47A0' }}>
-                        {task.employeeName?.charAt(0) || '?'}
-                      </Avatar>
-                      {task.employeeName}
-                    </Box>
-                  </TableCell>
                   <TableCell>{task.taskType}</TableCell>
                   <TableCell>{task.description}</TableCell>
                   <TableCell>
@@ -169,6 +195,26 @@ const MyTasks = ({ employeeId, employeeName }) => {
                     </Box>
                   </TableCell>
                   <TableCell>
+                    {task.status === 'Pending' && (
+                      <Button
+                        color="primary"
+                        onClick={() => handleStatusChange(task.id, 'In Progress')}
+                        size="small"
+                        sx={{ mr: 1 }}
+                      >
+                        Start
+                      </Button>
+                    )}
+                    {task.status === 'In Progress' && (
+                      <Button
+                        color="success"
+                        onClick={() => handleStatusChange(task.id, 'Completed')}
+                        size="small"
+                        sx={{ mr: 1 }}
+                      >
+                        Complete
+                      </Button>
+                    )}
                     <Button
                       color="error"
                       onClick={() => handleDelete(task.id)}

@@ -36,6 +36,8 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { styled } from "@mui/material/styles";
+import axios from 'axios';
+import { API_URL } from '../config/config';
 import {
   BarChart,
   Bar,
@@ -144,29 +146,40 @@ const EmpDashboard = () => {
   const employeeName = localStorage.getItem('employeeName') || '';
   const employeeId = localStorage.getItem('employeeId') || '';
 
+  // Fetch tasks for the employee
+  const fetchTasks = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/tasks/employee/${employeeId}`, {
+        withCredentials: true
+      });
+      
+      if (response.data && Array.isArray(response.data.tasks)) {
+        setTasks(response.data.tasks);
+        // Count only pending tasks
+        setPendingTasks(response.data.tasks.filter(task => task.status === 'Pending').length);
+      } else {
+        setTasks([]);
+        setPendingTasks(0);
+      }
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      setTasks([]);
+      setPendingTasks(0);
+    }
+  };
+
   // Fetch data on component mount
   useEffect(() => {
-    // Fetch tasks
-    const fetchTasks = async () => {
-      try {
-        // Replace with actual API call
-        const response = await fetch('/api/tasks');
-        const data = await response.json();
-        setTasks(data);
-        setPendingTasks(data.filter(task => task.status === 'Pending').length);
-      } catch (error) {
-        console.error('Error fetching tasks:', error);
-      }
-    };
+    fetchTasks();
 
     // Fetch policies
     const fetchPolicies = async () => {
       try {
-        // Replace with actual API call
-        const response = await fetch('/api/policies');
-        const data = await response.json();
-        setPolicies(data);
-        setActivePolicies(data.filter(policy => policy.status === 'Active').length);
+        const response = await axios.get(`${API_URL}/policies`, {
+          withCredentials: true
+        });
+        setPolicies(response.data || []);
+        setActivePolicies((response.data || []).filter(policy => policy.status === 'Active').length);
       } catch (error) {
         console.error('Error fetching policies:', error);
       }
@@ -175,11 +188,11 @@ const EmpDashboard = () => {
     // Fetch documents
     const fetchDocuments = async () => {
       try {
-        // Replace with actual API call
-        const response = await fetch('/api/documents');
-        const data = await response.json();
-        setDocuments(data);
-        setTotalDocuments(data.length);
+        const response = await axios.get(`${API_URL}/documents`, {
+          withCredentials: true
+        });
+        setDocuments(response.data || []);
+        setTotalDocuments((response.data || []).length);
       } catch (error) {
         console.error('Error fetching documents:', error);
       }
@@ -188,11 +201,11 @@ const EmpDashboard = () => {
     // Fetch leads
     const fetchLeads = async () => {
       try {
-        // Replace with actual API call
-        const response = await fetch('/api/leads');
-        const data = await response.json();
-        setLeads(data);
-        setActiveLeads(data.filter(lead => lead.status === 'Active').length);
+        const response = await axios.get(`${API_URL}/leads`, {
+          withCredentials: true
+        });
+        setLeads(response.data.leads || []);
+        setActiveLeads((response.data.leads || []).filter(lead => lead.status === 'Active').length);
       } catch (error) {
         console.error('Error fetching leads:', error);
       }
@@ -201,11 +214,15 @@ const EmpDashboard = () => {
     // Fetch commissions
     const fetchCommissions = async () => {
       try {
-        // Replace with actual API call
-        const response = await fetch('/api/commissions');
-        const data = await response.json();
-        setCommissions(data);
-        const total = data.reduce((sum, comm) => sum + parseFloat(comm.amount), 0);
+        const response = await axios.get(`${API_URL}/commissions`, {
+          withCredentials: true
+        });
+        setCommissions(response.data || []);
+        // Calculate total commission based on the commission structure
+        const total = (response.data || []).reduce((sum, comm) => {
+          const commissionAmount = comm.effectiveCommission || 0;
+          return sum + parseFloat(commissionAmount);
+        }, 0);
         setTotalCommission(total);
       } catch (error) {
         console.error('Error fetching commissions:', error);
@@ -213,12 +230,11 @@ const EmpDashboard = () => {
     };
 
     // Call all fetch functions
-    fetchTasks();
     fetchPolicies();
     fetchDocuments();
     fetchLeads();
     fetchCommissions();
-  }, []);
+  }, [employeeId]);
 
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
@@ -229,9 +245,9 @@ const EmpDashboard = () => {
   const renderSection = () => {
     switch (section) {
       case "My Tasks":
-        return <MyTasks employeeId={employeeId} employeeName={employeeName} />;
+        return <MyTasks employeeId={employeeId} employeeName={employeeName} onTaskUpdate={fetchTasks} />;
       case "My Documents":
-        return <MyDocuments documents={documents} setDocuments={setDocuments} />;
+        return <MyDocuments leads={leads} />;
       case "My Policies":
         return <MyPolicies policies={policies} setPolicies={setPolicies} />;
       case "My Leads":
@@ -411,28 +427,28 @@ const EmpDashboard = () => {
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Policy Number</TableCell>
-                      <TableCell>Client Name</TableCell>
+                      <TableCell>Company</TableCell>
                       <TableCell>Policy Type</TableCell>
-                      <TableCell>Premium Amount</TableCell>
-                      <TableCell>Commission %</TableCell>
-                      <TableCell>Commission Amount</TableCell>
+                      <TableCell>TP Commission</TableCell>
+                      <TableCell>OD Commission</TableCell>
+                      <TableCell>Addon Commission</TableCell>
+                      <TableCell>Effective Commission</TableCell>
                       <TableCell>Status</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {commissions.slice(0, 5).map((commission) => (
                       <TableRow key={commission.id} hover>
-                        <TableCell>{commission.policyNumber}</TableCell>
-                        <TableCell>{commission.clientName}</TableCell>
+                        <TableCell>{commission.company}</TableCell>
                         <TableCell>{commission.policyType}</TableCell>
-                        <TableCell>₹{commission.premiumAmount.toLocaleString()}</TableCell>
-                        <TableCell>{commission.commissionPercentage}%</TableCell>
-                        <TableCell>₹{commission.commissionAmount.toLocaleString()}</TableCell>
+                        <TableCell>{commission.tpCommission}%</TableCell>
+                        <TableCell>{commission.odCommission}%</TableCell>
+                        <TableCell>{commission.addonCommission}%</TableCell>
+                        <TableCell>{commission.effectiveCommission}%</TableCell>
                         <TableCell>
                           <Chip
-                            label={commission.status}
-                            color={commission.status === 'Paid' ? 'success' : 'warning'}
+                            label={commission.isActive ? 'Active' : 'Inactive'}
+                            color={commission.isActive ? 'success' : 'warning'}
                             size="small"
                           />
                         </TableCell>

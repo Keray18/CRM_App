@@ -30,7 +30,11 @@ const Document = sequelize.define('Document', {
     uploadedAt: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
-    }
+    },
+    assignedTo: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+    },
 }, {
     timestamps: true,
 })
