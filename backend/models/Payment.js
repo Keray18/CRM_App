@@ -11,7 +11,7 @@ const Payment = sequelize.define('Payment', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'policy',
+      model: 'policy', // Ensure this matches the actual table name
       key: 'id'
     }
   },
@@ -55,7 +55,7 @@ const Payment = sequelize.define('Payment', {
   }
 }, {
   timestamps: true,
-  tableName: 'payments'
+  tableName: 'payments' // Explicitly set the table name
 });
 
-module.exports = Payment; 
+module.exports = Payment;

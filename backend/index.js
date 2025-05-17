@@ -1,13 +1,24 @@
 const express = require('express')
 const { sequelize, dbReady } = require('./config/dbConn.js')
 const dotenv = require('dotenv').config()
+const compression = require('compression')
+const helmet = require('helmet')
+const cors = require('cors')
+
+// Import routes
 const authRoutes = require('./routes/authRoutes.js')
 const leadRoutes = require('./routes/leadRoutes.js')
 const taskRoutes = require('./routes/taskRoutes.js')
 const masterDataRoutes = require('./routes/masterDataRoutes.js')
-const compression = require('compression')
-const helmet = require('helmet')
-const cors = require('cors')
+
+// Import models
+const MasterData = require('./models/MasterData')
+const Employee = require('./models/empModel')
+const Task = require('./models/TaskModel')
+const Leads = require('./models/LeadsModel')
+const Policy = require('./models/Policy')
+const Document = require('./models/documentModel')
+const Payment = require('./models/Payment')
 
 const app = express()
 
@@ -44,19 +55,18 @@ app.use((req, res, next) => {
     next();
 });
 
-// Import all models
-const MasterData = require('./models/MasterData');
-const Employee = require('./models/empModel');
-const Task = require('./models/TaskModel');
-const Leads = require('./models/LeadsModel');
-const Policy = require('./models/Policy');
-const Document = require('./models/documentModel');
-const Payment = require('./models/Payment');
+// Define Sequelize associations
+Payment.belongsTo(Policy, { foreignKey: 'policyId', as: 'policy' });
+Policy.hasMany(Payment, { foreignKey: 'policyId', as: 'payments' });
+
 // Sync all models and start server
 async function startServer() {
     await dbReady;
     try {
         await sequelize.authenticate();
+        console.log('✅ Database connection established successfully.');
+
+        // Synchronize models
         await Promise.all([
             MasterData.sync(),
             Employee.sync(),
@@ -66,7 +76,9 @@ async function startServer() {
             Document.sync(),
             Payment.sync()
         ]);
-        console.log('✅ All models synchronized successfully');
+        console.log('✅ All models synchronized successfully.');
+
+        // Start the server
         const PORT = process.env.PORT || 8080;
         app.listen(PORT, () => console.log(`🚀 Server is running on port ${PORT}`));
     } catch (err) {
@@ -86,7 +98,7 @@ app.use('/api/customers', require('./routes/customerRoutes'))
 app.use('/api/masterdata', masterDataRoutes)
 app.use('/api/documents', require('./routes/documentRoutes'))
 app.use('/api/commissions', require('./routes/commissionRoutes'))
-app.use('/api/payments', require('./routes/paymentRoutes'));
+app.use('/api/payments', require('./routes/paymentRoutes'))
 
 // Enhanced error handling middleware
 app.use((err, req, res, next) => {

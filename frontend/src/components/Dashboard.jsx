@@ -221,16 +221,14 @@ const Dashboard = () => {
     setDashboardStats(prev => ({ ...prev, isLoading: true, error: null }));
     try {
       const [employeesRes, leadsRes, tasksRes, paymentsRes] = await Promise.all([
-        axios.get('http://localhost:8080/api/auth/getAllEmployees'),
-        axios.get(`${API_URL}/leads`),
-        axios.get(`${API_URL}/tasks`),
-        Promise.resolve({ data: { payments } })
+        axios.get(`${API_URL}/auth/getAllEmployees`), // Fetch employees
+        axios.get(`${API_URL}/leads`),               // Fetch leads
+        axios.get(`${API_URL}/tasks`),               // Fetch tasks
+        axios.get(`${API_URL}/payments`),            // Fetch payments
       ]);
 
       const employeesArray = employeesRes.data.employees || [];
-      // Only leads that are not deleted and not converted are active
       const activeLeads = (leadsRes.data.leads || []).filter(lead => !lead.isDeleted && !lead.isConverted);
-      // Only tasks that are not completed are active
       const activeTasks = (tasksRes.data.tasks || []).filter(task => task.status !== 'Completed');
       const totalPayments = paymentsRes.data.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0;
 
@@ -246,7 +244,10 @@ const Dashboard = () => {
       });
 
       // Update other states as needed
-      setTotalEmployees(employeesArray.length);
+      setEmployees(employeesArray);
+      setLeads(leadsRes.data.leads || []);
+      setTasks(tasksRes.data.tasks || []);
+      setPayments(paymentsRes.data.payments || []);
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
       setDashboardStats(prev => ({
@@ -625,10 +626,10 @@ const Dashboard = () => {
   }, []);
 
   // Calculate payment statistics
-  const totalPayments = payments.reduce((sum, payment) => sum + payment.amount, 0);
   const completedPayments = payments
     .filter(payment => payment.status === 'Completed')
     .reduce((sum, payment) => sum + payment.amount, 0);
+
   const pendingPayments = payments
     .filter(payment => payment.status === 'Pending')
     .reduce((sum, payment) => sum + payment.amount, 0);
