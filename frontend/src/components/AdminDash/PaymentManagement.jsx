@@ -309,9 +309,9 @@ function PaymentManagement({ policies: propPolicies }) {
                           }}
                         >
                           <TableCell>{policy.policyDetails}</TableCell>
-                          <TableCell>₹{policy.totalPaid.toLocaleString('en-IN')}</TableCell>
-                          <TableCell>₹{policy.remainingPayment.toLocaleString('en-IN')}</TableCell>
-                          <TableCell>₹{policy.totalPremium.toLocaleString('en-IN')}</TableCell>
+                          <TableCell>₹{typeof policy.totalPaid === 'number' ? policy.totalPaid.toLocaleString('en-IN') : '—'}</TableCell>
+                          <TableCell>₹{typeof policy.remainingPayment === 'number' ? policy.remainingPayment.toLocaleString('en-IN') : '—'}</TableCell>
+                          <TableCell>₹{typeof policy.totalPremium === 'number' ? policy.totalPremium.toLocaleString('en-IN') : '—'}</TableCell>
                           <TableCell>
                             <Tooltip title="Add Payment">
                               <IconButton onClick={() => handleOpenDialog({ policyId: policy.policyId })}>
@@ -361,7 +361,7 @@ function PaymentManagement({ policies: propPolicies }) {
                     >
                       {policies.map((policy) => (
                         <MenuItem key={policy.id} value={policy.id}>
-                          {policy.policyNumber} - {policy.insuredName} (₹{policy.totalPremium.toLocaleString('en-IN')})
+                          {policy.policyNumber} - {policy.insuredName} (₹{typeof policy.totalPremium === 'number' ? policy.totalPremium.toLocaleString('en-IN') : '—'})
                         </MenuItem>
                       ))}
                     </Select>
@@ -440,7 +440,7 @@ function PaymentManagement({ policies: propPolicies }) {
                 </Grid>
                 <Grid item xs={12}>
                   <Typography variant="body2" sx={{ color: 'gray' }}>
-                    Remaining Payment: ₹{calculateRemainingPayment(formData.policyId).toLocaleString('en-IN')}
+                    Remaining Payment: ₹{typeof calculateRemainingPayment(formData.policyId) === 'number' ? calculateRemainingPayment(formData.policyId).toLocaleString('en-IN') : '—'}
                   </Typography>
                 </Grid>
               </Grid>

@@ -31,6 +31,7 @@ import {
   FormControl,
   InputLabel,
   Select,
+  Stack,
 } from "@mui/material";
 import {
   Dashboard as DashboardIcon,
@@ -53,9 +54,29 @@ import {
   AttachMoney as AttachMoneyIcon,
   School as SchoolIcon,
   ExitToApp as LogoutIcon,
+  ExpandMore as ExpandMoreIcon,
+  InfoOutlined as InfoOutlinedIcon,
+  Timeline as TimelineIcon,
+  EventAvailable as EventAvailableIcon,
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  ResponsiveContainer
+} from 'recharts';
 import { useNavigate } from "react-router-dom";
 import Leads from "./AdminDash/Leads";
 import Customers from "./AdminDash/Customers";
@@ -67,6 +88,8 @@ import Commission from './AdminDash/Commission';
 import axios from 'axios';
 import { getAllPolicies } from '../services/policyService';
 import { API_URL } from '../config/config';
+import Collapse from '@mui/material/Collapse';
+import IconButton from '@mui/material/IconButton';
 
 const primaryColor = "#1976d2";
 const secondaryColor = "#f50057";
@@ -202,6 +225,13 @@ const Dashboard = () => {
   const [selectedLead, setSelectedLead] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [positions, setPositions] = useState([]);
+  const [policyStats, setPolicyStats] = useState({
+    typeDistribution: [],
+    statusDistribution: [],
+    monthlyPremiums: [],
+    businessDistribution: []
+  });
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   const taskTypes = [
     "Follow-up",
@@ -760,6 +790,112 @@ const Dashboard = () => {
     fetchPositions();
   }, []);
 
+  // Fetch policy statistics
+  useEffect(() => {
+    const fetchPolicyStats = async () => {
+      try {
+        const policies = await getAllPolicies();
+        
+        // Calculate policy type distribution
+        const typeCount = policies.reduce((acc, policy) => {
+          acc[policy.type] = (acc[policy.type] || 0) + 1;
+          return acc;
+        }, {});
+        
+        const typeDistribution = Object.entries(typeCount).map(([name, value]) => ({
+          name: name.charAt(0).toUpperCase() + name.slice(1),
+          value
+        }));
+
+        // Calculate status distribution
+        const statusCount = policies.reduce((acc, policy) => {
+          acc[policy.status] = (acc[policy.status] || 0) + 1;
+          return acc;
+        }, {});
+        
+        const statusDistribution = Object.entries(statusCount).map(([name, value]) => ({
+          name,
+          value
+        }));
+
+        // Calculate monthly premiums
+        const monthlyPremiums = policies.reduce((acc, policy) => {
+          const month = new Date(policy.startDate).toLocaleString('default', { month: 'short' });
+          acc[month] = (acc[month] || 0) + (policy.totalPremium || 0);
+          return acc;
+        }, {});
+        
+        const monthlyPremiumData = Object.entries(monthlyPremiums).map(([month, amount]) => ({
+          month,
+          amount
+        }));
+
+        // Calculate new vs renewal business
+        const businessCount = policies.reduce((acc, policy) => {
+          acc[policy.business] = (acc[policy.business] || 0) + 1;
+          return acc;
+        }, {});
+        
+        const businessDistribution = Object.entries(businessCount).map(([type, count]) => ({
+          type,
+          count
+        }));
+
+        setPolicyStats({
+          typeDistribution,
+          statusDistribution,
+          monthlyPremiums: monthlyPremiumData,
+          businessDistribution
+        });
+      } catch (error) {
+        console.error('Error fetching policy statistics:', error);
+      }
+    };
+
+    fetchPolicyStats();
+  }, []);
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+
+  // Helper: Top 3 companies by policy count
+  const topCompanies = React.useMemo(() => {
+    const companyCount = {};
+    policies.forEach(p => {
+      if (p.company) companyCount[p.company] = (companyCount[p.company] || 0) + 1;
+    });
+    return Object.entries(companyCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([company, count]) => ({ company, count }));
+  }, [policies]);
+
+  // Helper: Recent policies (last 5)
+  const recentPolicies = React.useMemo(() => {
+    return [...policies]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 5);
+  }, [policies]);
+
+  // Helper: Policy status breakdown
+  const statusBreakdown = React.useMemo(() => {
+    const statusCount = {};
+    policies.forEach(p => {
+      statusCount[p.status] = (statusCount[p.status] || 0) + 1;
+    });
+    return Object.entries(statusCount).map(([status, count]) => ({ status, count }));
+  }, [policies]);
+
+  // Helper: Upcoming expirations (next 30 days)
+  const upcomingExpirations = React.useMemo(() => {
+    const now = new Date();
+    const soon = new Date();
+    soon.setDate(now.getDate() + 30);
+    return policies
+      .filter(p => p.endDate && new Date(p.endDate) > now && new Date(p.endDate) <= soon)
+      .sort((a, b) => new Date(a.endDate) - new Date(b.endDate))
+      .slice(0, 5);
+  }, [policies]);
+
   return (
     <Box
       sx={{
@@ -771,10 +907,16 @@ const Dashboard = () => {
       <Sidebar section={section} setSection={setSection} />
 
       <Box component="main" sx={{ flexGrow: 1, p: 4, pl: 35 }}>
+        {/* Greeting Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-          <Typography variant="h4" color="primary" fontWeight="bold">
-            {section}
-          </Typography>
+          <Box>
+            <Typography variant="h4" color="primary" fontWeight="bold" sx={{ mb: 0.5 }}>
+              Welcome, Admin!
+            </Typography>
+            <Typography variant="subtitle1" color="text.secondary">
+              Here's your CRM policy management overview.
+            </Typography>
+          </Box>
           <Button
             variant="outlined"
             color="primary"
@@ -804,11 +946,15 @@ const Dashboard = () => {
             >
               Dashboard Overview
             </Typography>
-            <Grid container spacing={3}>
+            {/* Only keep the first row of cards */}
+            <Grid container spacing={3} sx={{ mb: 4 }}>
               <Grid item xs={12} md={3}>
-                <Card sx={{ bgcolor: primaryColor, color: "white", p: 2 }}>
+                <Card sx={{ bgcolor: primaryColor, color: "white", p: 2, transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'scale(1.04)', boxShadow: 8 } }}>
                   <CardContent>
-                    <Typography variant="h6">Total Employees </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <PeopleIcon sx={{ fontSize: 32, mr: 1 }} />
+                      <Typography variant="h6">Total Employees </Typography>
+                    </Box>
                     {dashboardStats.isLoading ? (
                       <CircularProgress size={40} sx={{ color: 'white', mt: 1 }} />
                     ) : dashboardStats.error ? (
@@ -820,9 +966,12 @@ const Dashboard = () => {
                 </Card>
               </Grid>
               <Grid item xs={12} md={3}>
-                <Card sx={{ bgcolor: secondaryColor, color: "white", p: 2 }}>
+                <Card sx={{ bgcolor: secondaryColor, color: "white", p: 2, transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'scale(1.04)', boxShadow: 8 } }}>
                   <CardContent>
-                    <Typography variant="h6">Active Leads</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <AssignmentIcon sx={{ fontSize: 32, mr: 1 }} />
+                      <Typography variant="h6">Active Leads</Typography>
+                    </Box>
                     {dashboardStats.isLoading ? (
                       <CircularProgress size={40} sx={{ color: 'white', mt: 1 }} />
                     ) : dashboardStats.error ? (
@@ -834,9 +983,12 @@ const Dashboard = () => {
                 </Card>
               </Grid>
               <Grid item xs={12} md={3}>
-                <Card sx={{ bgcolor: "success.main", color: "white", p: 2 }}>
+                <Card sx={{ bgcolor: "success.main", color: "white", p: 2, transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'scale(1.04)', boxShadow: 8 } }}>
                   <CardContent>
-                    <Typography variant="h6">Active Tasks</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <TaskIcon sx={{ fontSize: 32, mr: 1 }} />
+                      <Typography variant="h6">Active Tasks</Typography>
+                    </Box>
                     {dashboardStats.isLoading ? (
                       <CircularProgress size={40} sx={{ color: 'white', mt: 1 }} />
                     ) : dashboardStats.error ? (
@@ -848,9 +1000,12 @@ const Dashboard = () => {
                 </Card>
               </Grid>
               <Grid item xs={12} md={3}>
-                <Card sx={{ bgcolor: "info.main", color: "white", p: 2 }}>
+                <Card sx={{ bgcolor: "info.main", color: "white", p: 2, transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'scale(1.04)', boxShadow: 8 } }}>
                   <CardContent>
-                    <Typography variant="h6">Total Payments</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <AttachMoneyIcon sx={{ fontSize: 32, mr: 1 }} />
+                      <Typography variant="h6">Total Payments</Typography>
+                    </Box>
                     {dashboardStats.isLoading ? (
                       <CircularProgress size={40} sx={{ color: 'white', mt: 1 }} />
                     ) : dashboardStats.error ? (
@@ -863,162 +1018,300 @@ const Dashboard = () => {
               </Grid>
             </Grid>
 
-            {/* Payment Overview Section */}
-            <Typography variant="h5" sx={{ mt: 4, mb: 2, color: "#0C47A0" }}>
-              Payment Overview
-            </Typography>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
-                <Card>
+            {/* Creative Policy Info Section */}
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              {/* Top Companies */}
+              <Grid item xs={12} md={3}>
+                <Card sx={{ p: 2, minHeight: 160, transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'scale(1.04)', boxShadow: 8 } }}>
                   <CardContent>
-                    <Typography variant="h6" color="text.secondary">
-                      Completed Payments
-                    </Typography>
-                    <Typography variant="h4" color="success.main" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 'bold' }}>
-                      ₹{completedPayments.toLocaleString('en-IN')}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <BusinessIcon sx={{ color: '#1976d2', fontSize: 28, mr: 1 }} />
+                      <Typography variant="subtitle1" color="primary" fontWeight={700} gutterBottom>Top Companies</Typography>
+                    </Box>
+                    {topCompanies.length === 0 ? (
+                      <Typography variant="body2">No data</Typography>
+                    ) : (
+                      topCompanies.map(tc => (
+                        <Tooltip key={tc.company} title={tc.company} arrow>
+                          <Box sx={{ mb: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <Typography variant="body2" fontWeight={600}>{tc.company}</Typography>
+                            <Typography variant="caption" color="text.secondary">{tc.count} policies</Typography>
+                          </Box>
+                        </Tooltip>
+                      ))
+                    )}
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={12} md={4}>
-                <Card>
+              {/* Recent Policies */}
+              <Grid item xs={12} md={3}>
+                <Card sx={{ p: 2, minHeight: 160, transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'scale(1.04)', boxShadow: 8 } }}>
                   <CardContent>
-                    <Typography variant="h6" color="text.secondary">
-                      Pending Payments
-                    </Typography>
-                    <Typography variant="h4" color="warning.main">
-                      ₹{pendingPayments.toLocaleString('en-IN')}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <PolicyIcon sx={{ color: '#1976d2', fontSize: 28, mr: 1 }} />
+                      <Typography variant="subtitle1" color="primary" fontWeight={700} gutterBottom>Recent Policies</Typography>
+                    </Box>
+                    {recentPolicies.length === 0 ? (
+                      <Typography variant="body2">No recent policies</Typography>
+                    ) : (
+                      recentPolicies.map(p => (
+                        <Tooltip key={p.id} title={p.policyNumber || 'N/A'} arrow>
+                          <Box sx={{ mb: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <Typography variant="body2" fontWeight={600}>{p.policyNumber || 'N/A'}</Typography>
+                            <Typography variant="caption" color="text.secondary">{p.type} • {p.startDate ? new Date(p.startDate).toLocaleDateString() : ''}</Typography>
+                          </Box>
+                        </Tooltip>
+                      ))
+                    )}
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={12} md={4}>
-                <Card>
+              {/* Policy Status Breakdown */}
+              <Grid item xs={12} md={3}>
+                <Card sx={{ p: 2, minHeight: 160, transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'scale(1.04)', boxShadow: 8 } }}>
                   <CardContent>
-                    <Typography variant="h6" color="text.secondary">
-                      Recent Payments
-                    </Typography>
-                    <TableContainer>
-                      <Table size="small">
-                        <TableBody>
-                          {payments.slice(0, 3).map((payment) => (
-                            <TableRow key={payment.id}>
-                              <TableCell>{payment.companyName}</TableCell>
-                              <TableCell>₹{payment.amount.toLocaleString('en-IN')}</TableCell>
-                              <TableCell>
-                                <Chip
-                                  label={payment.status}
-                                  color={payment.status === 'Completed' ? 'success' : 'warning'}
-                                  size="small"
-                                />
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <TimelineIcon sx={{ color: '#1976d2', fontSize: 28, mr: 1 }} />
+                      <Typography variant="subtitle1" color="primary" fontWeight={700} gutterBottom>Status Breakdown</Typography>
+                    </Box>
+                    <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+                      {statusBreakdown.length === 0 ? (
+                        <Typography variant="body2">No data</Typography>
+                      ) : (
+                        statusBreakdown.map(sb => (
+                          <Chip key={sb.status} label={`${sb.status}: ${sb.count}`} color={sb.status === 'Live Policy' ? 'success' : sb.status === 'Lapsed' ? 'error' : 'warning'} variant="outlined" />
+                        ))
+                      )}
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Grid>
+              {/* Upcoming Expirations */}
+              <Grid item xs={12} md={3}>
+                <Card sx={{ p: 2, minHeight: 160, transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'scale(1.04)', boxShadow: 8 } }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <EventAvailableIcon sx={{ color: '#1976d2', fontSize: 28, mr: 1 }} />
+                      <Typography variant="subtitle1" color="primary" fontWeight={700} gutterBottom>Upcoming Expirations</Typography>
+                    </Box>
+                    {upcomingExpirations.length === 0 ? (
+                      <Typography variant="body2">No upcoming expirations</Typography>
+                    ) : (
+                      upcomingExpirations.map(p => (
+                        <Tooltip key={p.id} title={p.policyNumber || 'N/A'} arrow>
+                          <Box sx={{ mb: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <Typography variant="body2" fontWeight={600}>{p.policyNumber || 'N/A'}</Typography>
+                            <Typography variant="caption" color="text.secondary">{p.endDate ? new Date(p.endDate).toLocaleDateString() : ''}</Typography>
+                          </Box>
+                        </Tooltip>
+                      ))
+                    )}
                   </CardContent>
                 </Card>
               </Grid>
             </Grid>
 
-            {/* Analytics Section */}
-            <Typography variant="h5" sx={{ mt: 4, mb: 2, color: "#0C47A0" }}>
-              Commission Analytics
-            </Typography>
+            {/* Charts Section */}
             <Grid container spacing={3}>
+              {/* Policy Type Distribution */}
               <Grid item xs={12} md={6}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      Commission Rates by Company
-                    </Typography>
-                    <Box sx={{ width: '100%', height: 300 }}>
-                      <BarChart width={500} height={300} data={analyticsData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="rate" fill="#8884d8" name="Commission Rate (%)" />
-                      </BarChart>
-                    </Box>
-                  </CardContent>
+                <Card sx={{ p: 2, height: '400px' }}>
+                  <Typography variant="h6" gutterBottom color="primary">
+                    Policy Distribution by Type
+                  </Typography>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={policyStats.typeDistribution}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {policyStats.typeDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </Card>
               </Grid>
+
+              {/* Policy Status Overview */}
               <Grid item xs={12} md={6}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      Earnings Overview
-                    </Typography>
-                    <Box sx={{ width: '100%', height: 300 }}>
-                      <BarChart width={500} height={300} data={analyticsData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="earnings" fill="#82ca9d" name="Total Earnings (₹)" />
-                        <Bar dataKey="pending" fill="#ffc658" name="Pending Payments (₹)" />
-                      </BarChart>
-                    </Box>
-                  </CardContent>
+                <Card sx={{ p: 2, height: '400px' }}>
+                  <Typography variant="h6" gutterBottom color="primary">
+                    Policy Status Overview
+                  </Typography>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={policyStats.statusDistribution}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="value" fill="#8884d8" name="Number of Policies" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Card>
+              </Grid>
+
+              {/* Monthly Premium Collection */}
+              <Grid item xs={12} md={6}>
+                <Card sx={{ p: 2, height: '400px' }}>
+                  <Typography variant="h6" gutterBottom color="primary">
+                    Monthly Premium Collection
+                  </Typography>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={policyStats.monthlyPremiums}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line 
+                        type="monotone" 
+                        dataKey="amount" 
+                        stroke="#8884d8" 
+                        name="Premium Amount"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Card>
+              </Grid>
+
+              {/* New vs Renewal Business */}
+              <Grid item xs={12} md={6}>
+                <Card sx={{ p: 2, height: '400px' }}>
+                  <Typography variant="h6" gutterBottom color="primary">
+                    New vs Renewal Business
+                  </Typography>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={policyStats.businessDistribution}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="type" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Area 
+                        type="monotone" 
+                        dataKey="count" 
+                        stroke="#8884d8" 
+                        fill="#8884d8" 
+                        name="Number of Policies"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </Card>
               </Grid>
             </Grid>
 
-            {/* Payment Analytics */}
-            <Typography variant="h5" sx={{ mt: 4, mb: 2, color: "#0C47A0" }}>
-              Payment Analytics
-            </Typography>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      Payment Status Distribution
-                    </Typography>
-                    <Box sx={{ width: '100%', height: 300 }}>
-                      <BarChart width={500} height={300} data={[
-                        { name: 'Completed', value: completedPayments },
-                        { name: 'Pending', value: pendingPayments }
-                      ]}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="value" fill="#8884d8" name="Amount (₹)" />
-                      </BarChart>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      Recent Payment Trends
-                    </Typography>
-                    <Box sx={{ width: '100%', height: 300 }}>
-                      <BarChart width={500} height={300} data={payments.map(payment => ({
-                        name: payment.companyName,
-                        amount: payment.amount,
-                        date: payment.paymentDate
-                      }))}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="amount" fill="#82ca9d" name="Payment Amount (₹)" />
-                      </BarChart>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
+            {/* Collapsible Analytics Panel */}
+            <Box sx={{ mt: 6, mb: 4, border: '2px solid #1976d2', borderRadius: 3, background: '#f7faff', boxShadow: 2, p: 2, maxWidth: 1200, mx: 'auto' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer', mb: 1 }} onClick={() => setShowAnalytics(!showAnalytics)}>
+                <ExpandMoreIcon sx={{ fontSize: 32, color: '#1976d2', transform: showAnalytics ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s' }} />
+                <Typography variant="h5" sx={{ color: '#1976d2', fontWeight: 700, ml: 1 }}>
+                  More Analytics
+                </Typography>
+                <InfoOutlinedIcon sx={{ color: '#1976d2', ml: 2 }} />
+              </Box>
+              <Typography variant="body2" sx={{ color: '#1976d2', mb: 2, ml: 5 }}>
+                Explore commission and payment analytics for deeper business insights. Click to expand/collapse.
+              </Typography>
+              <Collapse in={showAnalytics}>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={6}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom>
+                          Commission Rates by Company
+                        </Typography>
+                        <Box sx={{ width: '100%', height: 300 }}>
+                          <BarChart width={500} height={300} data={analyticsData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="rate" fill="#8884d8" name="Commission Rate (%)" />
+                          </BarChart>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom>
+                          Earnings Overview
+                        </Typography>
+                        <Box sx={{ width: '100%', height: 300 }}>
+                          <BarChart width={500} height={300} data={analyticsData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="earnings" fill="#82ca9d" name="Total Earnings (₹)" />
+                            <Bar dataKey="pending" fill="#ffc658" name="Pending Payments (₹)" />
+                          </BarChart>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom>
+                          Payment Status Distribution
+                        </Typography>
+                        <Box sx={{ width: '100%', height: 300 }}>
+                          <BarChart width={500} height={300} data={[
+                            { name: 'Completed', value: completedPayments },
+                            { name: 'Pending', value: pendingPayments }
+                          ]}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="value" fill="#8884d8" name="Amount (₹)" />
+                          </BarChart>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom>
+                          Recent Payment Trends
+                        </Typography>
+                        <Box sx={{ width: '100%', height: 300 }}>
+                          <BarChart width={500} height={300} data={payments.map(payment => ({
+                            name: payment.companyName,
+                            amount: payment.amount,
+                            date: payment.paymentDate
+                          }))}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="amount" fill="#82ca9d" name="Payment Amount (₹)" />
+                          </BarChart>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                </Grid>
+              </Collapse>
+            </Box>
           </Box>
         )}
 
