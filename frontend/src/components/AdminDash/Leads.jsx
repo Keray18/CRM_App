@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { 
-  Typography, 
-  Box, 
-  TextField, 
-  Button, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
+import {
+  Typography,
+  Box,
+  TextField,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Paper,
   IconButton,
   Tooltip,
@@ -31,43 +31,43 @@ import {
   Backdrop,
   TablePagination,
   InputBase,
-  Divider
+  Divider,
 } from "@mui/material";
-import { 
-  CheckCircle, 
-  Delete, 
-  Upload as UploadIcon, 
+import {
+  CheckCircle,
+  Delete,
+  Upload as UploadIcon,
   Warning,
   Search as SearchIcon,
   FilterList as FilterListIcon,
-  Clear as ClearIcon
+  Clear as ClearIcon,
 } from "@mui/icons-material";
 import dayjs from "dayjs";
-import axios from 'axios';
+import axios from "axios";
 import { API_URL } from "../../config/config";
 
 const Leads = ({ leads, setLeads, addCustomer }) => {
-  const [leadData, setLeadData] = useState({ 
-    leadName: "", 
-    leadPhone: "", 
+  const [leadData, setLeadData] = useState({
+    leadName: "",
+    leadPhone: "",
     leadEmail: "",
     leadPolicyType: "",
-    leadCreateDate: dayjs().format('YYYY-MM-DD'),
+    leadCreateDate: dayjs().format("YYYY-MM-DD"),
     remarks: "",
-    document: null
+    document: null,
   });
 
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
-    severity: "success"
+    severity: "success",
   });
 
   const [loading, setLoading] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
     leadId: null,
-    leadName: ""
+    leadName: "",
   });
   const [tableLoading, setTableLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -81,32 +81,33 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
   const [sortDirection, setSortDirection] = useState("desc");
 
   // Filtered and sorted leads with safe value handling
-  const filteredLeads = leads.filter(lead => {
-    if (!lead) return false;
+  const filteredLeads = leads
+    .filter((lead) => {
+      if (!lead) return false;
 
-    const searchTermLower = searchTerm.toLowerCase();
-    const matchesSearch = 
-      (lead.leadName?.toLowerCase() || '').includes(searchTermLower) ||
-      (lead.leadEmail?.toLowerCase() || '').includes(searchTermLower) ||
-      (lead.leadPhone || '').includes(searchTerm);
-    
-    const matchesPolicyType = 
-      filterPolicyType === "all" || 
-      lead.leadPolicyType === filterPolicyType;
+      const searchTermLower = searchTerm.toLowerCase();
+      const matchesSearch =
+        (lead.leadName?.toLowerCase() || "").includes(searchTermLower) ||
+        (lead.leadEmail?.toLowerCase() || "").includes(searchTermLower) ||
+        (lead.leadPhone || "").includes(searchTerm);
 
-    return matchesSearch && matchesPolicyType;
-  }).sort((a, b) => {
-    if (!a || !b) return 0;
-    
-    const aValue = a[sortField] || '';
-    const bValue = b[sortField] || '';
-    
-    if (sortDirection === "asc") {
-      return aValue > bValue ? 1 : -1;
-    } else {
-      return aValue < bValue ? 1 : -1;
-    }
-  });
+      const matchesPolicyType =
+        filterPolicyType === "all" || lead.leadPolicyType === filterPolicyType;
+
+      return matchesSearch && matchesPolicyType;
+    })
+    .sort((a, b) => {
+      if (!a || !b) return 0;
+
+      const aValue = a[sortField] || "";
+      const bValue = b[sortField] || "";
+
+      if (sortDirection === "asc") {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
 
   // Paginated leads
   const paginatedLeads = filteredLeads.slice(
@@ -162,19 +163,54 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
     try {
       const response = await axios.get(`${API_URL}/leads`);
       if (response.data && response.data.leads) {
-      setLeads(response.data.leads);
+        setLeads(response.data.leads);
       }
     } catch (error) {
-      console.error('Error fetching leads:', error);
+      console.error("Error fetching leads:", error);
       setSnackbar({
         open: true,
         message: error.response?.data?.message || "Error fetching leads",
-        severity: "error"
+        severity: "error",
       });
     } finally {
       setTableLoading(false);
     }
   }, [setLeads]);
+
+  const convertLeadsToCSV = (data) => {
+    if (!data || !data.length) return "";
+    const keys = [
+      "leadName",
+      "leadPhone",
+      "leadEmail",
+      "leadPolicyType",
+      "leadCreateDate",
+      "remarks",
+    ];
+    const csvRows = [
+      keys.join(","), // header
+      ...data.map((row) =>
+        keys
+          .map((k) => `"${(row[k] ?? "").toString().replace(/"/g, '""')}"`)
+          .join(",")
+      ),
+    ];
+    return csvRows.join("\n");
+  };
+
+  // Download handler
+  const handleDownloadCSV = () => {
+    const csv = convertLeadsToCSV(filteredLeads); // Use filteredLeads for current view
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "leads.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
 
   // Fetch leads on component mount
   useEffect(() => {
@@ -182,8 +218,14 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
     // Fetch policy types from master data
     const fetchPolicyTypes = async () => {
       try {
-        const response = await axios.get('http://localhost:8080/api/masterdata/type/Policy Type');
-        setPolicyTypes(response.data.filter(item => item.isActive).map(item => ({ value: item.name, label: item.name })));
+        const response = await axios.get(
+          "http://localhost:8080/api/masterdata/type/Policy Type"
+        );
+        setPolicyTypes(
+          response.data
+            .filter((item) => item.isActive)
+            .map((item) => ({ value: item.name, label: item.name }))
+        );
       } catch (error) {
         setPolicyTypes([]);
       }
@@ -209,29 +251,30 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
     // Set new timeout
     const timeout = setTimeout(async () => {
       try {
-        const response = await axios.patch(`${API_URL}/leads/${leadId}/remarks`, { remarks });
-        
+        const response = await axios.patch(
+          `${API_URL}/leads/${leadId}/remarks`,
+          { remarks }
+        );
+
         if (response.data && response.data.lead) {
-          setLeads(prevLeads => 
-            prevLeads.map(lead => 
-              lead.id === leadId 
-                ? response.data.lead 
-                : lead
+          setLeads((prevLeads) =>
+            prevLeads.map((lead) =>
+              lead.id === leadId ? response.data.lead : lead
             )
           );
 
           setSnackbar({
             open: true,
             message: "Remarks updated successfully",
-            severity: "success"
+            severity: "success",
           });
         }
       } catch (error) {
-        console.error('Error updating remarks:', error);
+        console.error("Error updating remarks:", error);
         setSnackbar({
           open: true,
           message: error.response?.data?.message || "Error updating remarks",
-          severity: "error"
+          severity: "error",
         });
       }
     }, 1000); // Wait for 1 second of no typing before sending request
@@ -249,44 +292,51 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
       setSnackbar({
         open: true,
         message: "File size should be less than 5MB",
-        severity: "error"
+        severity: "error",
       });
       event.target.value = null; // Reset file input
       return;
     }
 
     // Check file type
-    const allowedTypes = ['.pdf', '.doc', '.docx'];
-    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+    const allowedTypes = [".pdf", ".doc", ".docx"];
+    const fileExtension = "." + file.name.split(".").pop().toLowerCase();
     if (!allowedTypes.includes(fileExtension)) {
       setSnackbar({
         open: true,
         message: "Only PDF, DOC, and DOCX files are allowed",
-        severity: "error"
+        severity: "error",
       });
       event.target.value = null; // Reset file input
       return;
     }
 
-    setLeadData(prev => ({ ...prev, document: file }));
+    setLeadData((prev) => ({ ...prev, document: file }));
     setSnackbar({
       open: true,
       message: "File selected successfully",
-      severity: "success"
+      severity: "success",
     });
   };
 
   // Optimized submit handler
   const handleSubmit = async () => {
     // Validate required fields
-    const requiredFields = ['leadName', 'leadPhone', 'leadEmail', 'leadPolicyType'];
-    const missingFields = requiredFields.filter(field => !leadData[field]);
-    
+    const requiredFields = [
+      "leadName",
+      "leadPhone",
+      "leadEmail",
+      "leadPolicyType",
+    ];
+    const missingFields = requiredFields.filter((field) => !leadData[field]);
+
     if (missingFields.length > 0) {
       setSnackbar({
         open: true,
-        message: `Please fill in all required fields: ${missingFields.join(', ')}`,
-        severity: "error"
+        message: `Please fill in all required fields: ${missingFields.join(
+          ", "
+        )}`,
+        severity: "error",
       });
       return;
     }
@@ -297,7 +347,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
       setSnackbar({
         open: true,
         message: "Please enter a valid email address",
-        severity: "error"
+        severity: "error",
       });
       return;
     }
@@ -308,7 +358,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
       setSnackbar({
         open: true,
         message: "Please enter a valid 10-digit phone number",
-        severity: "error"
+        severity: "error",
       });
       return;
     }
@@ -316,9 +366,9 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
     setLoading(true);
     try {
       const formData = new FormData();
-      Object.keys(leadData).forEach(key => {
-        if (key === 'document' && leadData[key]) {
-          formData.append('document', leadData[key]);
+      Object.keys(leadData).forEach((key) => {
+        if (key === "document" && leadData[key]) {
+          formData.append("document", leadData[key]);
         } else if (leadData[key] !== null && leadData[key] !== undefined) {
           formData.append(key, leadData[key]);
         }
@@ -326,36 +376,36 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
 
       const response = await axios.post(`${API_URL}/leads/submit`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      
-      if (response.data && response.data.lead) {
-      setLeads(prevLeads => [...prevLeads, response.data.lead]);
-      
-      // Reset form
-      setLeadData({ 
-        leadName: "", 
-        leadPhone: "", 
-        leadEmail: "",
-        leadPolicyType: "",
-        leadCreateDate: dayjs().format('YYYY-MM-DD'),
-        remarks: "",
-        document: null
+          "Content-Type": "multipart/form-data",
+        },
       });
 
-      setSnackbar({
-        open: true,
-        message: "Lead created successfully",
-        severity: "success"
-      });
+      if (response.data && response.data.lead) {
+        setLeads((prevLeads) => [...prevLeads, response.data.lead]);
+
+        // Reset form
+        setLeadData({
+          leadName: "",
+          leadPhone: "",
+          leadEmail: "",
+          leadPolicyType: "",
+          leadCreateDate: dayjs().format("YYYY-MM-DD"),
+          remarks: "",
+          document: null,
+        });
+
+        setSnackbar({
+          open: true,
+          message: "Lead created successfully",
+          severity: "success",
+        });
       }
     } catch (error) {
-      console.error('Error creating lead:', error);
+      console.error("Error creating lead:", error);
       setSnackbar({
         open: true,
         message: error.response?.data?.message || "Error creating lead",
-        severity: "error"
+        severity: "error",
       });
     } finally {
       setLoading(false);
@@ -366,7 +416,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
     setDeleteDialog({
       open: true,
       leadId: lead.id,
-      leadName: lead.leadName
+      leadName: lead.leadName,
     });
   };
 
@@ -376,22 +426,26 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
 
     setDeleteLoading(true);
     try {
-      const response = await axios.delete(`${API_URL}/leads/${deleteDialog.leadId}`);
-      
+      const response = await axios.delete(
+        `${API_URL}/leads/${deleteDialog.leadId}`
+      );
+
       if (response.status === 200) {
-        setLeads(prevLeads => prevLeads.filter(lead => lead.id !== deleteDialog.leadId));
-      setSnackbar({
-        open: true,
+        setLeads((prevLeads) =>
+          prevLeads.filter((lead) => lead.id !== deleteDialog.leadId)
+        );
+        setSnackbar({
+          open: true,
           message: `Lead "${deleteDialog.leadName}" deleted successfully`,
-        severity: "info"
-      });
+          severity: "info",
+        });
       }
     } catch (error) {
-      console.error('Error deleting lead:', error);
+      console.error("Error deleting lead:", error);
       setSnackbar({
         open: true,
         message: error.response?.data?.message || "Error deleting lead",
-        severity: "error"
+        severity: "error",
       });
     } finally {
       setDeleteLoading(false);
@@ -410,19 +464,38 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ color: "#0C47A0" }}>
+      <Typography
+        variant="h4"
+        gutterBottom
+        fontWeight="bold"
+        sx={{ color: "#0C47A0" }}
+      >
         Lead Management
       </Typography>
-      
-      <Box sx={{ mb: 3, p: 3, bgcolor: "background.paper", borderRadius: 2, boxShadow: 1 }}>
-        <Typography variant="h6" gutterBottom sx={{ color: "#0C47A0", fontWeight: "bold" }}>Add New Lead</Typography>
+
+      <Box
+        sx={{
+          mb: 3,
+          p: 3,
+          bgcolor: "background.paper",
+          borderRadius: 2,
+          boxShadow: 1,
+        }}
+      >
+        <Typography
+          variant="h6"
+          gutterBottom
+          sx={{ color: "#0C47A0", fontWeight: "bold" }}
+        >
+          Add New Lead
+        </Typography>
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
-            <TextField 
-              name="leadName" 
-              label="Lead Name" 
-              required 
-              value={leadData.leadName} 
+            <TextField
+              name="leadName"
+              label="Lead Name"
+              required
+              value={leadData.leadName}
               onChange={handleLeadChange}
               fullWidth
               InputProps={{
@@ -435,11 +508,11 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
             />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField 
-              name="leadPhone" 
-              label="Phone" 
-              required 
-              value={leadData.leadPhone} 
+            <TextField
+              name="leadPhone"
+              label="Phone"
+              required
+              value={leadData.leadPhone}
               onChange={handleLeadChange}
               fullWidth
               placeholder="Enter 10-digit phone number"
@@ -447,12 +520,12 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
             />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField 
-              name="leadEmail" 
-              label="Email" 
-              type="email" 
+            <TextField
+              name="leadEmail"
+              label="Email"
+              type="email"
               required
-              value={leadData.leadEmail} 
+              value={leadData.leadEmail}
               onChange={handleLeadChange}
               fullWidth
               placeholder="example@email.com"
@@ -487,8 +560,8 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
             />
           </Grid>
           <Grid item xs={12}>
-            <Button 
-              variant="contained" 
+            <Button
+              variant="contained"
               component="label"
               startIcon={<UploadIcon />}
               sx={{ mr: 2 }}
@@ -516,7 +589,9 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
               color="primary"
               onClick={handleSubmit}
               disabled={loading}
-              startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
+              startIcon={
+                loading ? <CircularProgress size={20} color="inherit" /> : null
+              }
             >
               {loading ? "Creating Lead..." : "Create Lead"}
             </Button>
@@ -525,17 +600,32 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
       </Box>
 
       <Box sx={{ mt: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6" sx={{ color: "#0C47A0", fontWeight: "bold" }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 2,
+          }}
+        >
+          <Typography
+            variant="h6"
+            sx={{ color: "#0C47A0", fontWeight: "bold" }}
+          >
             Lead List
           </Typography>
-          
+
           {/* Search and Filter Section */}
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
             {/* Search Input */}
             <Paper
               component="form"
-              sx={{ p: '2px 4px', display: 'flex', alignItems: 'center', width: 300 }}
+              sx={{
+                p: "2px 4px",
+                display: "flex",
+                alignItems: "center",
+                width: 300,
+              }}
             >
               <InputBase
                 sx={{ ml: 1, flex: 1 }}
@@ -549,8 +639,8 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
                 }
               />
               {searchTerm && (
-                <IconButton 
-                  sx={{ p: '10px' }} 
+                <IconButton
+                  sx={{ p: "10px" }}
                   onClick={() => setSearchTerm("")}
                 >
                   <ClearIcon />
@@ -589,50 +679,87 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
           </Box>
         </Box>
 
-        <TableContainer component={Paper} sx={{ position: 'relative' }}>
+        <Box sx={{ p: 0 }}>
+          {/* ...existing code... */}
+          <Box sx={{ mt: 0 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+              }}
+            >
+              <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+                {/* ...existing search/filter UI... */}
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  onClick={handleDownloadCSV}
+                >
+                  Download CSV
+                </Button>
+              </Box>
+            </Box>
+            {/* ...existing table and rest of the code... */}
+          </Box>
+          {/* ...existing code... */}
+        </Box>
+
+        <TableContainer component={Paper} sx={{ position: "relative" }}>
           {tableLoading && (
-            <Box sx={{ 
-              position: 'absolute', 
-              top: 0, 
-              left: 0, 
-              right: 0, 
-              bottom: 0, 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              bgcolor: 'rgba(255, 255, 255, 0.7)',
-              zIndex: 1
-            }}>
+            <Box
+              sx={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                bgcolor: "rgba(255, 255, 255, 0.7)",
+                zIndex: 1,
+              }}
+            >
               <CircularProgress />
             </Box>
           )}
-        <Table>
+          <Table>
             <TableHead>
               <TableRow>
-                <TableCell 
+                <TableCell
                   onClick={() => handleSort("leadName")}
-                  sx={{ cursor: 'pointer' }}
+                  sx={{ cursor: "pointer" }}
                 >
-                  Name {sortField === "leadName" && (sortDirection === "asc" ? "↑" : "↓")}
+                  Name{" "}
+                  {sortField === "leadName" &&
+                    (sortDirection === "asc" ? "↑" : "↓")}
                 </TableCell>
-                <TableCell 
+                <TableCell
                   onClick={() => handleSort("leadPhone")}
-                  sx={{ cursor: 'pointer' }}
+                  sx={{ cursor: "pointer" }}
                 >
-                  Phone {sortField === "leadPhone" && (sortDirection === "asc" ? "↑" : "↓")}
+                  Phone{" "}
+                  {sortField === "leadPhone" &&
+                    (sortDirection === "asc" ? "↑" : "↓")}
                 </TableCell>
-                <TableCell 
+                <TableCell
                   onClick={() => handleSort("leadEmail")}
-                  sx={{ cursor: 'pointer' }}
+                  sx={{ cursor: "pointer" }}
                 >
-                  Email {sortField === "leadEmail" && (sortDirection === "asc" ? "↑" : "↓")}
+                  Email{" "}
+                  {sortField === "leadEmail" &&
+                    (sortDirection === "asc" ? "↑" : "↓")}
                 </TableCell>
                 <TableCell>Policy Type</TableCell>
-                <TableCell 
+                <TableCell
                   onClick={() => handleSort("leadCreateDate")}
-                  sx={{ cursor: 'pointer' }}
+                  sx={{ cursor: "pointer" }}
                 >
-                  Create Date {sortField === "leadCreateDate" && (sortDirection === "asc" ? "↑" : "↓")}
+                  Create Date{" "}
+                  {sortField === "leadCreateDate" &&
+                    (sortDirection === "asc" ? "↑" : "↓")}
                 </TableCell>
                 <TableCell>Remarks</TableCell>
                 <TableCell>Actions</TableCell>
@@ -642,53 +769,61 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
               {paginatedLeads.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} align="center">
-                    {searchTerm || filterPolicyType !== "all" 
-                      ? "No leads match your search criteria" 
+                    {searchTerm || filterPolicyType !== "all"
+                      ? "No leads match your search criteria"
                       : "No leads found"}
                   </TableCell>
                 </TableRow>
               ) : (
                 paginatedLeads.map((lead) => (
                   <TableRow key={lead?.id || Math.random()} hover>
-                    <TableCell>{lead?.leadName || '-'}</TableCell>
-                    <TableCell>{lead?.leadPhone || '-'}</TableCell>
-                    <TableCell>{lead?.leadEmail || '-'}</TableCell>
-                  <TableCell>
-                      <Chip 
-                        label={lead?.leadPolicyType || 'Unknown'} 
+                    <TableCell>{lead?.leadName || "-"}</TableCell>
+                    <TableCell>{lead?.leadPhone || "-"}</TableCell>
+                    <TableCell>{lead?.leadEmail || "-"}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={lead?.leadPolicyType || "Unknown"}
                         color={
-                          lead?.leadPolicyType === 'health' ? 'success' :
-                          lead?.leadPolicyType === 'travel' ? 'warning' :
-                          'primary'
+                          lead?.leadPolicyType === "health"
+                            ? "success"
+                            : lead?.leadPolicyType === "travel"
+                            ? "warning"
+                            : "primary"
                         }
                       />
-                  </TableCell>
-                    <TableCell>{lead?.leadCreateDate ? dayjs(lead.leadCreateDate).format('DD/MM/YYYY') : '-'}</TableCell>
-                  <TableCell>
-                    <TextField
-                      size="small"
-                        value={lead?.remarks || ''}
-                        onChange={(e) => handleUpdateRemarks(lead?.id, e.target.value)}
+                    </TableCell>
+                    <TableCell>
+                      {lead?.leadCreateDate
+                        ? dayjs(lead.leadCreateDate).format("DD/MM/YYYY")
+                        : "-"}
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        size="small"
+                        value={lead?.remarks || ""}
+                        onChange={(e) =>
+                          handleUpdateRemarks(lead?.id, e.target.value)
+                        }
                         placeholder="Add remarks"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Tooltip title="Delete Lead">
-                      <IconButton 
-                        color="error"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Tooltip title="Delete Lead">
+                        <IconButton
+                          color="error"
                           onClick={() => lead?.id && handleDeleteClick(lead)}
                           disabled={!lead?.id}
-                      >
-                        <Delete />
-                      </IconButton>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-          
+                        >
+                          <Delete />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+
           {/* Pagination */}
           <TablePagination
             rowsPerPageOptions={[5, 10, 25, 50]}
@@ -699,36 +834,46 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
             onPageChange={handleChangePage}
             onRowsPerPageChange={handleChangeRowsPerPage}
           />
-      </TableContainer>
+        </TableContainer>
       </Box>
 
       {/* Delete Confirmation Dialog */}
       <Dialog
         open={deleteDialog.open}
-        onClose={() => !deleteLoading && setDeleteDialog({ open: false, leadId: null, leadName: "" })}
+        onClose={() =>
+          !deleteLoading &&
+          setDeleteDialog({ open: false, leadId: null, leadName: "" })
+        }
       >
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
             <Warning color="warning" />
             <Typography>
-              Are you sure you want to delete the lead "{deleteDialog.leadName}"? This action cannot be undone.
+              Are you sure you want to delete the lead "{deleteDialog.leadName}
+              "? This action cannot be undone.
             </Typography>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button 
-            onClick={() => setDeleteDialog({ open: false, leadId: null, leadName: "" })}
+          <Button
+            onClick={() =>
+              setDeleteDialog({ open: false, leadId: null, leadName: "" })
+            }
             disabled={deleteLoading}
           >
             Cancel
           </Button>
-          <Button 
-            onClick={handleDeleteConfirm} 
-            color="error" 
+          <Button
+            onClick={handleDeleteConfirm}
+            color="error"
             variant="contained"
             disabled={deleteLoading}
-            startIcon={deleteLoading ? <CircularProgress size={20} color="inherit" /> : null}
+            startIcon={
+              deleteLoading ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : null
+            }
           >
             {deleteLoading ? "Deleting..." : "Delete"}
           </Button>
@@ -740,12 +885,12 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
         <Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
-          sx={{ width: '100%' }}
+          sx={{ width: "100%" }}
         >
           {snackbar.message}
         </Alert>
@@ -753,7 +898,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
 
       {/* Loading Backdrop */}
       <Backdrop
-        sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
         open={loading}
       >
         <CircularProgress color="inherit" />
