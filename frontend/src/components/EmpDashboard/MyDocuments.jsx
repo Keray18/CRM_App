@@ -219,6 +219,10 @@ const MyDocuments = ({ leads = [] }) => {
     }
   };
 
+  // Determine privilege
+  const isAdmin = localStorage.getItem('userRole') === 'admin';
+  const isPrivileged = localStorage.getItem('privileged') === 'true';
+
   return (
     <Box>
       <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ mb: 3 }} color="#0C47A0">
@@ -287,15 +291,17 @@ const MyDocuments = ({ leads = [] }) => {
 
       {selectedLead && (
         <>
-          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setOpenUploadDialog(true)}
-            >
-              Upload Document
-            </Button>
-          </Box>
+          {(isAdmin || isPrivileged) && (
+            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setOpenUploadDialog(true)}
+              >
+                Upload Document
+              </Button>
+            </Box>
+          )}
 
           <TableContainer component={Paper}>
             <Table>
@@ -329,18 +335,14 @@ const MyDocuments = ({ leads = [] }) => {
                         {new Date(doc.uploadedAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <IconButton 
-                          color="primary" 
-                          onClick={() => handleDownload(doc)}
-                        >
+                        <IconButton color="primary" onClick={() => handleDownload(doc)}>
                           <DownloadIcon />
                         </IconButton>
-                        <IconButton
-                          color="error"
-                          onClick={() => handleDelete(doc.id)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
+                        {(isAdmin || isPrivileged) && (
+                          <IconButton color="error" onClick={() => handleDelete(doc.id)}>
+                            <DeleteIcon />
+                          </IconButton>
+                        )}
                         <IconButton color="primary" onClick={() => handleView(doc)}>
                           <ViewIcon />
                         </IconButton>

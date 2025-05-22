@@ -26,9 +26,10 @@ import {
 import { Edit, Delete, Search, FilterList } from "@mui/icons-material";
 import dayjs from "dayjs";
 import { updatePolicy } from '../../services/policyService';
-import { deleteCustomer } from '../../services/customerService';
+import { updateCustomer, deleteCustomer, getAllCustomers, createCustomer } from '../../services/customerService';
 
-const Customers = ({ customers, setCustomers }) => {
+const Customers = () => {
+  const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPolicy, setFilterPolicy] = useState("All");
   const [editingCustomer, setEditingCustomer] = useState(null);
@@ -36,9 +37,32 @@ const Customers = ({ customers, setCustomers }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    policy: '',
+    conversionDate: dayjs().format('YYYY-MM-DD'),
+    status: 'Active',
+  });
+  const [creating, setCreating] = useState(false);
 
   // Updated policy types to match creation form options
   const policyTypes = ["Vehicle", "Health", "Travel"];
+  const statusOptions = ["Active", "Inactive", "Pending"];
+
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const data = await getAllCustomers();
+        setCustomers(data);
+      } catch (error) {
+        setSnackbar({ open: true, message: "Failed to fetch customers", severity: "error" });
+      }
+    };
+    fetchCustomers();
+  }, []);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -59,22 +83,23 @@ const Customers = ({ customers, setCustomers }) => {
 
   const handleSaveEdit = async () => {
     try {
-      // Send all required fields, not just the edited ones
-      await updatePolicy(editForm.id, {
-        policyNumber: editForm.policyNumber,
-        insuredName: editForm.name,
-        mobile: editForm.phone,
+      // Ensure conversionDate is always set and valid
+      let conversionDate = editForm.conversionDate;
+      if (!conversionDate) {
+        conversionDate = dayjs().format("YYYY-MM-DD");
+      }
+
+      await updateCustomer(editForm.id, {
+        name: editForm.name,
+        phone: editForm.phone,
         email: editForm.email,
-        startDate: editForm.conversionDate,
-        endDate: editForm.endDate,
-        company: editForm.company,
-        business: editForm.business,
-        type: editForm.policy,
-        status: editForm.status,
+        policy: editForm.policy,
+        conversionDate, // always send a valid date
+        status: editForm.status || "Active",
       });
 
       setCustomers(customers.map(c =>
-        c.id === editForm.id ? { ...editForm } : c
+        c.id === editForm.id ? { ...editForm, conversionDate, status: editForm.status || "Active" } : c
       ));
       setSnackbar({ open: true, message: "Customer updated successfully", severity: "success" });
       setEditingCustomer(null);
@@ -114,6 +139,27 @@ const Customers = ({ customers, setCustomers }) => {
     setCustomerToDelete(null);
   };
 
+  const handleCreateFormChange = (field, value) => {
+    setCreateForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleCreateCustomer = async () => {
+    setCreating(true);
+    try {
+      const newCustomer = await createCustomer(createForm);
+      setCustomers([newCustomer, ...customers]);
+      setSnackbar({ open: true, message: 'Customer created successfully', severity: 'success' });
+      setCreateDialogOpen(false);
+      setCreateForm({
+        name: '', phone: '', email: '', policy: '', conversionDate: dayjs().format('YYYY-MM-DD'), status: 'Active',
+      });
+    } catch (error) {
+      setSnackbar({ open: true, message: error.message || 'Failed to create customer', severity: 'error' });
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const filteredCustomers = Array.isArray(customers) ? customers.filter(customer => {
     const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                        customer.phone.includes(searchTerm) ||
@@ -127,6 +173,9 @@ const Customers = ({ customers, setCustomers }) => {
       <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ color: "primary.main" }}>
         Customer Management
       </Typography>
+      <Button variant="contained" color="primary" sx={{ mb: 2 }} onClick={() => setCreateDialogOpen(true)}>
+        + Add Customer
+      </Button>
 
       {/* Search and Filter Bar */}
       <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
@@ -263,20 +312,35 @@ const Customers = ({ customers, setCustomers }) => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Chip 
-                      label={customer.status || "Unknown"} 
-                      size="small" 
-                      color={
-                        customer.status === "Active"
-                          ? "success"
-                          : customer.status === "Pending"
-                          ? "warning"
-                          : customer.status === "Lapsed"
-                          ? "default"
-                          : "error"
-                      }
-                      sx={{ color: "#fff", fontWeight: "bold" }}
-                    />
+                    {editingCustomer === customer.id ? (
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        value={editForm.status || "Active"}
+                        onChange={(e) => handleEditFormChange('status', e.target.value)}
+                        sx={{ minWidth: 120 }}
+                      >
+                        {statusOptions.map(option => (
+                          <MenuItem key={option} value={option}>{option}</MenuItem>
+                        ))}
+                      </TextField>
+                    ) : (
+                      <Chip 
+                        label={customer.status || "Unknown"} 
+                        size="small" 
+                        color={
+                          customer.status === "Active"
+                            ? "success"
+                            : customer.status === "Pending"
+                            ? "warning"
+                            : customer.status === "Inactive"
+                            ? "default"
+                            : "error"
+                        }
+                        sx={{ color: "#fff", fontWeight: "bold" }}
+                      />
+                    )}
                   </TableCell>
                   <TableCell>
                     {editingCustomer === customer.id ? (
@@ -341,6 +405,29 @@ const Customers = ({ customers, setCustomers }) => {
           <Button onClick={handleDeleteCancel}>Cancel</Button>
           <Button onClick={handleDeleteConfirm} color="error" variant="contained">
             Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Create Customer Dialog */}
+      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)}>
+        <DialogTitle>Create Customer</DialogTitle>
+        <DialogContent>
+          <TextField label="Name" fullWidth margin="dense" value={createForm.name} onChange={e => handleCreateFormChange('name', e.target.value)} required />
+          <TextField label="Phone" fullWidth margin="dense" value={createForm.phone} onChange={e => handleCreateFormChange('phone', e.target.value)} required />
+          <TextField label="Email" fullWidth margin="dense" value={createForm.email} onChange={e => handleCreateFormChange('email', e.target.value)} />
+          <TextField select label="Policy" fullWidth margin="dense" value={createForm.policy} onChange={e => handleCreateFormChange('policy', e.target.value)} required>
+            {policyTypes.map(policy => <MenuItem key={policy} value={policy}>{policy}</MenuItem>)}
+          </TextField>
+          <TextField label="Conversion Date" type="date" fullWidth margin="dense" value={createForm.conversionDate} onChange={e => handleCreateFormChange('conversionDate', e.target.value)} InputLabelProps={{ shrink: true }} required />
+          <TextField select label="Status" fullWidth margin="dense" value={createForm.status} onChange={e => handleCreateFormChange('status', e.target.value)}>
+            {statusOptions.map(option => <MenuItem key={option} value={option}>{option}</MenuItem>)}
+          </TextField>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleCreateCustomer} variant="contained" color="primary" disabled={creating}>
+            {creating ? 'Creating...' : 'Create'}
           </Button>
         </DialogActions>
       </Dialog>

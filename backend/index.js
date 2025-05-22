@@ -19,6 +19,7 @@ const Leads = require('./models/LeadsModel')
 const Policy = require('./models/Policy')
 const Document = require('./models/documentModel')
 const Payment = require('./models/Payment')
+const Customer = require('./models/Customer')
 
 const app = express()
 
@@ -74,7 +75,8 @@ async function startServer() {
             Leads.sync(),
             Policy.sync(),
             Document.sync(),
-            Payment.sync()
+            Payment.sync(),
+            Customer.sync()
         ]);
         console.log('✅ All models synchronized successfully.');
 

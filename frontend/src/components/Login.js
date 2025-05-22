@@ -26,29 +26,27 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Check for admin credentials first
-    if (email === 'jason@gmail.com' && password === 'oldmonk') {
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('userRole', 'admin');
-      navigate('/dashboard');
-      return;
-    }
-
-    // For non-admin users, try the login API
+    // Remove hardcoded admin credentials check
+    // Only use the backend for authentication
     try {
       const { data } = await axios.post('http://localhost:8080/api/auth/login', {
         email,
         password
       });
-      
       localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('userRole', 'employee');
+      // Set userRole based on backend response (if available)
+      if (data.role === 'admin' || data.isAdmin || data.employee?.position === 'Admin') {
+        localStorage.setItem('userRole', 'admin');
+        navigate('/dashboard');
+      } else {
+        localStorage.setItem('userRole', 'employee');
+        navigate('/emp-dashboard');
+      }
       localStorage.setItem('userData', JSON.stringify(data));
       localStorage.setItem('employeeName', data.name || '');
       if (data.employee && data.employee.id) {
         localStorage.setItem('employeeId', data.employee.id);
       }
-      navigate('/emp-dashboard');
     } catch (error) {
       setError(error.response?.data?.message || 'Invalid email or password');
     }

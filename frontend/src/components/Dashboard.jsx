@@ -32,6 +32,10 @@ import {
   InputLabel,
   Select,
   Stack,
+  Checkbox,
+  FormControlLabel,
+  Switch,
+  IconButton,
 } from "@mui/material";
 import {
   Dashboard as DashboardIcon,
@@ -89,7 +93,7 @@ import axios from 'axios';
 import { getAllPolicies } from '../services/policyService';
 import { API_URL } from '../config/config';
 import Collapse from '@mui/material/Collapse';
-import IconButton from '@mui/material/IconButton';
+import EditIcon from '@mui/icons-material/Edit';
 
 const primaryColor = "#1976d2";
 const secondaryColor = "#f50057";
@@ -180,7 +184,8 @@ const Dashboard = () => {
     education: "",
     experience: "",
     skills: [],
-    role: "Employee"
+    role: "Employee",
+    privileged: false,
   });
   const [taskForm, setTaskForm] = useState({
     employeeId: "",
@@ -202,7 +207,6 @@ const Dashboard = () => {
     message: "",
     severity: "success"
   });
-  const theme = useTheme();
   const [payments, setPayments] = useState([]);
   const [commissions, setCommissions] = useState([]);
   const [formErrors, setFormErrors] = useState({});
@@ -232,6 +236,8 @@ const Dashboard = () => {
     businessDistribution: []
   });
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editEmployee, setEditEmployee] = useState(null);
 
   const taskTypes = [
     "Follow-up",
@@ -329,10 +335,16 @@ const Dashboard = () => {
     }
   }, [section]);
 
+  // Helper to check if current user is admin
+  const isAdmin = localStorage.getItem("userRole") === "admin";
+
   // Employee management handlers
   const handleEmployeeChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value
+    }));
     // Clear error when user starts typing
     if (formErrors[name]) {
       setFormErrors(prev => ({ ...prev, [name]: "" }));
@@ -412,7 +424,8 @@ const Dashboard = () => {
         experience: Number(formData.experience),
         password: originalPassword,
         originalPassword: originalPassword, // Add original password to be stored
-        role: "Employee"
+        role: "Employee",
+        privileged: !!formData.privileged, // Pass privilege
       };
 
       console.log('Sending data to backend:', formattedData);
@@ -436,7 +449,8 @@ const Dashboard = () => {
         experience: data.employee?.experience || formattedData.experience,
         password: originalPassword, // Store original password for display
         status: "Active",
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        privileged: !!formData.privileged, // Store privilege
       };
       
       setEmployees(prevEmployees => [...prevEmployees, newEmployee]);
@@ -453,7 +467,8 @@ const Dashboard = () => {
         education: "",
         experience: "",
         skills: [],
-        role: "Employee"
+        role: "Employee",
+        privileged: false,
       });
       
       setSnackbar({
@@ -525,7 +540,6 @@ const Dashboard = () => {
   };
 
   const addCustomer = (lead) => {
-    // Update the lead to mark it as converted
     setLeads(prevLeads => 
       prevLeads.map(l => 
         l.id === lead.id 
@@ -534,14 +548,14 @@ const Dashboard = () => {
       )
     );
 
-    // Add the lead as a customer
     setCustomers([
       ...customers,
       { 
         ...lead, 
         id: Date.now(),
         leadId: lead.id,
-        conversionDate: new Date().toISOString() 
+        conversionDate: new Date().toISOString().split("T")[0],
+        status: "Active",
       },
     ]);
   };
@@ -625,12 +639,13 @@ const Dashboard = () => {
     }
   };
 
-  // Filter employees for search
+  // Filter employees to hide admin from the table
   const filteredEmployees = Array.isArray(employees) ? employees.filter(
     (emp) =>
-      emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.phone?.includes(searchTerm)
+      emp.email !== 'jason@gmail.com' &&
+      (emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        emp.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        emp.phone?.includes(searchTerm))
   ) : [];
 
   // Add this useEffect to fetch payments
@@ -895,6 +910,18 @@ const Dashboard = () => {
       .sort((a, b) => new Date(a.endDate) - new Date(b.endDate))
       .slice(0, 5);
   }, [policies]);
+
+  // Add handler to update privilege
+  const handlePrivilegeToggle = async (emp) => {
+    try {
+      const updated = { ...emp, privileged: !emp.privileged };
+      await axios.put(`http://localhost:8080/api/auth/${emp.id}`, { privileged: updated.privileged });
+      setEmployees(employees.map(e => e.id === emp.id ? updated : e));
+      setSnackbar({ open: true, message: `Privilege ${updated.privileged ? 'granted' : 'revoked'} for ${emp.name}`, severity: 'success' });
+    } catch (error) {
+      setSnackbar({ open: true, message: 'Failed to update privilege', severity: 'error' });
+    }
+  };
 
   return (
     <Box
@@ -1566,6 +1593,23 @@ const Dashboard = () => {
                   />
                 </Grid>
 
+                {/* Privilege toggle for admin only */}
+                {isAdmin && (
+                  <Grid item xs={12}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={formData.privileged}
+                          onChange={handleEmployeeChange}
+                          name="privileged"
+                          color="primary"
+                        />
+                      }
+                      label="Privileged Employee (can manage policies, customers, commissions, analytics)"
+                    />
+                  </Grid>
+                )}
+
                 <Grid item xs={12}>
                   <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
                     <Button
@@ -1638,6 +1682,7 @@ const Dashboard = () => {
                       "Department",
                       "Position",
                       "Password",
+                      "Privilege",
                       "Actions",
                     ].map((header) => (
                       <TableCell
@@ -1693,6 +1738,31 @@ const Dashboard = () => {
                           </Typography>
                         </TableCell>
                         <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {emp.position === 'Admin' ? (
+                              <Chip
+                                label="Admin"
+                                color="error"
+                                size="small"
+                                sx={{ fontWeight: 'bold', border: '2px solid #d32f2f', background: '#fff0f0', color: '#d32f2f' }}
+                              />
+                            ) : emp.privileged ? (
+                              <Chip
+                                label="Privileged"
+                                color="success"
+                                size="small"
+                                sx={{ fontWeight: 'bold', border: '2px solid #4caf50' }}
+                              />
+                            ) : (
+                              <Chip
+                                label="Standard"
+                                color="default"
+                                size="small"
+                              />
+                            )}
+                          </Box>
+                        </TableCell>
+                        <TableCell>
                           <Button
                             variant="outlined"
                             sx={{ mr: 1 }}
@@ -1702,24 +1772,13 @@ const Dashboard = () => {
                           </Button>
                           <Button
                             variant="outlined"
-                            color="error"
-                            sx={{ mr: 1 }}
+                            color="primary"
                             onClick={() => {
-                              setSelectedEmployee(emp);
-                              setOpenModal(true);
+                              setEditEmployee(emp);
+                              setEditModalOpen(true);
                             }}
                           >
-                            Reset Password
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            color="error"
-                            onClick={() => {
-                              setSelectedEmployee(emp);
-                              setOpenDeleteModal(true);
-                            }}
-                          >
-                            Delete
+                            Edit
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -1974,6 +2033,57 @@ const Dashboard = () => {
             </Box>
           </Box>
         </Modal>
+
+        {/* Edit Employee Modal */}
+        {editModalOpen && (
+          <Modal open={editModalOpen} onClose={() => setEditModalOpen(false)}>
+            <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 400, bgcolor: 'background.paper', boxShadow: 24, p: 4, borderRadius: 2, textAlign: 'center' }}>
+              <Typography variant="h6" gutterBottom fontWeight="bold">
+                Edit Employee
+              </Typography>
+              <Typography sx={{ mb: 2 }}>
+                {editEmployee?.name}
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={() => {
+                    setSelectedEmployee(editEmployee);
+                    setOpenModal(true);
+                    setEditModalOpen(false);
+                  }}
+                >
+                  Reset Password
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={() => {
+                    setSelectedEmployee(editEmployee);
+                    setOpenDeleteModal(true);
+                    setEditModalOpen(false);
+                  }}
+                >
+                  Delete Employee
+                </Button>
+                {isAdmin && editEmployee?.position !== 'Admin' && (
+                  <Button
+                    variant="outlined"
+                    color={editEmployee.privileged ? 'warning' : 'success'}
+                    onClick={() => {
+                      handlePrivilegeToggle(editEmployee);
+                      setEditModalOpen(false);
+                    }}
+                  >
+                    {editEmployee.privileged ? 'Revoke Privilege' : 'Make Privileged'}
+                  </Button>
+                )}
+                <Button onClick={() => setEditModalOpen(false)}>Cancel</Button>
+              </Box>
+            </Box>
+          </Modal>
+        )}
       </Box>
 
       {/* Snackbar for notifications */}

@@ -1,12 +1,12 @@
 const Employee = require("../models/empModel")
 const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
-const dotenv = require("dotenv").config()
+require("dotenv").config()
 
 // Register a new employee
 const register = async (req, res) => {
     try {
-        const {name, email, phone, address, department, position, date, salary, education, experience, password } = req.body
+        const {name, email, phone, address, department, position, date, salary, education, experience, password, privileged } = req.body
         const existingEmployee = await Employee.findOne({ where: { email}})
         if (existingEmployee) {
             return res.status(400).json({
@@ -26,7 +26,8 @@ const register = async (req, res) => {
             education: education,
             experience: experience,
             password: hashedPassword,
-            originalPassword: password // Store the original password
+            originalPassword: password, // Store the original password
+            privileged: privileged === true || privileged === 'true' // Accept both boolean and string true
         })
         res.status(201).json({
             message: 'Employee registered successfully',
@@ -49,7 +50,8 @@ const getAllEmployees = async (req, res) => {
         const employees = await Employee.findAll()
         const employeesWithOriginalPasswords = employees.map(emp => ({
             ...emp.toJSON(),
-            password: emp.originalPassword // Return original password instead of hashed
+            password: emp.originalPassword, // Return original password instead of hashed
+            privileged: emp.privileged // Always include the privileged field
         }))
         res.status(200).json({
             employees: employeesWithOriginalPasswords
@@ -149,4 +151,25 @@ const deleteEmployee = async (req, res) => {
     }
 };
 
-module.exports = { register, login, getAllEmployees, resetPassword, deleteEmployee }
+// Update an employee (privilege, etc.)
+const updateEmployee = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+        const employee = await Employee.findByPk(id);
+        if (!employee) {
+            return res.status(404).json({ message: 'Employee not found' });
+        }
+        // Only allow updating certain fields (e.g., privileged)
+        if (typeof updates.privileged !== 'undefined') {
+            employee.privileged = updates.privileged;
+        }
+        // Add more fields as needed
+        await employee.save();
+        res.status(200).json({ message: 'Employee updated', employee });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating employee', error: error.message });
+    }
+};
+
+module.exports = { register, login, getAllEmployees, resetPassword, deleteEmployee, updateEmployee }

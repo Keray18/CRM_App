@@ -89,7 +89,8 @@ exports.createCustomer = async (req, res) => {
 exports.updateCustomer = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
-    const { name, phone, email, policy, status } = req.body;
+    console.log('UpdateCustomer request body:', req.body);
+    const { name, phone, email, policy, status, conversionDate } = req.body;
     const customerId = req.params.id;
 
     // Check if customer exists
@@ -122,19 +123,24 @@ exports.updateCustomer = async (req, res) => {
       }
     }
 
-    // Update customer
-    const [updatedRows, [updatedCustomer]] = await Customer.update(
-      { name, phone, email, policy, status },
+    // Only update conversionDate if provided
+    const updateFields = { name, phone, email, policy, status };
+    if (conversionDate) updateFields.conversionDate = conversionDate;
+
+    const [updatedRows] = await Customer.update(
+      updateFields,
       {
         where: { id: customerId },
-        returning: true,
         transaction
       }
     );
 
+    const updatedCustomer = await Customer.findByPk(customerId, { transaction });
+
     await transaction.commit();
     res.status(200).json(updatedCustomer);
   } catch (error) {
+    console.error('UpdateCustomer error:', error);
     await transaction.rollback();
     res.status(500).json({ message: error.message });
   }

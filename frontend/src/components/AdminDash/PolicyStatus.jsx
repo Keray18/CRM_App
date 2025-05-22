@@ -47,6 +47,8 @@ import {
   StepLabel,
   FormHelperText,
   Tooltip,
+  CircularProgress,
+  Backdrop,
 } from "@mui/material";
 import {
   Search as SearchIcon,
@@ -81,6 +83,7 @@ import {
 } from "../../services/policyService";
 // import axios from 'axios'; // Already imported above
 import { API_URL } from "../../config/config";
+import { createCustomer } from '../../services/customerService';
 
 const VisuallyHiddenInput = styled("input")({
   clip: "rect(0 0 0 0)",
@@ -816,6 +819,19 @@ const PolicyStatus = ({ addCustomer }) => {
           policy: createdPolicy.type,
           conversionDate: createdPolicy.startDate || new Date().toISOString(),
         });
+      }
+      // Also create customer in backend
+      try {
+        await createCustomer({
+          name: createdPolicy.insuredName,
+          phone: createdPolicy.mobile,
+          email: createdPolicy.email,
+          policy: createdPolicy.type,
+          conversionDate: createdPolicy.startDate || new Date().toISOString().split('T')[0],
+          status: 'Active',
+        });
+      } catch (err) {
+        // Ignore error if customer already exists
       }
       resetForm();
       setOpenNewPolicy(false);
@@ -4372,6 +4388,19 @@ const PolicyStatus = ({ addCustomer }) => {
           <LinearProgress />
         </Box>
       )}
+
+      {/* Add loading indicator for policy creation */}
+      <Backdrop
+        sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 2 }}
+        open={loading && openNewPolicy}
+      >
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <CircularProgress color="inherit" />
+          <Typography variant="h6" sx={{ mt: 2 }}>
+            This will only take a moment...
+          </Typography>
+        </Box>
+      </Backdrop>
     </Box>
   );
 };
