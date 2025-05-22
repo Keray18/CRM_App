@@ -132,7 +132,35 @@ const PolicyStatus = ({ addCustomer }) => {
   const [stats, setStats] = useState(null);
   const [localLeads, setLocalLeads] = useState([]);
   const [allLeadsForSearch, setAllLeadsForSearch] = useState([]); // State to hold all leads for search
-  const [insuranceCompanies, setInsuranceCompanies] = useState([]); // State for insurance companies
+  const [insuranceCompanies, setInsuranceCompanies] = useState([]);
+
+  // ...existing imports...
+  // ...existing code...
+
+  // Add this state at the top with other useState hooks:
+  const [posiTypes, setPosiTypes] = useState([]);
+
+  // Fetch POSI Types from master data when insuranceType is "others"
+  useEffect(() => {
+    const fetchPosiTypes = async () => {
+      try {
+        const response = await axios.get(
+          `${API_URL}/masterdata/type/Policy Type`
+        );
+        // Assuming response.data is an array of objects with a 'name' property
+        setPosiTypes(response.data.map((item) => item.name));
+      } catch (error) {
+        setSnackbar({
+          open: true,
+          message: "Error fetching POSI types",
+          severity: "error",
+        });
+      }
+    };
+    if (insuranceType === "others") {
+      fetchPosiTypes();
+    }
+  }, [insuranceType, API_URL]); // State for insurance companies
 
   // Fetch insurance companies from master data
   useEffect(() => {
@@ -1645,7 +1673,6 @@ const PolicyStatus = ({ addCustomer }) => {
                 </Card>
               )}
             </Box>
-
             {/* Insurance Type Selection */}
             <FormControl component="fieldset" sx={{ mb: 3 }}>
               <FormLabel component="legend">Insurance Type</FormLabel>
@@ -1718,9 +1745,29 @@ const PolicyStatus = ({ addCustomer }) => {
                     />
                   </CardContent>
                 </Card>
+                <Card variant="outlined" sx={{ width: 120 }}>
+                  <CardContent sx={{ p: 2, textAlign: "center" }}>
+                    <FormControlLabel
+                      value="others"
+                      control={<Radio />}
+                      label={
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                          }}
+                        >
+                          <PolicyIcon sx={{ mb: 1 }} />
+                          <Typography variant="body2">Others</Typography>
+                        </Box>
+                      }
+                      sx={{ m: 0 }}
+                    />
+                  </CardContent>
+                </Card>
               </RadioGroup>
             </FormControl>
-
             {/* Vehicle Insurance Form */}
             {insuranceType === "vehicle" && (
               <Box>
@@ -1750,7 +1797,7 @@ const PolicyStatus = ({ addCustomer }) => {
                       alignItems: "center",
                       justifyContent: "space-between",
                     }}
-                  >
+                   >
                     <Box
                       sx={{
                         display: "flex",
@@ -2744,7 +2791,6 @@ const PolicyStatus = ({ addCustomer }) => {
                 </Box>
               </Box>
             )}
-
             {/* Health Insurance Form */}
             {insuranceType === "health" && (
               <Box>
@@ -2761,6 +2807,218 @@ const PolicyStatus = ({ addCustomer }) => {
                   >
                     1. Health Insurance Details
                   </Typography>
+                    <Box
+                    sx={{
+                      p: 1.5,
+                      border: "1px solid #e0e0e0",
+                      borderRadius: 1,
+                      backgroundColor: "#ffffff",
+                      mb: 2,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                   >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 2,
+                        flex: 1,
+                      }}
+                    >
+                      <Tooltip
+                        title={
+                          <Box sx={{ p: 1 }}>
+                            <Typography
+                              variant="caption"
+                              sx={{ fontWeight: "bold" }}
+                            >
+                              Required documents:
+                            </Typography>
+                            <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                              <li key="rc">Registration Certificate (RC)</li>
+                              <li key="prev-policy">
+                                Previous Insurance Policy
+                              </li>
+                              <li key="photos">Vehicle Photos</li>
+                              <li key="invoice">Invoice (new vehicles)</li>
+                              <li key="license">Driving License</li>
+                              <li key="id-proof">ID & Address Proof</li>
+                            </Box>
+                          </Box>
+                        }
+                        arrow
+                      >
+                        <Typography
+                          variant="subtitle2"
+                          sx={{
+                            color: "#1976d2",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                            cursor: "help",
+                          }}
+                        >
+                          <InfoIcon sx={{ fontSize: 16 }} />
+                          Required Documents
+                        </Typography>
+                      </Tooltip>
+
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          flex: 1,
+                        }}
+                      >
+                        <Button
+                          component="label"
+                          variant="outlined"
+                          size="small"
+                          startIcon={<UploadIcon />}
+                          sx={{
+                            borderColor: "#1976d2",
+                            color: "#1976d2",
+                            backgroundColor: "#ffffff",
+                            "&:hover": {
+                              backgroundColor: "#f5f9ff",
+                              borderColor: "#1976d2",
+                            },
+                          }}
+                        >
+                          Upload Files
+                          <VisuallyHiddenInput
+                            type="file"
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files);
+                              const maxSize = 5 * 1024 * 1024; // 5MB
+                              const allowedTypes = [
+                                "image/jpeg",
+                                "image/png",
+                                "application/pdf",
+                              ];
+
+                              // Validate each file
+                              const validFiles = files.filter((file) => {
+                                if (file.size > maxSize) {
+                                  setSnackbar({
+                                    open: true,
+                                    message: `${file.name} is too large. Maximum size is 5MB`,
+                                    severity: "error",
+                                  });
+                                  return false;
+                                }
+                                if (!allowedTypes.includes(file.type)) {
+                                  setSnackbar({
+                                    open: true,
+                                    message: `${file.name} has invalid format. Allowed formats: JPG, PNG, PDF`,
+                                    severity: "error",
+                                  });
+
+                                  return false;
+                                }
+                                return true;
+                              });
+
+                              // Add valid files
+                              validFiles.forEach((file) => {
+                                setUploadedFiles((prev) => {
+                                  // Check for duplicate files
+                                  if (
+                                    prev.some((f) => f.file.name === file.name)
+                                  ) {
+                                    setSnackbar({
+                                      open: true,
+                                      message: `${file.name} has already been uploaded`,
+                                      severity: "warning",
+                                    });
+                                    return prev;
+                                  }
+                                  return [
+                                    ...prev,
+                                    {
+                                      type: "Vehicle Document",
+                                      file,
+                                      uploadDate: new Date().toLocaleString(),
+                                    },
+                                  ];
+                                });
+                              });
+
+                              // Clear input
+                              e.target.value = "";
+                            }}
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            multiple
+                          />
+                        </Button>
+
+                        {/* Display Uploaded Files */}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                            flex: 1,
+                            overflowX: "auto",
+                            "&::-webkit-scrollbar": {
+                              height: "4px",
+                            },
+                            "&::-webkit-scrollbar-track": {
+                              background: "#f1f1f1",
+                            },
+                            "&::-webkit-scrollbar-thumb": {
+                              background: "#888",
+                              borderRadius: "2px",
+                            },
+                          }}
+                        >
+                          {uploadedFiles.length > 0 ? (
+                            uploadedFiles.map((file, index) => (
+                              <Chip
+                                key={`${file.file.name}-${index}`}
+                                label={file.file.name}
+                                onDelete={() => removeFile(index)}
+                                size="small"
+                                sx={{
+                                  maxWidth: "200px",
+                                  fontSize: "0.75rem",
+                                  backgroundColor: "#e3f2fd",
+                                  color: "#1976d2",
+                                  "& .MuiChip-deleteIcon": {
+                                    fontSize: "1rem",
+                                    color: "#1976d2",
+                                    "&:hover": {
+                                      color: "#d32f2f",
+                                    },
+                                  },
+                                }}
+                              />
+                            ))
+                          ) : (
+                            <Typography
+                              variant="caption"
+                              sx={{ color: "#666666" }}
+                            >
+                              No files uploaded
+                            </Typography>
+                          )}
+                        </Box>
+                      </Box>
+                    </Box>
+
+                    {errors.documents && (
+                      <Typography
+                        variant="caption"
+                        color="error"
+                        sx={{ ml: 1 }}
+                      >
+                        {errors.documents}
+                      </Typography>
+                    )}
+                  </Box>
                   <Grid container spacing={3}>
                     {/* Basic Information Fields */}
                     <Grid item xs={12} md={6}>
@@ -3183,7 +3441,6 @@ const PolicyStatus = ({ addCustomer }) => {
                 </Box>
               </Box>
             )}
-
             {/* Travel Insurance Form */}
             {insuranceType === "travel" && (
               <Box>
@@ -3200,6 +3457,218 @@ const PolicyStatus = ({ addCustomer }) => {
                   >
                     1. Travel Insurance Details
                   </Typography>
+                    <Box
+                    sx={{
+                      p: 1.5,
+                      border: "1px solid #e0e0e0",
+                      borderRadius: 1,
+                      backgroundColor: "#ffffff",
+                      mb: 2,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                   >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 2,
+                        flex: 1,
+                      }}
+                    >
+                      <Tooltip
+                        title={
+                          <Box sx={{ p: 1 }}>
+                            <Typography
+                              variant="caption"
+                              sx={{ fontWeight: "bold" }}
+                            >
+                              Required documents:
+                            </Typography>
+                            <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                              <li key="rc">Registration Certificate (RC)</li>
+                              <li key="prev-policy">
+                                Previous Insurance Policy
+                              </li>
+                              <li key="photos">Vehicle Photos</li>
+                              <li key="invoice">Invoice (new vehicles)</li>
+                              <li key="license">Driving License</li>
+                              <li key="id-proof">ID & Address Proof</li>
+                            </Box>
+                          </Box>
+                        }
+                        arrow
+                      >
+                        <Typography
+                          variant="subtitle2"
+                          sx={{
+                            color: "#1976d2",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                            cursor: "help",
+                          }}
+                        >
+                          <InfoIcon sx={{ fontSize: 16 }} />
+                          Required Documents
+                        </Typography>
+                      </Tooltip>
+
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          flex: 1,
+                        }}
+                      >
+                        <Button
+                          component="label"
+                          variant="outlined"
+                          size="small"
+                          startIcon={<UploadIcon />}
+                          sx={{
+                            borderColor: "#1976d2",
+                            color: "#1976d2",
+                            backgroundColor: "#ffffff",
+                            "&:hover": {
+                              backgroundColor: "#f5f9ff",
+                              borderColor: "#1976d2",
+                            },
+                          }}
+                        >
+                          Upload Files
+                          <VisuallyHiddenInput
+                            type="file"
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files);
+                              const maxSize = 5 * 1024 * 1024; // 5MB
+                              const allowedTypes = [
+                                "image/jpeg",
+                                "image/png",
+                                "application/pdf",
+                              ];
+
+                              // Validate each file
+                              const validFiles = files.filter((file) => {
+                                if (file.size > maxSize) {
+                                  setSnackbar({
+                                    open: true,
+                                    message: `${file.name} is too large. Maximum size is 5MB`,
+                                    severity: "error",
+                                  });
+                                  return false;
+                                }
+                                if (!allowedTypes.includes(file.type)) {
+                                  setSnackbar({
+                                    open: true,
+                                    message: `${file.name} has invalid format. Allowed formats: JPG, PNG, PDF`,
+                                    severity: "error",
+                                  });
+
+                                  return false;
+                                }
+                                return true;
+                              });
+
+                              // Add valid files
+                              validFiles.forEach((file) => {
+                                setUploadedFiles((prev) => {
+                                  // Check for duplicate files
+                                  if (
+                                    prev.some((f) => f.file.name === file.name)
+                                  ) {
+                                    setSnackbar({
+                                      open: true,
+                                      message: `${file.name} has already been uploaded`,
+                                      severity: "warning",
+                                    });
+                                    return prev;
+                                  }
+                                  return [
+                                    ...prev,
+                                    {
+                                      type: "Vehicle Document",
+                                      file,
+                                      uploadDate: new Date().toLocaleString(),
+                                    },
+                                  ];
+                                });
+                              });
+
+                              // Clear input
+                              e.target.value = "";
+                            }}
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            multiple
+                          />
+                        </Button>
+
+                        {/* Display Uploaded Files */}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                            flex: 1,
+                            overflowX: "auto",
+                            "&::-webkit-scrollbar": {
+                              height: "4px",
+                            },
+                            "&::-webkit-scrollbar-track": {
+                              background: "#f1f1f1",
+                            },
+                            "&::-webkit-scrollbar-thumb": {
+                              background: "#888",
+                              borderRadius: "2px",
+                            },
+                          }}
+                        >
+                          {uploadedFiles.length > 0 ? (
+                            uploadedFiles.map((file, index) => (
+                              <Chip
+                                key={`${file.file.name}-${index}`}
+                                label={file.file.name}
+                                onDelete={() => removeFile(index)}
+                                size="small"
+                                sx={{
+                                  maxWidth: "200px",
+                                  fontSize: "0.75rem",
+                                  backgroundColor: "#e3f2fd",
+                                  color: "#1976d2",
+                                  "& .MuiChip-deleteIcon": {
+                                    fontSize: "1rem",
+                                    color: "#1976d2",
+                                    "&:hover": {
+                                      color: "#d32f2f",
+                                    },
+                                  },
+                                }}
+                              />
+                            ))
+                          ) : (
+                            <Typography
+                              variant="caption"
+                              sx={{ color: "#666666" }}
+                            >
+                              No files uploaded
+                            </Typography>
+                          )}
+                        </Box>
+                      </Box>
+                    </Box>
+
+                    {errors.documents && (
+                      <Typography
+                        variant="caption"
+                        color="error"
+                        sx={{ ml: 1 }}
+                      >
+                        {errors.documents}
+                      </Typography>
+                    )}
+                  </Box>
                   <Grid container spacing={3}>
                     {/* Basic Information Fields */}
                     <Grid item xs={12} md={6}>
@@ -3493,9 +3962,427 @@ const PolicyStatus = ({ addCustomer }) => {
                 </Box>
               </Box>
             )}
+            {insuranceType === "others" && (
+              <Box>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  sx={{
+                    color: "#1976d2",
+                    borderBottom: "2px solid #1976d2",
+                    pb: 1,
+                    mt: 2,
+                  }}
+                >
+                  Others Policy Details
+                </Typography>
+                  <Box
+                    sx={{
+                      p: 1.5,
+                      border: "1px solid #e0e0e0",
+                      borderRadius: 1,
+                      backgroundColor: "#ffffff",
+                      mb: 2,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                   >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 2,
+                        flex: 1,
+                      }}
+                    >
+                      <Tooltip
+                        title={
+                          <Box sx={{ p: 1 }}>
+                            <Typography
+                              variant="caption"
+                              sx={{ fontWeight: "bold" }}
+                            >
+                              Required documents:
+                            </Typography>
+                            <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                              <li key="rc">Registration Certificate (RC)</li>
+                              <li key="prev-policy">
+                                Previous Insurance Policy
+                              </li>
+                              <li key="photos">Vehicle Photos</li>
+                              <li key="invoice">Invoice (new vehicles)</li>
+                              <li key="license">Driving License</li>
+                              <li key="id-proof">ID & Address Proof</li>
+                            </Box>
+                          </Box>
+                        }
+                        arrow
+                      >
+                        <Typography
+                          variant="subtitle2"
+                          sx={{
+                            color: "#1976d2",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                            cursor: "help",
+                          }}
+                        >
+                          <InfoIcon sx={{ fontSize: 16 }} />
+                          Required Documents
+                        </Typography>
+                      </Tooltip>
 
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          flex: 1,
+                        }}
+                      >
+                        <Button
+                          component="label"
+                          variant="outlined"
+                          size="small"
+                          startIcon={<UploadIcon />}
+                          sx={{
+                            borderColor: "#1976d2",
+                            color: "#1976d2",
+                            backgroundColor: "#ffffff",
+                            "&:hover": {
+                              backgroundColor: "#f5f9ff",
+                              borderColor: "#1976d2",
+                            },
+                          }}
+                        >
+                          Upload Files
+                          <VisuallyHiddenInput
+                            type="file"
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files);
+                              const maxSize = 5 * 1024 * 1024; // 5MB
+                              const allowedTypes = [
+                                "image/jpeg",
+                                "image/png",
+                                "application/pdf",
+                              ];
+
+                              // Validate each file
+                              const validFiles = files.filter((file) => {
+                                if (file.size > maxSize) {
+                                  setSnackbar({
+                                    open: true,
+                                    message: `${file.name} is too large. Maximum size is 5MB`,
+                                    severity: "error",
+                                  });
+                                  return false;
+                                }
+                                if (!allowedTypes.includes(file.type)) {
+                                  setSnackbar({
+                                    open: true,
+                                    message: `${file.name} has invalid format. Allowed formats: JPG, PNG, PDF`,
+                                    severity: "error",
+                                  });
+
+                                  return false;
+                                }
+                                return true;
+                              });
+
+                              // Add valid files
+                              validFiles.forEach((file) => {
+                                setUploadedFiles((prev) => {
+                                  // Check for duplicate files
+                                  if (
+                                    prev.some((f) => f.file.name === file.name)
+                                  ) {
+                                    setSnackbar({
+                                      open: true,
+                                      message: `${file.name} has already been uploaded`,
+                                      severity: "warning",
+                                    });
+                                    return prev;
+                                  }
+                                  return [
+                                    ...prev,
+                                    {
+                                      type: "Vehicle Document",
+                                      file,
+                                      uploadDate: new Date().toLocaleString(),
+                                    },
+                                  ];
+                                });
+                              });
+
+                              // Clear input
+                              e.target.value = "";
+                            }}
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            multiple
+                          />
+                        </Button>
+
+                        {/* Display Uploaded Files */}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                            flex: 1,
+                            overflowX: "auto",
+                            "&::-webkit-scrollbar": {
+                              height: "4px",
+                            },
+                            "&::-webkit-scrollbar-track": {
+                              background: "#f1f1f1",
+                            },
+                            "&::-webkit-scrollbar-thumb": {
+                              background: "#888",
+                              borderRadius: "2px",
+                            },
+                          }}
+                        >
+                          {uploadedFiles.length > 0 ? (
+                            uploadedFiles.map((file, index) => (
+                              <Chip
+                                key={`${file.file.name}-${index}`}
+                                label={file.file.name}
+                                onDelete={() => removeFile(index)}
+                                size="small"
+                                sx={{
+                                  maxWidth: "200px",
+                                  fontSize: "0.75rem",
+                                  backgroundColor: "#e3f2fd",
+                                  color: "#1976d2",
+                                  "& .MuiChip-deleteIcon": {
+                                    fontSize: "1rem",
+                                    color: "#1976d2",
+                                    "&:hover": {
+                                      color: "#d32f2f",
+                                    },
+                                  },
+                                }}
+                              />
+                            ))
+                          ) : (
+                            <Typography
+                              variant="caption"
+                              sx={{ color: "#666666" }}
+                            >
+                              No files uploaded
+                            </Typography>
+                          )}
+                        </Box>
+                      </Box>
+                    </Box>
+
+                    {errors.documents && (
+                      <Typography
+                        variant="caption"
+                        color="error"
+                        sx={{ ml: 1 }}
+                      >
+                        {errors.documents}
+                      </Typography>
+                    )}
+                  </Box>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Policy Number"
+                      value={newPolicy.policyNumber || ""}
+                      onChange={handleNewPolicyChange("policyNumber")}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>Policy Type</InputLabel>
+                      <Select
+                        value={newPolicy.policyType || ""}
+                        onChange={handleNewPolicyChange("policyType")}
+                        label="Policy Type"
+                        required
+                      >
+                        {posiTypes.map((type) => (
+                          <MenuItem key={type} value={type}>
+                            {type}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Insured Name"
+                      value={newPolicy.insuredName || ""}
+                      onChange={handleNewPolicyChange("insuredName")}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Client Name"
+                      value={newPolicy.clientName || ""}
+                      onChange={handleNewPolicyChange("clientName")}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Age"
+                      value={newPolicy.age || ""}
+                      onChange={handleNewPolicyChange("age")}
+                      type="number"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Date of Birth"
+                      type="date"
+                      value={newPolicy.dob || ""}
+                      onChange={handleNewPolicyChange("dob")}
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>Insurance Company</InputLabel>
+                      <Select
+                        value={newPolicy.company || ""}
+                        onChange={handleNewPolicyChange("company")}
+                        label="Insurance Company"
+                        required
+                      >
+                        {insuranceCompanies.map((company) => (
+                          <MenuItem key={company} value={company}>
+                            {company}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Mobile Number"
+                      value={newPolicy.mobile || ""}
+                      onChange={handleNewPolicyChange("mobile")}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Email"
+                      value={newPolicy.email || ""}
+                      onChange={handleNewPolicyChange("email")}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Start Date"
+                      type="date"
+                      value={newPolicy.startDate || ""}
+                      onChange={handleNewPolicyChange("startDate")}
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="End Date"
+                      type="date"
+                      value={newPolicy.endDate || ""}
+                      onChange={handleNewPolicyChange("endDate")}
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Address"
+                      value={newPolicy.address || ""}
+                      onChange={handleNewPolicyChange("address")}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Sum Insured"
+                      value={newPolicy.sumInsured || ""}
+                      onChange={handleNewPolicyChange("sumInsured")}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Commission Percentage"
+                      value={newPolicy.commissionPercentage || ""}
+                      onChange={handleNewPolicyChange("commissionPercentage")}
+                      type="number"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Commission Amount"
+                      value={newPolicy.commissionAmount || ""}
+                      onChange={handleNewPolicyChange("commissionAmount")}
+                      type="number"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Total Premium"
+                      value={newPolicy.totalPremium || ""}
+                      onChange={handleNewPolicyChange("totalPremium")}
+                      type="number"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Payment Mode"
+                      value={newPolicy.paymentMode || ""}
+                      onChange={handleNewPolicyChange("paymentMode")}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Payment Reference"
+                      value={newPolicy.paymentReference || ""}
+                      onChange={handleNewPolicyChange("paymentReference")}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Nominee"
+                      value={newPolicy.nominee || ""}
+                      onChange={handleNewPolicyChange("nominee")}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Documents"
+                      value={newPolicy.documents?.join(", ") || ""}
+                      onChange={handleNewPolicyChange("documents")}
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
             {isSubmitting && <LinearProgress sx={{ mt: 2 }} />}
-
             <Box
               sx={{
                 mt: 3,
