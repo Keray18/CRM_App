@@ -4,6 +4,7 @@ const dotenv = require('dotenv').config()
 const compression = require('compression')
 const helmet = require('helmet')
 const cors = require('cors')
+const bcrypt = require('bcryptjs')
 
 // Import routes
 const authRoutes = require('./routes/authRoutes.js')
@@ -79,6 +80,30 @@ async function startServer() {
             Customer.sync()
         ]);
         console.log('✅ All models synchronized successfully.');
+
+        // Seed admin user if not exists
+        const adminEmail = 'jason@gmail.com';
+        const adminPassword = 'oldmonk';
+        const adminExists = await Employee.findOne({ where: { email: adminEmail } });
+        if (!adminExists) {
+            const hashedPassword = await bcrypt.hash(adminPassword, 10);
+            await Employee.create({
+                name: 'Admin User',
+                email: adminEmail,
+                phone: '9999999999',
+                address: 'Admin Address',
+                department: 'Admin',
+                position: 'Admin',
+                date: new Date(),
+                salary: 0,
+                education: 'Admin',
+                experience: 0,
+                password: hashedPassword,
+                originalPassword: adminPassword,
+                privileged: true
+            });
+            console.log('✅ Admin user seeded: jason@gmail.com / oldmonk');
+        }
 
         // Start the server
         const PORT = process.env.PORT || 8080;
