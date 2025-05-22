@@ -682,6 +682,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
         <Box sx={{ p: 0 }}>
           {/* ...existing code... */}
           <Box sx={{ mt: 0 }}>
+            
             <Box
               sx={{
                 display: "flex",

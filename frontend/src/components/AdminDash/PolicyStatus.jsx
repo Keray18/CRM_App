@@ -1103,11 +1103,52 @@ const PolicyStatus = ({ addCustomer }) => {
   };
 
   const handleRenew = (policy) => {
-    // Implement renewal logic here
-    console.log("Renewing policy:", policy);
-    // You can add your renewal logic here
-  };
+    // Set up new policy data for renewal
+    const today = new Date();
+    const nextYear = new Date();
+    nextYear.setFullYear(today.getFullYear() + 1);
 
+    setNewPolicy({
+      ...policy,
+      id: undefined, // Remove id so it's treated as new
+      policyNumber: "", // Let user enter new policy number
+      business: "Renewal",
+      startDate: today.toISOString().split("T")[0],
+      endDate: nextYear.toISOString().split("T")[0],
+      status: "Live Policy",
+      documents: [],
+      commissionAmount: "",
+      commissionPercentage: "",
+      totalCommissionAmount: "",
+      effectiveCommissionPercentage: "",
+      paymentReference: "",
+      uploadedFiles: [],
+      // Reset premium and commission fields if needed
+      basicPremium: "",
+      odPremium: "",
+      tpPremium: "",
+      ncbDiscount: "",
+      addonPremium: "",
+      gst: "",
+      totalPremium: "",
+      netPremium: "",
+      odCommissionPercentage: "",
+      tpCommissionPercentage: "",
+      addonCommissionPercentage: "",
+      // Health/Travel specific fields
+      sumInsured: "",
+      tripDuration: "",
+      height: "",
+      weight: "",
+      age: "",
+      // Reset any other fields you want cleared for renewal
+    });
+    setInsuranceType(policy.type || "vehicle");
+    setUploadedFiles([]);
+    setOpenNewPolicy(true);
+    setSelectedLead(null);
+    setErrors({});
+  };
   console.log("Policies being rendered:", policies);
 
   return (
