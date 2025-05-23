@@ -83,7 +83,7 @@ import {
 } from "../../services/policyService";
 // import axios from 'axios'; // Already imported above
 import { API_URL } from "../../config/config";
-import { createCustomer } from '../../services/customerService';
+import { createCustomer } from "../../services/customerService";
 
 const VisuallyHiddenInput = styled("input")({
   clip: "rect(0 0 0 0)",
@@ -759,7 +759,38 @@ const PolicyStatus = ({ addCustomer }) => {
         severity: "error",
       });
     }
+    // ...inside validateForm function, after travel validation, add this for "others" type...
 
+    // Others specific validations
+    // ...inside validateForm...
+    // ...inside validateForm...
+    if (insuranceType === "others") {
+      if (!newPolicy.policyNumber?.trim())
+        newErrors.policyNumber = "Policy Number is required";
+      if (!newPolicy.type?.trim()) newErrors.type = "Policy Type is required";
+      if (!newPolicy.insuredName?.trim())
+        newErrors.insuredName = "Insured Name is required";
+      if (!newPolicy.mobile?.trim())
+        newErrors.mobile = "Mobile Number is required";
+      if (!newPolicy.email?.trim()) newErrors.email = "Email is required";
+      if (!newPolicy.company?.trim())
+        newErrors.company = "Insurance Company is required";
+      if (!newPolicy.business?.trim())
+        newErrors.business = "Business Type is required";
+      if (!newPolicy.startDate) newErrors.startDate = "Start Date is required";
+      if (!newPolicy.endDate) newErrors.endDate = "End Date is required";
+      if (!newPolicy.sumInsured || isNaN(Number(newPolicy.sumInsured)))
+        newErrors.sumInsured = "Insured Value is required";
+      if (
+        !newPolicy.commissionAmount ||
+        isNaN(Number(newPolicy.commissionAmount))
+      )
+        newErrors.commissionAmount = "Commission Amount is required";
+      if (!uploadedFiles || uploadedFiles.length === 0)
+        newErrors.documents = "At least one document is required";
+    }
+
+    // ...existing code...
     console.log("Validation Errors:", newErrors); // Debug log
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -855,8 +886,9 @@ const PolicyStatus = ({ addCustomer }) => {
           phone: createdPolicy.mobile,
           email: createdPolicy.email,
           policy: createdPolicy.type,
-          conversionDate: createdPolicy.startDate || new Date().toISOString().split('T')[0],
-          status: 'Active',
+          conversionDate:
+            createdPolicy.startDate || new Date().toISOString().split("T")[0],
+          status: "Active",
         });
       } catch (err) {
         // Ignore error if customer already exists
@@ -1813,7 +1845,7 @@ const PolicyStatus = ({ addCustomer }) => {
                       alignItems: "center",
                       justifyContent: "space-between",
                     }}
-                   >
+                  >
                     <Box
                       sx={{
                         display: "flex",
@@ -2823,7 +2855,7 @@ const PolicyStatus = ({ addCustomer }) => {
                   >
                     1. Health Insurance Details
                   </Typography>
-                    <Box
+                  <Box
                     sx={{
                       p: 1.5,
                       border: "1px solid #e0e0e0",
@@ -2834,7 +2866,7 @@ const PolicyStatus = ({ addCustomer }) => {
                       alignItems: "center",
                       justifyContent: "space-between",
                     }}
-                   >
+                  >
                     <Box
                       sx={{
                         display: "flex",
@@ -3473,7 +3505,7 @@ const PolicyStatus = ({ addCustomer }) => {
                   >
                     1. Travel Insurance Details
                   </Typography>
-                    <Box
+                  <Box
                     sx={{
                       p: 1.5,
                       border: "1px solid #e0e0e0",
@@ -3484,7 +3516,7 @@ const PolicyStatus = ({ addCustomer }) => {
                       alignItems: "center",
                       justifyContent: "space-between",
                     }}
-                   >
+                  >
                     <Box
                       sx={{
                         display: "flex",
@@ -3992,218 +4024,6 @@ const PolicyStatus = ({ addCustomer }) => {
                 >
                   Others Policy Details
                 </Typography>
-                  <Box
-                    sx={{
-                      p: 1.5,
-                      border: "1px solid #e0e0e0",
-                      borderRadius: 1,
-                      backgroundColor: "#ffffff",
-                      mb: 2,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                   >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 2,
-                        flex: 1,
-                      }}
-                    >
-                      <Tooltip
-                        title={
-                          <Box sx={{ p: 1 }}>
-                            <Typography
-                              variant="caption"
-                              sx={{ fontWeight: "bold" }}
-                            >
-                              Required documents:
-                            </Typography>
-                            <Box component="ul" sx={{ m: 0, pl: 2 }}>
-                              <li key="rc">Registration Certificate (RC)</li>
-                              <li key="prev-policy">
-                                Previous Insurance Policy
-                              </li>
-                              <li key="photos">Vehicle Photos</li>
-                              <li key="invoice">Invoice (new vehicles)</li>
-                              <li key="license">Driving License</li>
-                              <li key="id-proof">ID & Address Proof</li>
-                            </Box>
-                          </Box>
-                        }
-                        arrow
-                      >
-                        <Typography
-                          variant="subtitle2"
-                          sx={{
-                            color: "#1976d2",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 0.5,
-                            cursor: "help",
-                          }}
-                        >
-                          <InfoIcon sx={{ fontSize: 16 }} />
-                          Required Documents
-                        </Typography>
-                      </Tooltip>
-
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          flex: 1,
-                        }}
-                      >
-                        <Button
-                          component="label"
-                          variant="outlined"
-                          size="small"
-                          startIcon={<UploadIcon />}
-                          sx={{
-                            borderColor: "#1976d2",
-                            color: "#1976d2",
-                            backgroundColor: "#ffffff",
-                            "&:hover": {
-                              backgroundColor: "#f5f9ff",
-                              borderColor: "#1976d2",
-                            },
-                          }}
-                        >
-                          Upload Files
-                          <VisuallyHiddenInput
-                            type="file"
-                            onChange={(e) => {
-                              const files = Array.from(e.target.files);
-                              const maxSize = 5 * 1024 * 1024; // 5MB
-                              const allowedTypes = [
-                                "image/jpeg",
-                                "image/png",
-                                "application/pdf",
-                              ];
-
-                              // Validate each file
-                              const validFiles = files.filter((file) => {
-                                if (file.size > maxSize) {
-                                  setSnackbar({
-                                    open: true,
-                                    message: `${file.name} is too large. Maximum size is 5MB`,
-                                    severity: "error",
-                                  });
-                                  return false;
-                                }
-                                if (!allowedTypes.includes(file.type)) {
-                                  setSnackbar({
-                                    open: true,
-                                    message: `${file.name} has invalid format. Allowed formats: JPG, PNG, PDF`,
-                                    severity: "error",
-                                  });
-
-                                  return false;
-                                }
-                                return true;
-                              });
-
-                              // Add valid files
-                              validFiles.forEach((file) => {
-                                setUploadedFiles((prev) => {
-                                  // Check for duplicate files
-                                  if (
-                                    prev.some((f) => f.file.name === file.name)
-                                  ) {
-                                    setSnackbar({
-                                      open: true,
-                                      message: `${file.name} has already been uploaded`,
-                                      severity: "warning",
-                                    });
-                                    return prev;
-                                  }
-                                  return [
-                                    ...prev,
-                                    {
-                                      type: "Vehicle Document",
-                                      file,
-                                      uploadDate: new Date().toLocaleString(),
-                                    },
-                                  ];
-                                });
-                              });
-
-                              // Clear input
-                              e.target.value = "";
-                            }}
-                            accept=".pdf,.jpg,.jpeg,.png"
-                            multiple
-                          />
-                        </Button>
-
-                        {/* Display Uploaded Files */}
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 0.5,
-                            flex: 1,
-                            overflowX: "auto",
-                            "&::-webkit-scrollbar": {
-                              height: "4px",
-                            },
-                            "&::-webkit-scrollbar-track": {
-                              background: "#f1f1f1",
-                            },
-                            "&::-webkit-scrollbar-thumb": {
-                              background: "#888",
-                              borderRadius: "2px",
-                            },
-                          }}
-                        >
-                          {uploadedFiles.length > 0 ? (
-                            uploadedFiles.map((file, index) => (
-                              <Chip
-                                key={`${file.file.name}-${index}`}
-                                label={file.file.name}
-                                onDelete={() => removeFile(index)}
-                                size="small"
-                                sx={{
-                                  maxWidth: "200px",
-                                  fontSize: "0.75rem",
-                                  backgroundColor: "#e3f2fd",
-                                  color: "#1976d2",
-                                  "& .MuiChip-deleteIcon": {
-                                    fontSize: "1rem",
-                                    color: "#1976d2",
-                                    "&:hover": {
-                                      color: "#d32f2f",
-                                    },
-                                  },
-                                }}
-                              />
-                            ))
-                          ) : (
-                            <Typography
-                              variant="caption"
-                              sx={{ color: "#666666" }}
-                            >
-                              No files uploaded
-                            </Typography>
-                          )}
-                        </Box>
-                      </Box>
-                    </Box>
-
-                    {errors.documents && (
-                      <Typography
-                        variant="caption"
-                        color="error"
-                        sx={{ ml: 1 }}
-                      >
-                        {errors.documents}
-                      </Typography>
-                    )}
-                  </Box>
                 <Grid container spacing={3}>
                   <Grid item xs={12} md={6}>
                     <TextField
@@ -4212,14 +4032,16 @@ const PolicyStatus = ({ addCustomer }) => {
                       value={newPolicy.policyNumber || ""}
                       onChange={handleNewPolicyChange("policyNumber")}
                       required
+                      error={!!errors.policyNumber}
+                      helperText={errors.policyNumber}
                     />
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <FormControl fullWidth>
+                    <FormControl fullWidth error={!!errors.type}>
                       <InputLabel>Policy Type</InputLabel>
                       <Select
-                        value={newPolicy.policyType || ""}
-                        onChange={handleNewPolicyChange("policyType")}
+                        value={newPolicy.type || ""}
+                        onChange={handleNewPolicyChange("type")}
                         label="Policy Type"
                         required
                       >
@@ -4229,6 +4051,9 @@ const PolicyStatus = ({ addCustomer }) => {
                           </MenuItem>
                         ))}
                       </Select>
+                      {errors.type && (
+                        <FormHelperText error>{errors.type}</FormHelperText>
+                      )}
                     </FormControl>
                   </Grid>
                   <Grid item xs={12} md={6}>
@@ -4238,37 +4063,34 @@ const PolicyStatus = ({ addCustomer }) => {
                       value={newPolicy.insuredName || ""}
                       onChange={handleNewPolicyChange("insuredName")}
                       required
+                      error={!!errors.insuredName}
+                      helperText={errors.insuredName}
                     />
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
-                      label="Client Name"
-                      value={newPolicy.clientName || ""}
-                      onChange={handleNewPolicyChange("clientName")}
+                      label="Mobile Number"
+                      value={newPolicy.mobile || ""}
+                      onChange={handleNewPolicyChange("mobile")}
+                      required
+                      error={!!errors.mobile}
+                      helperText={errors.mobile}
                     />
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
-                      label="Age"
-                      value={newPolicy.age || ""}
-                      onChange={handleNewPolicyChange("age")}
-                      type="number"
+                      label="Email"
+                      value={newPolicy.email || ""}
+                      onChange={handleNewPolicyChange("email")}
+                      required
+                      error={!!errors.email}
+                      helperText={errors.email}
                     />
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Date of Birth"
-                      type="date"
-                      value={newPolicy.dob || ""}
-                      onChange={handleNewPolicyChange("dob")}
-                      InputLabelProps={{ shrink: true }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <FormControl fullWidth>
+                    <FormControl fullWidth error={!!errors.company}>
                       <InputLabel>Insurance Company</InputLabel>
                       <Select
                         value={newPolicy.company || ""}
@@ -4282,23 +4104,27 @@ const PolicyStatus = ({ addCustomer }) => {
                           </MenuItem>
                         ))}
                       </Select>
+                      {errors.company && (
+                        <FormHelperText error>{errors.company}</FormHelperText>
+                      )}
                     </FormControl>
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Mobile Number"
-                      value={newPolicy.mobile || ""}
-                      onChange={handleNewPolicyChange("mobile")}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Email"
-                      value={newPolicy.email || ""}
-                      onChange={handleNewPolicyChange("email")}
-                    />
+                    <FormControl fullWidth error={!!errors.business}>
+                      <InputLabel>Business Type</InputLabel>
+                      <Select
+                        value={newPolicy.business || ""}
+                        onChange={handleNewPolicyChange("business")}
+                        label="Business Type"
+                        required
+                      >
+                        <MenuItem value="New">New Policy</MenuItem>
+                        <MenuItem value="Renewal">Policy Renewal</MenuItem>
+                      </Select>
+                      {errors.business && (
+                        <FormHelperText error>{errors.business}</FormHelperText>
+                      )}
+                    </FormControl>
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <TextField
@@ -4307,7 +4133,10 @@ const PolicyStatus = ({ addCustomer }) => {
                       type="date"
                       value={newPolicy.startDate || ""}
                       onChange={handleNewPolicyChange("startDate")}
+                      required
                       InputLabelProps={{ shrink: true }}
+                      error={!!errors.startDate}
+                      helperText={errors.startDate}
                     />
                   </Grid>
                   <Grid item xs={12} md={6}>
@@ -4317,32 +4146,22 @@ const PolicyStatus = ({ addCustomer }) => {
                       type="date"
                       value={newPolicy.endDate || ""}
                       onChange={handleNewPolicyChange("endDate")}
+                      required
                       InputLabelProps={{ shrink: true }}
+                      error={!!errors.endDate}
+                      helperText={errors.endDate}
                     />
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
-                      label="Address"
-                      value={newPolicy.address || ""}
-                      onChange={handleNewPolicyChange("address")}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Sum Insured"
+                      label="Insured Value"
                       value={newPolicy.sumInsured || ""}
                       onChange={handleNewPolicyChange("sumInsured")}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Commission Percentage"
-                      value={newPolicy.commissionPercentage || ""}
-                      onChange={handleNewPolicyChange("commissionPercentage")}
                       type="number"
+                      required
+                      error={!!errors.sumInsured}
+                      helperText={errors.sumInsured}
                     />
                   </Grid>
                   <Grid item xs={12} md={6}>
@@ -4352,48 +4171,57 @@ const PolicyStatus = ({ addCustomer }) => {
                       value={newPolicy.commissionAmount || ""}
                       onChange={handleNewPolicyChange("commissionAmount")}
                       type="number"
+                      required
+                      error={!!errors.commissionAmount}
+                      helperText={errors.commissionAmount}
                     />
                   </Grid>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Total Premium"
-                      value={newPolicy.totalPremium || ""}
-                      onChange={handleNewPolicyChange("totalPremium")}
-                      type="number"
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Payment Mode"
-                      value={newPolicy.paymentMode || ""}
-                      onChange={handleNewPolicyChange("paymentMode")}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Payment Reference"
-                      value={newPolicy.paymentReference || ""}
-                      onChange={handleNewPolicyChange("paymentReference")}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Nominee"
-                      value={newPolicy.nominee || ""}
-                      onChange={handleNewPolicyChange("nominee")}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Documents"
-                      value={newPolicy.documents?.join(", ") || ""}
-                      onChange={handleNewPolicyChange("documents")}
-                    />
+                  {/* Documents Upload */}
+                  <Grid item xs={12}>
+                    <Button
+                      component="label"
+                      variant="outlined"
+                      size="small"
+                      startIcon={<UploadIcon />}
+                      sx={{ mb: 1 }}
+                    >
+                      Upload Documents
+                      <VisuallyHiddenInput
+                        type="file"
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files);
+                          setUploadedFiles((prev) => [...prev, ...files]);
+                        }}
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        multiple
+                      />
+                    </Button>
+                    <Box sx={{ mt: 1 }}>
+                      {uploadedFiles.length > 0 ? (
+                        uploadedFiles.map((file, idx) => (
+                          <Chip
+                            key={idx}
+                            label={file.name}
+                            onDelete={() =>
+                              setUploadedFiles((prev) =>
+                                prev.filter((_, i) => i !== idx)
+                              )
+                            }
+                            size="small"
+                            sx={{ mr: 1, mb: 1 }}
+                          />
+                        ))
+                      ) : (
+                        <Typography variant="caption">
+                          No files uploaded
+                        </Typography>
+                      )}
+                    </Box>
+                    {errors.documents && (
+                      <Typography variant="caption" color="error">
+                        {errors.documents}
+                      </Typography>
+                    )}
                   </Grid>
                 </Grid>
               </Box>
@@ -5281,7 +5109,13 @@ const PolicyStatus = ({ addCustomer }) => {
         sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 2 }}
         open={loading && openNewPolicy}
       >
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <CircularProgress color="inherit" />
           <Typography variant="h6" sx={{ mt: 2 }}>
             This will only take a moment...

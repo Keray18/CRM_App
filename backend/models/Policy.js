@@ -42,7 +42,7 @@ const Policy = sequelize.define('Policy', {
     allowNull: false
   },
   type: {
-    type: DataTypes.ENUM('vehicle', 'health', 'travel'),
+    type: DataTypes.STRING,
     allowNull: false
   },
   status: {
