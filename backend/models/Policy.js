@@ -41,6 +41,10 @@ const Policy = sequelize.define('Policy', {
     type: DataTypes.ENUM('New', 'Renewal'),
     allowNull: false
   },
+  referredBy: {
+    type: DataTypes.STRING,
+    allowNull: true, // or false if you want it required
+  },
   type: {
     type: DataTypes.STRING,
     allowNull: false

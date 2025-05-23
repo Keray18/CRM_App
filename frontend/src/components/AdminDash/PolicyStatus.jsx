@@ -2194,6 +2194,14 @@ const PolicyStatus = ({ addCustomer }) => {
                         }}
                       />
                     </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Referred By"
+                        value={newPolicy.referredBy || ""}
+                        onChange={handleNewPolicyChange("referredBy")}
+                      />
+                    </Grid>
 
                     {/* Vehicle Details */}
                     <Grid item xs={12} md={6}>
@@ -3215,6 +3223,15 @@ const PolicyStatus = ({ addCustomer }) => {
                       />
                     </Grid>
 
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Referred By"
+                        value={newPolicy.referredBy || ""}
+                        onChange={handleNewPolicyChange("referredBy")}
+                      />
+                    </Grid>
+
                     {/* Health Specific Fields */}
                     <Grid item xs={12} md={6}>
                       <FormControl fullWidth error={!!errors.healthPlan}>
@@ -3915,6 +3932,15 @@ const PolicyStatus = ({ addCustomer }) => {
                         error={!!errors.destination}
                         helperText={errors.destination}
                       />
+
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          label="Referred By"
+                          value={newPolicy.referredBy || ""}
+                          onChange={handleNewPolicyChange("referredBy")}
+                        />
+                      </Grid>
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <TextField
@@ -4164,6 +4190,15 @@ const PolicyStatus = ({ addCustomer }) => {
                       helperText={errors.sumInsured}
                     />
                   </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Referred By"
+                      value={newPolicy.referredBy || ""}
+                      onChange={handleNewPolicyChange("referredBy")}
+                    />
+                  </Grid>
+
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
