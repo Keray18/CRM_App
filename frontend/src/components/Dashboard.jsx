@@ -108,12 +108,14 @@ const StyledDrawer = styled(Drawer)({
   },
 });
 
+const userRole = localStorage.getItem('userRole');
+
 const Sidebar = ({ section, setSection }) => {
   const menuItems = [
     { text: "Dashboard", icon: <DashboardIcon /> },
-    { text: "Register Employee", icon: <PersonAddIcon /> },
-    { text: "Manage Employees", icon: <PeopleIcon /> },
-    { text: "Task Assignments", icon: <TaskIcon /> },
+    { text: "Register Employee", icon: <PersonAddIcon />, role: 'privileged' },
+    { text: "Manage Employees", icon: <PeopleIcon />, role: 'privileged' },
+    { text: "Task Assignments", icon: <TaskIcon />, role: 'privileged' },
     { text: "Leads", icon: <AssignmentIcon /> },
     { text: "Customers", icon: <GroupIcon /> },
     { text: "Policy Status", icon: <PolicyIcon />, section: "Policy Status" },
@@ -130,7 +132,7 @@ const Sidebar = ({ section, setSection }) => {
         </Typography>
       </Box>
       <List>
-        {menuItems.map((item) => (
+        {menuItems.filter(item => !item.role || userRole === item.role || userRole === 'admin').map((item) => (
           <ListItem
             button
             key={item.text}
@@ -163,6 +165,12 @@ const Sidebar = ({ section, setSection }) => {
 
 const generatePassword = () => Math.random().toString(36).slice(-8);
 
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  console.log('Token being sent:', token);
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 const Dashboard = () => {
   const [section, setSection] = useState("Dashboard");
   const [employees, setEmployees] = useState([]);
@@ -184,8 +192,7 @@ const Dashboard = () => {
     education: "",
     experience: "",
     skills: [],
-    role: "Employee",
-    privileged: false,
+    role: "standard",
   });
   const [taskForm, setTaskForm] = useState({
     employeeId: "",
@@ -257,10 +264,10 @@ const Dashboard = () => {
     setDashboardStats(prev => ({ ...prev, isLoading: true, error: null }));
     try {
       const [employeesRes, leadsRes, tasksRes, paymentsRes] = await Promise.all([
-        axios.get(`${API_URL}/auth/getAllEmployees`), // Fetch employees
-        axios.get(`${API_URL}/leads`),               // Fetch leads
-        axios.get(`${API_URL}/tasks`),               // Fetch tasks
-        axios.get(`${API_URL}/payments`),            // Fetch payments
+        axios.get(`${API_URL}/auth/getAllEmployees`, { headers: getAuthHeaders() }), // Fetch employees
+        axios.get(`${API_URL}/leads`, { headers: getAuthHeaders() }),               // Fetch leads
+        axios.get(`${API_URL}/tasks`, { headers: getAuthHeaders() }),               // Fetch tasks
+        axios.get(`${API_URL}/payments`, { headers: getAuthHeaders() }),            // Fetch payments
       ]);
 
       const employeesArray = employeesRes.data.employees || [];
@@ -310,7 +317,7 @@ const Dashboard = () => {
   const fetchEmployees = async () => {
     setIsLoading(true);
     try {
-      const { data } = await axios.get('http://localhost:8080/api/auth/getAllEmployees');
+      const { data } = await axios.get('http://localhost:8080/api/auth/getAllEmployees', { headers: getAuthHeaders() });
       // Extract employees array from the response
       const employeesArray = data.employees || [];
       console.log('Fetched employees:', employeesArray); // Debug log
@@ -424,13 +431,12 @@ const Dashboard = () => {
         experience: Number(formData.experience),
         password: originalPassword,
         originalPassword: originalPassword, // Add original password to be stored
-        role: "Employee",
-        privileged: !!formData.privileged, // Pass privilege
+        role: "standard",
       };
 
       console.log('Sending data to backend:', formattedData);
 
-      const { data } = await axios.post('http://localhost:8080/api/auth/register', formattedData);
+      const { data } = await axios.post('http://localhost:8080/api/auth/register', formattedData, { headers: getAuthHeaders() });
       
       console.log('Response from backend:', data);
 
@@ -450,7 +456,7 @@ const Dashboard = () => {
         password: originalPassword, // Store original password for display
         status: "Active",
         createdAt: new Date().toISOString(),
-        privileged: !!formData.privileged, // Store privilege
+        role: "standard",
       };
       
       setEmployees(prevEmployees => [...prevEmployees, newEmployee]);
@@ -467,8 +473,7 @@ const Dashboard = () => {
         education: "",
         experience: "",
         skills: [],
-        role: "Employee",
-        privileged: false,
+        role: "standard",
       });
       
       setSnackbar({
@@ -500,7 +505,7 @@ const Dashboard = () => {
       const response = await axios.post('http://localhost:8080/api/auth/resetPassword', {
         employeeId: selectedEmployee.id,
         newPassword: newPassword
-      });
+      }, { headers: getAuthHeaders() });
 
       if (response.data) {
         // Update the employee's password in the UI
@@ -606,7 +611,7 @@ const Dashboard = () => {
         status: "Pending"
       };
 
-      const response = await axios.post('http://localhost:8080/api/tasks/create', taskData);
+      const response = await axios.post('http://localhost:8080/api/tasks/create', taskData, { headers: getAuthHeaders() });
       
       if (response.data && response.data.task) {
         setTasks([response.data.task, ...tasks]);
@@ -718,7 +723,7 @@ const Dashboard = () => {
   // Add fetchLeads function
   const fetchLeads = async () => {
     try {
-      const response = await axios.get(`${API_URL}/leads`);
+      const response = await axios.get(`${API_URL}/leads`, { headers: getAuthHeaders() });
       setLocalLeads(response.data.leads || []);
     } catch (error) {
       console.error('Error fetching leads:', error);
@@ -761,7 +766,7 @@ const Dashboard = () => {
   // Delete employee functionality
   const handleDeleteEmployee = async (employeeId) => {
     try {
-      await axios.delete(`${API_URL}/auth/${employeeId}`);
+      await axios.delete(`${API_URL}/auth/${employeeId}`, { headers: getAuthHeaders() });
       
       // Remove the employee from the local state
       setEmployees(employees.filter(emp => emp.id !== employeeId));
@@ -786,7 +791,7 @@ const Dashboard = () => {
     // Fetch departments
     const fetchDepartments = async () => {
       try {
-        const response = await axios.get('http://localhost:8080/api/masterdata/type/Department');
+        const response = await axios.get('http://localhost:8080/api/masterdata/type/Department', { headers: getAuthHeaders() });
         setDepartments(response.data.filter(item => item.isActive).map(item => item.name));
       } catch (error) {
         setDepartments([]);
@@ -795,7 +800,7 @@ const Dashboard = () => {
     // Fetch positions
     const fetchPositions = async () => {
       try {
-        const response = await axios.get('http://localhost:8080/api/masterdata/type/Position');
+        const response = await axios.get('http://localhost:8080/api/masterdata/type/Position', { headers: getAuthHeaders() });
         setPositions(response.data.filter(item => item.isActive).map(item => item.name));
       } catch (error) {
         setPositions([]);
@@ -914,12 +919,12 @@ const Dashboard = () => {
   // Add handler to update privilege
   const handlePrivilegeToggle = async (emp) => {
     try {
-      const updated = { ...emp, privileged: !emp.privileged };
-      await axios.put(`http://localhost:8080/api/auth/${emp.id}`, { privileged: updated.privileged });
+      const updated = { ...emp, role: emp.role === 'privileged' ? 'standard' : 'privileged' };
+      await axios.put(`http://localhost:8080/api/auth/${emp.id}`, { role: updated.role }, { headers: getAuthHeaders() });
       setEmployees(employees.map(e => e.id === emp.id ? updated : e));
-      setSnackbar({ open: true, message: `Privilege ${updated.privileged ? 'granted' : 'revoked'} for ${emp.name}`, severity: 'success' });
+      setSnackbar({ open: true, message: `Role changed to ${updated.role} for ${emp.name}`, severity: 'success' });
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to update privilege', severity: 'error' });
+      setSnackbar({ open: true, message: 'Failed to update role', severity: 'error' });
     }
   };
 
@@ -1599,9 +1604,9 @@ const Dashboard = () => {
                     <FormControlLabel
                       control={
                         <Checkbox
-                          checked={formData.privileged}
+                          checked={formData.role === 'privileged'}
                           onChange={handleEmployeeChange}
-                          name="privileged"
+                          name="role"
                           color="primary"
                         />
                       }
@@ -1682,7 +1687,7 @@ const Dashboard = () => {
                       "Department",
                       "Position",
                       "Password",
-                      "Privilege",
+                      "Role",
                       "Actions",
                     ].map((header) => (
                       <TableCell
@@ -1746,7 +1751,7 @@ const Dashboard = () => {
                                 size="small"
                                 sx={{ fontWeight: 'bold', border: '2px solid #d32f2f', background: '#fff0f0', color: '#d32f2f' }}
                               />
-                            ) : emp.privileged ? (
+                            ) : emp.role === 'privileged' ? (
                               <Chip
                                 label="Privileged"
                                 color="success"
@@ -1927,7 +1932,7 @@ const Dashboard = () => {
         </Modal>
 
         {/* Other Sections */}
-        {section === "Task Assignments" && (
+        {(userRole === 'privileged' || userRole === 'admin') && section === "Task Assignments" && (
           <AssignTask 
             tasks={tasks} 
             employees={employees}
@@ -2070,13 +2075,13 @@ const Dashboard = () => {
                 {isAdmin && editEmployee?.position !== 'Admin' && (
                   <Button
                     variant="outlined"
-                    color={editEmployee.privileged ? 'warning' : 'success'}
+                    color={editEmployee.role === 'privileged' ? 'warning' : 'success'}
                     onClick={() => {
                       handlePrivilegeToggle(editEmployee);
                       setEditModalOpen(false);
                     }}
                   >
-                    {editEmployee.privileged ? 'Revoke Privilege' : 'Make Privileged'}
+                    {editEmployee.role === 'privileged' ? 'Revoke Privilege' : 'Make Privileged'}
                   </Button>
                 )}
                 <Button onClick={() => setEditModalOpen(false)}>Cancel</Button>

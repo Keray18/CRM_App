@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const leadsController = require('../controllers/leadsCont.js');
 const upload = require('../middleware/upload.js');
+const authenticate = require('../middleware/auth');
 
 // Get all leads (without document information)
-router.get('/', leadsController.getAllLeads);
+router.get('/', authenticate, leadsController.getAllLeads);
 
 // Submit a new lead with optional document
 router.post('/submit', upload.single('document'), leadsController.submitLeadForm);

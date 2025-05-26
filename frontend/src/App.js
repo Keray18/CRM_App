@@ -29,8 +29,11 @@ const RequireAuth = React.memo(({ children, role }) => {
     return <Navigate to="/" />;
   }
 
-  if (role && userRole !== role) {
-    return <Navigate to={userRole === 'admin' ? '/dashboard' : '/emp-dashboard'} />;
+  if (role === 'admin' && userRole !== 'admin') {
+    return <Navigate to={userRole === 'standard' || userRole === 'privileged' ? '/emp-dashboard' : '/'} />;
+  }
+  if (role === 'employee' && userRole !== 'standard' && userRole !== 'privileged') {
+    return <Navigate to={userRole === 'admin' ? '/dashboard' : '/'} />;
   }
 
   return children;
