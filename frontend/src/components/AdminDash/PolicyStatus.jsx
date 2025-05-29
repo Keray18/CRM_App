@@ -80,6 +80,7 @@ import {
   updatePolicy,
   deletePolicy,
   updatePolicyStatus,
+  sendRenewalReminder
 } from "../../services/policyService";
 // import axios from 'axios'; // Already imported above
 import { API_URL } from "../../config/config";
@@ -142,6 +143,22 @@ const PolicyStatus = ({ addCustomer }) => {
 
   // Add this state at the top with other useState hooks:
   const [posiTypes, setPosiTypes] = useState([]);
+
+  // Add this function after other state declarations
+  const [sendingReminder, setSendingReminder] = useState(false);
+
+  // Add these new states near the top with other state declarations
+  const [openFamilyModal, setOpenFamilyModal] = useState(false);
+  const [familyMembers, setFamilyMembers] = useState([]);
+  const [currentFamilyMember, setCurrentFamilyMember] = useState({
+    name: "",
+    relation: "",
+    dateOfBirth: "",
+    height: "",
+    weight: "",
+    bloodGroup: "",
+    preExisting: ""
+  });
 
   // Fetch POSI Types from master data when insuranceType is "others"
   useEffect(() => {
@@ -224,7 +241,8 @@ const PolicyStatus = ({ addCustomer }) => {
     endDate: "",
     company: "",
     business: "New",
-    type: "vehicle", // Ensure this matches insuranceType state
+    type: "vehicle",
+    policyCategory: "",
     // Vehicle specific
     vehicleType: "",
     vehicleNumber: "",
@@ -361,7 +379,35 @@ const PolicyStatus = ({ addCustomer }) => {
 
       const data = await getAllPolicies(filters);
       console.log("Fetched policies from backend:", data); // Debug log
-      setPolicies(data);
+      
+      // Check and update lapsed policies
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const updatedPolicies = await Promise.all(data.map(async (policy) => {
+        const endDate = new Date(policy.endDate);
+        endDate.setHours(0, 0, 0, 0);
+
+        if (policy.status === "Live Policy" && endDate < today) {
+          // Update policy status to Lapsed
+          try {
+            const updatedPolicy = await updatePolicyStatus(policy.id, "Lapsed");
+            return Array.isArray(updatedPolicy) ? updatedPolicy[0] : updatedPolicy;
+          } catch (error) {
+            console.error("Error updating lapsed policy:", error);
+            return policy;
+          }
+        }
+        return policy;
+      }));
+
+      // Filter for about to end policies if that tab is selected
+      if (currentTab === "aboutToEnd") {
+        const aboutToEndPolicies = getAboutToEndPolicies();
+        setPolicies(aboutToEndPolicies);
+      } else {
+        setPolicies(updatedPolicies);
+      }
     } catch (error) {
       setSnackbar({
         open: true,
@@ -492,13 +538,13 @@ const PolicyStatus = ({ addCustomer }) => {
     setNewPolicy((prev) => {
       const updated = { ...prev, [field]: value };
 
-      // Calculate premiums when relevant fields change
-      if (
+      // Calculate GST and total premium for vehicle insurance
+      if (insuranceType === "vehicle" && (
         field === "basicPremium" ||
         field === "ncbDiscount" ||
         field === "tpPremium" ||
         field === "addonPremium"
-      ) {
+      )) {
         const basicPremium = parseFloat(updated.basicPremium || 0);
         const ncbDiscount = parseFloat(updated.ncbDiscount || 0);
         const tpPremium = parseFloat(updated.tpPremium || 0);
@@ -512,11 +558,55 @@ const PolicyStatus = ({ addCustomer }) => {
         const gstAmount = netPremium * 0.18;
         const totalPremium = netPremium + gstAmount;
 
+        // Recalculate commission if commission percentage exists
+        const commissionPercentage = parseFloat(updated.commissionPercentage || 0);
+        const commissionAmount = (totalPremium * commissionPercentage) / 100;
+
         return {
           ...updated,
           netPremium: netPremium.toFixed(2),
           gst: gstAmount.toFixed(2),
           totalPremium: totalPremium.toFixed(2),
+          commissionAmount: commissionAmount.toFixed(2),
+          totalCommissionAmount: commissionAmount.toFixed(2),
+        };
+      }
+
+      // Calculate GST and total premium for health and travel insurance
+      if ((insuranceType === "health" || insuranceType === "travel") && field === "sumInsured") {
+        const sumInsured = parseFloat(value || 0);
+        
+        // Calculate GST (18% of sum insured)
+        const gstAmount = sumInsured * 0.18;
+        const totalPremium = sumInsured + gstAmount;
+
+        // Recalculate commission if commission percentage exists
+        const commissionPercentage = parseFloat(updated.commissionPercentage || 0);
+        const commissionAmount = (totalPremium * commissionPercentage) / 100;
+
+        return {
+          ...updated,
+          gst: gstAmount.toFixed(2),
+          totalPremium: totalPremium.toFixed(2),
+          commissionAmount: commissionAmount.toFixed(2),
+          totalCommissionAmount: commissionAmount.toFixed(2),
+        };
+      }
+
+      // Handle commission percentage changes for health and travel insurance
+      if ((insuranceType === "health" || insuranceType === "travel") && field === "commissionPercentage") {
+        const sumInsured = parseFloat(updated.sumInsured || 0);
+        const gstAmount = sumInsured * 0.18;
+        const totalPremium = sumInsured + gstAmount;
+        
+        // Calculate commission on total premium (sum insured + GST)
+        const commissionPercentage = parseFloat(value || 0);
+        const commissionAmount = (totalPremium * commissionPercentage) / 100;
+
+        return {
+          ...updated,
+          commissionAmount: commissionAmount.toFixed(2),
+          totalCommissionAmount: commissionAmount.toFixed(2),
         };
       }
 
@@ -768,6 +858,8 @@ const PolicyStatus = ({ addCustomer }) => {
       if (!newPolicy.policyNumber?.trim())
         newErrors.policyNumber = "Policy Number is required";
       if (!newPolicy.type?.trim()) newErrors.type = "Policy Type is required";
+      if (!newPolicy.policyCategory?.trim())
+        newErrors.policyCategory = "Policy Category is required";
       if (!newPolicy.insuredName?.trim())
         newErrors.insuredName = "Insured Name is required";
       if (!newPolicy.mobile?.trim())
@@ -929,7 +1021,8 @@ const PolicyStatus = ({ addCustomer }) => {
       endDate: nextYearStr,
       company: "",
       business: "New",
-      type: insuranceType, // Set type to current insuranceType
+      type: insuranceType,
+      policyCategory: "", // Add policy category reset
       vehicleType: "",
       vehicleNumber: "",
       make: "",
@@ -1225,7 +1318,88 @@ const PolicyStatus = ({ addCustomer }) => {
     setSelectedLead(null);
     setErrors({});
   };
+
+  // Update the handleSendReminder function with more logging
+  const handleSendReminder = async (policy) => {
+    try {
+      setSendingReminder(true);
+      console.log('Attempting to send reminder for policy:', {
+        id: policy.id,
+        policyNumber: policy.policyNumber,
+        email: policy.email
+      });
+
+      await sendRenewalReminder(policy.id);
+
+      setSnackbar({
+        open: true,
+        message: 'Renewal reminder sent successfully',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error sending reminder:', {
+        error: error.message,
+        policyId: policy.id
+      });
+      setSnackbar({
+        open: true,
+        message: error.message || 'Failed to send renewal reminder',
+        severity: 'error'
+      });
+    } finally {
+      setSendingReminder(false);
+    }
+  };
+
   console.log("Policies being rendered:", policies);
+
+  // Add this function after getFilteredPolicies
+  const getAboutToEndPolicies = () => {
+    const today = new Date();
+    const oneMonthFromNow = new Date(today.setMonth(today.getMonth() + 1));
+    
+    return policies.filter(policy => {
+      if (!policy.endDate) return false;
+      const endDate = new Date(policy.endDate);
+      return endDate <= oneMonthFromNow && endDate > new Date();
+    });
+  };
+
+  // Add this function to handle family member changes
+  const handleFamilyMemberChange = (field) => (event) => {
+    setCurrentFamilyMember(prev => ({
+      ...prev,
+      [field]: event.target.value
+    }));
+  };
+
+  // Add this function to add family member
+  const handleAddFamilyMember = () => {
+    if (familyMembers.length < (parseInt(newPolicy.numberOfFamilyMembers) || 0)) {
+      setFamilyMembers(prev => [...prev, currentFamilyMember]);
+      // Update the policy with the new family member
+      setNewPolicy(prev => ({
+        ...prev,
+        familyMembers: [...familyMembers, currentFamilyMember]
+      }));
+      
+      // Reset the current family member form
+      setCurrentFamilyMember({
+        name: "",
+        relation: "",
+        dateOfBirth: "",
+        height: "",
+        weight: "",
+        bloodGroup: "",
+        preExisting: ""
+      });
+
+      // Close modal if all members are added
+      if (familyMembers.length + 1 === parseInt(newPolicy.numberOfFamilyMembers)) {
+        setOpenFamilyModal(false);
+      }
+    }
+  };
 
   return (
     <Box sx={{ p: 3 }}>
@@ -1276,6 +1450,10 @@ const PolicyStatus = ({ addCustomer }) => {
               policies.filter((p) => p.status === "Pending").length
             })`}
             value="pending"
+          />
+          <Tab
+            label={`About to End (${getAboutToEndPolicies().length})`}
+            value="aboutToEnd"
           />
         </Tabs>
       </Box>
@@ -1399,7 +1577,7 @@ const PolicyStatus = ({ addCustomer }) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {policies.map((policy) => (
+            {filteredPolicies.map((policy) => (
               <TableRow
                 key={policy.id}
                 hover
@@ -1457,20 +1635,6 @@ const PolicyStatus = ({ addCustomer }) => {
                               return "#000000";
                           }
                         })(),
-                        "&:hover": {
-                          backgroundColor: (() => {
-                            switch (policy.status) {
-                              case "Live Policy":
-                                return "#c8e6c9";
-                              case "Lapsed":
-                                return "#ffcdd2";
-                              case "Pending":
-                                return "#ffe0b2";
-                              default:
-                                return "#f5f5f5";
-                            }
-                          })(),
-                        },
                       }}
                     >
                       <MenuItem value="Live Policy" sx={{ color: "#2e7d32" }}>
@@ -1486,59 +1650,64 @@ const PolicyStatus = ({ addCustomer }) => {
                   </FormControl>
                 </TableCell>
                 <TableCell>
-                  <Tooltip title="View Policy">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleViewDetails(policy)}
-                      sx={{
-                        color: "#0C47A0",
-                        "&:hover": {
-                          backgroundColor: "rgba(12, 71, 160, 0.04)",
-                        },
-                      }}
-                    >
-                      <ViewIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Edit Policy">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEdit(policy)}
-                      sx={{
-                        color: "#0C47A0",
-                        "&:hover": {
-                          backgroundColor: "rgba(12, 71, 160, 0.04)",
-                        },
-                      }}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
-                  {policy.status === "Lapsed" && (
-                    <Tooltip title="Renew Policy">
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Tooltip title="View Policy">
                       <IconButton
                         size="small"
-                        color="success"
-                        onClick={() => handleRenew(policy)}
+                        onClick={() => handleViewDetails(policy)}
+                        sx={{
+                          color: "#0C47A0",
+                          "&:hover": {
+                            backgroundColor: "rgba(12, 71, 160, 0.04)",
+                          },
+                        }}
                       >
-                        <RenewIcon />
+                        <ViewIcon />
                       </IconButton>
                     </Tooltip>
-                  )}
-                  <Tooltip title="Delete Policy">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDelete(policy)}
-                      sx={{
-                        color: "#D32F2F",
-                        "&:hover": {
-                          backgroundColor: "rgba(211, 47, 47, 0.04)",
-                        },
-                      }}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
+                    <Tooltip title="Edit Policy">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleEdit(policy)}
+                        sx={{
+                          color: "#0C47A0",
+                          "&:hover": {
+                            backgroundColor: "rgba(12, 71, 160, 0.04)",
+                          },
+                        }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    {currentTab === "aboutToEnd" && (
+                      <Tooltip title="Send Renewal Reminder">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleSendReminder(policy)}
+                          disabled={sendingReminder}
+                          sx={{
+                            color: "#ff9800",
+                            "&:hover": {
+                              backgroundColor: "rgba(255, 152, 0, 0.04)",
+                            },
+                          }}
+                        >
+                          <EmailIcon />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    {policy.status === "Lapsed" && (
+                      <Tooltip title="Renew Policy">
+                        <IconButton
+                          size="small"
+                          color="success"
+                          onClick={() => handleRenew(policy)}
+                        >
+                          <RenewIcon />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </Box>
                 </TableCell>
               </TableRow>
             ))}
@@ -3257,6 +3426,71 @@ const PolicyStatus = ({ addCustomer }) => {
                         )}
                       </FormControl>
                     </Grid>
+                    {/* Add Family Members section when Family Plan is selected */}
+                    {(newPolicy.healthPlan === "Family Floater" || newPolicy.healthPlan?.includes("Family")) && (
+                      <>
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            label="Number of Family Members"
+                            type="number"
+                            value={newPolicy.numberOfFamilyMembers || ""}
+                            onChange={(e) => {
+                              handleNewPolicyChange("numberOfFamilyMembers")(e);
+                              if (parseInt(e.target.value) > 0) {
+                                setOpenFamilyModal(true);
+                              }
+                            }}
+                            InputProps={{
+                              inputProps: { min: 1 }
+                            }}
+                            required
+                            error={!!errors.numberOfFamilyMembers}
+                            helperText={errors.numberOfFamilyMembers}
+                            sx={{
+                              "& .MuiInputLabel-root": { color: "#ffffff" },
+                              "& .MuiOutlinedInput-root": { color: "#ffffff" },
+                            }}
+                          />
+                        </Grid>
+                        
+                        {/* Display added family members */}
+                        {familyMembers.length > 0 && (
+                          <Grid item xs={12}>
+                            <Box sx={{ mt: 2, mb: 2 }}>
+                              <Typography variant="subtitle1" sx={{ color: "#ffffff", mb: 1 }}>
+                                Added Family Members:
+                              </Typography>
+                              {familyMembers.map((member, index) => (
+                                <Box 
+                                  key={index} 
+                                  sx={{ 
+                                    p: 1, 
+                                    mb: 1, 
+                                    bgcolor: "rgba(255, 255, 255, 0.1)",
+                                    borderRadius: 1,
+                                    color: "#ffffff"
+                                  }}
+                                >
+                                  <Typography variant="body2">
+                                    {member.name} ({member.relation}) - Age: {new Date().getFullYear() - new Date(member.dateOfBirth).getFullYear()}
+                                  </Typography>
+                                </Box>
+                              ))}
+                              {familyMembers.length < newPolicy.numberOfFamilyMembers && (
+                                <Button
+                                  variant="outlined"
+                                  onClick={() => setOpenFamilyModal(true)}
+                                  sx={{ mt: 1, color: "#ffffff", borderColor: "#ffffff" }}
+                                >
+                                  Add More Family Members
+                                </Button>
+                              )}
+                            </Box>
+                          </Grid>
+                        )}
+                      </>
+                    )}
                     <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
@@ -3273,6 +3507,28 @@ const PolicyStatus = ({ addCustomer }) => {
                         helperText={errors.sumInsured}
                       />
                     </Grid>
+                    <Grid item xs={12} md={6}>
+                    <TextField
+                        fullWidth
+                        label="GST (18%)"
+                        value={newPolicy.gst}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">₹</InputAdornment>
+                          ),
+                          readOnly: true,
+                        }}
+                        sx={{
+                          "& .MuiInputLabel-root": { color: "#ffffff" },
+                          "& .MuiOutlinedInput-root": {
+                            color: "#ffffff",
+                            backgroundColor: "rgba(255, 255, 255, 0.1)",
+                          },
+                        }}
+                      />
+
+                    </Grid>
+                    
                     <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
@@ -3359,84 +3615,19 @@ const PolicyStatus = ({ addCustomer }) => {
                       </FormControl>
                     </Grid>
                     <Grid item xs={12}>
-                      <FormControl
+                      <TextField
                         fullWidth
-                        error={!!errors.preExistingConditions}
-                      >
-                        <FormLabel sx={{ color: "#ffffff" }}>
-                          Pre-existing Conditions
-                        </FormLabel>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: 1,
-                            mt: 1,
-                          }}
-                        >
-                          {[
-                            "None",
-                            "Diabetes",
-                            "Hypertension",
-                            "Heart Disease",
-                            "Asthma",
-                            "Thyroid",
-                            "Other",
-                          ].map((condition) => (
-                            <Chip
-                              key={condition}
-                              label={condition}
-                              onClick={() => {
-                                const currentConditions =
-                                  newPolicy.preExistingConditions || [];
-                                if (condition === "None") {
-                                  setNewPolicy({
-                                    ...newPolicy,
-                                    preExistingConditions: ["None"],
-                                  });
-                                } else {
-                                  const updatedConditions =
-                                    currentConditions.includes(condition)
-                                      ? currentConditions.filter(
-                                          (c) => c !== condition
-                                        )
-                                      : [
-                                          ...currentConditions.filter(
-                                            (c) => c !== "None"
-                                          ),
-                                          condition,
-                                        ];
-                                  setNewPolicy({
-                                    ...newPolicy,
-                                    preExistingConditions: updatedConditions,
-                                  });
-                                }
-                              }}
-                              color={
-                                newPolicy.preExistingConditions?.includes(
-                                  condition
-                                )
-                                  ? "primary"
-                                  : "default"
-                              }
-                              sx={{
-                                backgroundColor:
-                                  newPolicy.preExistingConditions?.includes(
-                                    condition
-                                  )
-                                    ? "primary.main"
-                                    : "rgba(255, 255, 255, 0.1)",
-                                color: "#ffffff",
-                              }}
-                            />
-                          ))}
-                        </Box>
-                        {errors.preExistingConditions && (
-                          <FormHelperText error>
-                            {errors.preExistingConditions}
-                          </FormHelperText>
-                        )}
-                      </FormControl>
+                        label="Pre-existing Conditions"
+                        value={newPolicy.preExisting || ""}
+                        onChange={handleNewPolicyChange("preExisting")}
+                        multiline
+                        rows={2}
+                        placeholder="Enter pre-existing conditions (if any)"
+                        sx={{
+                          "& .MuiInputLabel-root": { color: "#ffffff" },
+                          "& .MuiOutlinedInput-root": { color: "#ffffff" },
+                        }}
+                      />
                     </Grid>
                   </Grid>
                 </Box>
@@ -3924,6 +4115,26 @@ const PolicyStatus = ({ addCustomer }) => {
                       />
                     </Grid>
                     <Grid item xs={12} md={6}>
+                    <TextField
+                        fullWidth
+                        label="GST (18%)"
+                        value={newPolicy.gst}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">₹</InputAdornment>
+                          ),
+                          readOnly: true,
+                        }}
+                        sx={{
+                          "& .MuiInputLabel-root": { color: "#ffffff" },
+                          "& .MuiOutlinedInput-root": {
+                            color: "#ffffff",
+                            backgroundColor: "rgba(255, 255, 255, 0.1)",
+                          },
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
                         label="Destination"
@@ -4137,11 +4348,13 @@ const PolicyStatus = ({ addCustomer }) => {
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <FormControl fullWidth error={!!errors.business}>
-                      <InputLabel>Business Type</InputLabel>
+                      <InputLabel sx={{ color: "#ffffff" }}>
+                        Policy Type
+                      </InputLabel>
                       <Select
                         value={newPolicy.business || ""}
                         onChange={handleNewPolicyChange("business")}
-                        label="Business Type"
+                        label="Policy Type"
                         required
                       >
                         <MenuItem value="New">New Policy</MenuItem>
@@ -4190,6 +4403,26 @@ const PolicyStatus = ({ addCustomer }) => {
                       helperText={errors.sumInsured}
                     />
                   </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                        fullWidth
+                        label="GST (18%)"
+                        value={newPolicy.gst}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">₹</InputAdornment>
+                          ),
+                          readOnly: true,
+                        }}
+                        sx={{
+                          "& .MuiInputLabel-root": { color: "#ffffff" },
+                          "& .MuiOutlinedInput-root": {
+                            color: "#ffffff",
+                            backgroundColor: "rgba(255, 255, 255, 0.1)",
+                          },
+                        }}
+                      />
+                    </Grid>
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
@@ -4258,6 +4491,7 @@ const PolicyStatus = ({ addCustomer }) => {
                       </Typography>
                     )}
                   </Grid>
+                  {/* Add Policy Category Dropdown */}
                 </Grid>
               </Box>
             )}
@@ -5157,6 +5391,144 @@ const PolicyStatus = ({ addCustomer }) => {
           </Typography>
         </Box>
       </Backdrop>
+
+      {/* Add this at the end of the component, just before the final closing tag */}
+      <Modal
+        open={openFamilyModal}
+        onClose={() => {
+          if (familyMembers.length === parseInt(newPolicy.numberOfFamilyMembers)) {
+            setOpenFamilyModal(false);
+          }
+        }}
+      >
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 600,
+          bgcolor: 'background.paper',
+          boxShadow: 24,
+          p: 4,
+          borderRadius: 2,
+          maxHeight: '90vh',
+          overflow: 'auto'
+        }}>
+          <Typography variant="h6" gutterBottom>
+            Add Family Member Details ({familyMembers.length + 1} of {newPolicy.numberOfFamilyMembers})
+          </Typography>
+          
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Name"
+                value={currentFamilyMember.name}
+                onChange={handleFamilyMemberChange("name")}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Relation</InputLabel>
+                <Select
+                  value={currentFamilyMember.relation}
+                  onChange={handleFamilyMemberChange("relation")}
+                  label="Relation"
+                >
+                  {["Spouse", "Child", "Parent", "Sibling", "Other"].map((relation) => (
+                    <MenuItem key={relation} value={relation}>{relation}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Date of Birth"
+                type="date"
+                value={currentFamilyMember.dateOfBirth}
+                onChange={handleFamilyMemberChange("dateOfBirth")}
+                InputLabelProps={{ shrink: true }}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Height (cm)"
+                type="number"
+                value={currentFamilyMember.height}
+                onChange={handleFamilyMemberChange("height")}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Weight (kg)"
+                type="number"
+                value={currentFamilyMember.weight}
+                onChange={handleFamilyMemberChange("weight")}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Blood Group</InputLabel>
+                <Select
+                  value={currentFamilyMember.bloodGroup}
+                  onChange={handleFamilyMemberChange("bloodGroup")}
+                  label="Blood Group"
+                >
+                  {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map((group) => (
+                    <MenuItem key={group} value={group}>{group}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Pre-existing Conditions"
+                value={currentFamilyMember.preExisting}
+                onChange={handleFamilyMemberChange("preExisting")}
+                multiline
+                rows={2}
+              />
+            </Grid>
+          </Grid>
+
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Button
+              variant="outlined"
+              onClick={() => setOpenFamilyModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleAddFamilyMember}
+              disabled={!currentFamilyMember.name || !currentFamilyMember.relation || !currentFamilyMember.dateOfBirth}
+            >
+              Add Member
+            </Button>
+          </Box>
+
+          {familyMembers.length > 0 && (
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="subtitle1" gutterBottom>Added Family Members:</Typography>
+              {familyMembers.map((member, index) => (
+                <Box key={index} sx={{ mb: 1, p: 1, bgcolor: 'rgba(0,0,0,0.05)', borderRadius: 1 }}>
+                  <Typography variant="body2">
+                    {member.name} ({member.relation}) - DOB: {member.dateOfBirth}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Box>
+      </Modal>
     </Box>
   );
 };

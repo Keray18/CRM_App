@@ -123,4 +123,26 @@ export const updatePolicyStatus = async (id, status) => {
   } catch (error) {
     throw error.response?.data || error.message;
   }
+};
+
+// Add sendRenewalReminder function
+export const sendRenewalReminder = async (id) => {
+  try {
+    console.log('Making API request to send renewal reminder for policy:', id);
+    const response = await axios.post(`${API_URL}/policies/${id}/send-reminder`, {}, {
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      withCredentials: true
+    });
+    console.log('API response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error in sendRenewalReminder:', error);
+    if (error.response) {
+      console.error('Error response:', error.response.data);
+      throw new Error(error.response.data.message || 'Failed to send renewal reminder');
+    }
+    throw new Error('Network error while sending renewal reminder');
+  }
 }; 

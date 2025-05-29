@@ -256,17 +256,76 @@ const Dashboard = () => {
   const fetchDashboardStats = async () => {
     setDashboardStats(prev => ({ ...prev, isLoading: true, error: null }));
     try {
-      const [employeesRes, leadsRes, tasksRes, paymentsRes] = await Promise.all([
+      const [employeesRes, leadsRes, tasksRes, paymentsRes, policiesRes] = await Promise.all([
         axios.get(`${API_URL}/auth/getAllEmployees`), // Fetch employees
         axios.get(`${API_URL}/leads`),               // Fetch leads
         axios.get(`${API_URL}/tasks`),               // Fetch tasks
         axios.get(`${API_URL}/payments`),            // Fetch payments
+        getAllPolicies(),                            // Fetch policies
       ]);
 
       const employeesArray = employeesRes.data.employees || [];
       const activeLeads = (leadsRes.data.leads || []).filter(lead => !lead.isDeleted && !lead.isConverted);
       const activeTasks = (tasksRes.data.tasks || []).filter(task => task.status !== 'Completed');
       const totalPayments = paymentsRes.data.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0;
+      
+      // Set policies
+      setPolicies(policiesRes || []);
+
+      // Calculate policy statistics
+      if (policiesRes && policiesRes.length > 0) {
+        // Calculate policy type distribution
+        const typeCount = policiesRes.reduce((acc, policy) => {
+          acc[policy.type] = (acc[policy.type] || 0) + 1;
+          return acc;
+        }, {});
+        
+        const typeDistribution = Object.entries(typeCount).map(([name, value]) => ({
+          name: name.charAt(0).toUpperCase() + name.slice(1),
+          value
+        }));
+
+        // Calculate status distribution
+        const statusCount = policiesRes.reduce((acc, policy) => {
+          acc[policy.status] = (acc[policy.status] || 0) + 1;
+          return acc;
+        }, {});
+        
+        const statusDistribution = Object.entries(statusCount).map(([name, value]) => ({
+          name,
+          value
+        }));
+
+        // Calculate monthly premiums
+        const monthlyPremiums = policiesRes.reduce((acc, policy) => {
+          const month = new Date(policy.startDate).toLocaleString('default', { month: 'short' });
+          acc[month] = (acc[month] || 0) + (policy.totalPremium || 0);
+          return acc;
+        }, {});
+        
+        const monthlyPremiumData = Object.entries(monthlyPremiums).map(([month, amount]) => ({
+          month,
+          amount
+        }));
+
+        // Calculate new vs renewal business
+        const businessCount = policiesRes.reduce((acc, policy) => {
+          acc[policy.business] = (acc[policy.business] || 0) + 1;
+          return acc;
+        }, {});
+        
+        const businessDistribution = Object.entries(businessCount).map(([type, count]) => ({
+          type,
+          count
+        }));
+
+        setPolicyStats({
+          typeDistribution,
+          statusDistribution,
+          monthlyPremiums: monthlyPremiumData,
+          businessDistribution
+        });
+      }
 
       setDashboardStats({
         isLoading: false,
@@ -923,6 +982,81 @@ const Dashboard = () => {
     }
   };
 
+  // Add fetchPolicies function
+  const fetchPolicies = async () => {
+    try {
+      const data = await getAllPolicies();
+      setPolicies(data);
+    } catch (error) {
+      console.error('Error fetching policies:', error);
+    }
+  };
+
+  // Add useEffect to fetch policies and update stats
+  useEffect(() => {
+    if (section === "Dashboard") {
+      fetchPolicies();
+      fetchDashboardStats();
+    }
+  }, [section]);
+
+  // Update policyStats when policies change
+  useEffect(() => {
+    if (policies.length > 0) {
+      // Calculate policy type distribution
+      const typeCount = policies.reduce((acc, policy) => {
+        acc[policy.type] = (acc[policy.type] || 0) + 1;
+        return acc;
+      }, {});
+      
+      const typeDistribution = Object.entries(typeCount).map(([name, value]) => ({
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        value
+      }));
+
+      // Calculate status distribution
+      const statusCount = policies.reduce((acc, policy) => {
+        acc[policy.status] = (acc[policy.status] || 0) + 1;
+        return acc;
+      }, {});
+      
+      const statusDistribution = Object.entries(statusCount).map(([name, value]) => ({
+        name,
+        value
+      }));
+
+      // Calculate monthly premiums
+      const monthlyPremiums = policies.reduce((acc, policy) => {
+        const month = new Date(policy.startDate).toLocaleString('default', { month: 'short' });
+        acc[month] = (acc[month] || 0) + (policy.totalPremium || 0);
+        return acc;
+      }, {});
+      
+      const monthlyPremiumData = Object.entries(monthlyPremiums).map(([month, amount]) => ({
+        month,
+        amount
+      }));
+
+      // Calculate new vs renewal business
+      const businessCount = policies.reduce((acc, policy) => {
+        acc[policy.business] = (acc[policy.business] || 0) + 1;
+        return acc;
+      }, {});
+      
+      const businessDistribution = Object.entries(businessCount).map(([type, count]) => ({
+        type,
+        count
+      }));
+
+      setPolicyStats({
+        typeDistribution,
+        statusDistribution,
+        monthlyPremiums: monthlyPremiumData,
+        businessDistribution
+      });
+    }
+  }, [policies]);
+
   return (
     <Box
       sx={{
@@ -1237,108 +1371,6 @@ const Dashboard = () => {
                 </Card>
               </Grid>
             </Grid>
-
-            {/* Collapsible Analytics Panel */}
-            <Box sx={{ mt: 6, mb: 4, border: '2px solid #1976d2', borderRadius: 3, background: '#f7faff', boxShadow: 2, p: 2, maxWidth: 1200, mx: 'auto' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer', mb: 1 }} onClick={() => setShowAnalytics(!showAnalytics)}>
-                <ExpandMoreIcon sx={{ fontSize: 32, color: '#1976d2', transform: showAnalytics ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s' }} />
-                <Typography variant="h5" sx={{ color: '#1976d2', fontWeight: 700, ml: 1 }}>
-                  More Analytics
-                </Typography>
-                <InfoOutlinedIcon sx={{ color: '#1976d2', ml: 2 }} />
-              </Box>
-              <Typography variant="body2" sx={{ color: '#1976d2', mb: 2, ml: 5 }}>
-                Explore commission and payment analytics for deeper business insights. Click to expand/collapse.
-              </Typography>
-              <Collapse in={showAnalytics}>
-                <Grid container spacing={3}>
-                  <Grid item xs={12} md={6}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                          Commission Rates by Company
-                        </Typography>
-                        <Box sx={{ width: '100%', height: 300 }}>
-                          <BarChart width={500} height={300} data={analyticsData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="rate" fill="#8884d8" name="Commission Rate (%)" />
-                          </BarChart>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                          Earnings Overview
-                        </Typography>
-                        <Box sx={{ width: '100%', height: 300 }}>
-                          <BarChart width={500} height={300} data={analyticsData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="earnings" fill="#82ca9d" name="Total Earnings (₹)" />
-                            <Bar dataKey="pending" fill="#ffc658" name="Pending Payments (₹)" />
-                          </BarChart>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                          Payment Status Distribution
-                        </Typography>
-                        <Box sx={{ width: '100%', height: 300 }}>
-                          <BarChart width={500} height={300} data={[
-                            { name: 'Completed', value: completedPayments },
-                            { name: 'Pending', value: pendingPayments }
-                          ]}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="value" fill="#8884d8" name="Amount (₹)" />
-                          </BarChart>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                          Recent Payment Trends
-                        </Typography>
-                        <Box sx={{ width: '100%', height: 300 }}>
-                          <BarChart width={500} height={300} data={payments.map(payment => ({
-                            name: payment.companyName,
-                            amount: payment.amount,
-                            date: payment.paymentDate
-                          }))}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="amount" fill="#82ca9d" name="Payment Amount (₹)" />
-                          </BarChart>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                </Grid>
-              </Collapse>
-            </Box>
           </Box>
         )}
 

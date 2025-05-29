@@ -228,4 +228,56 @@ exports.getLeadsForPolicy = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+};
+
+// Add new endpoint for sending renewal reminder
+exports.sendRenewalReminder = async (req, res) => {
+  try {
+    console.log('Received reminder request with params:', req.params);
+    const { id } = req.params;
+    
+    if (!id) {
+      console.error('No policy ID provided');
+      return res.status(400).json({ message: 'Policy ID is required' });
+    }
+
+    console.log('Looking for policy with ID:', id);
+    // Find the policy
+    const policy = await Policy.findByPk(id);
+    
+    if (!policy) {
+      console.error('Policy not found with ID:', id);
+      return res.status(404).json({ message: 'Policy not found' });
+    }
+
+    console.log('Found policy:', {
+      id: policy.id,
+      policyNumber: policy.policyNumber,
+      email: policy.email
+    });
+
+    if (!policy.email) {
+      console.error('Policy has no email address');
+      return res.status(400).json({ message: 'Policy has no email address' });
+    }
+
+    // Send renewal reminder email
+    console.log('Attempting to send email to:', policy.email);
+    const emailSent = await sendEmail(policy.email, 'renewalReminder', policy);
+    
+    if (emailSent) {
+      console.log('Email sent successfully');
+      res.status(200).json({ message: 'Renewal reminder sent successfully' });
+    } else {
+      console.error('Failed to send email');
+      res.status(500).json({ message: 'Failed to send renewal reminder' });
+    }
+  } catch (error) {
+    console.error('Error in sendRenewalReminder:', {
+      error: error.message,
+      stack: error.stack,
+      params: req.params
+    });
+    res.status(500).json({ message: error.message });
+  }
 }; 

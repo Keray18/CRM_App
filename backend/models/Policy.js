@@ -72,6 +72,24 @@ const Policy = sequelize.define('Policy', {
     type: DataTypes.JSON,
     defaultValue: []
   },
+  familyMembers: {
+    type: DataTypes.JSON,
+    defaultValue: [],
+    // Will store array of objects with member details:
+    // [{
+    //   name: string,
+    //   relation: string,
+    //   dateOfBirth: date,
+    //   height: float,
+    //   weight: float,
+    //   bloodGroup: string,
+    //   preExisting: string
+    // }]
+  },
+  numberOfFamilyMembers: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
 
   // Travel Specific Fields
   travelType: DataTypes.STRING,
