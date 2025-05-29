@@ -85,7 +85,7 @@ const Documents = () => {
   useEffect(() => {
     const fetchLeads = async () => {
       try {
-        const response = await axios.get(`${API_URL}/leads`);
+        const response = await axios.get(`${API_URL}/leads`, { headers: getAuthHeaders() });
         setLeads(response.data.leads || []);
       } catch (error) {
         console.error('Error fetching leads:', error);
@@ -98,6 +98,11 @@ const Documents = () => {
     };
     fetchLeads();
   }, []);
+
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
 
   // Fetch documents when a lead is selected
   useEffect(() => {

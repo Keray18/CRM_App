@@ -35,15 +35,21 @@ function Login() {
       });
       localStorage.setItem('isAuthenticated', 'true');
       // Set userRole based on backend response (if available)
-      if (data.role === 'admin' || data.isAdmin || data.employee?.position === 'Admin') {
+      if (data.employee && data.employee.role === 'admin') {
         localStorage.setItem('userRole', 'admin');
         navigate('/dashboard');
+      } else if (data.employee && data.employee.role === 'privileged') {
+        localStorage.setItem('userRole', 'privileged');
+        navigate('/emp-dashboard');
       } else {
-        localStorage.setItem('userRole', 'employee');
+        localStorage.setItem('userRole', 'standard');
         navigate('/emp-dashboard');
       }
       localStorage.setItem('userData', JSON.stringify(data));
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      localStorage.setItem('token', userData.token);
       localStorage.setItem('employeeName', data.name || '');
+      console.log(localStorage.getItem('token'));
       if (data.employee && data.employee.id) {
         localStorage.setItem('employeeId', data.employee.id);
       }

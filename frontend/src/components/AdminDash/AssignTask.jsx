@@ -34,6 +34,11 @@ import {
   Business as LeadIcon
 } from "@mui/icons-material";
 
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 const AssignTask = ({ 
   employees = [], 
   leads = [], 
@@ -83,7 +88,7 @@ const AssignTask = ({
 
   const fetchLeads = async () => {
     try {
-      const response = await axios.get(`${API_URL}/leads`);
+      const response = await axios.get(`${API_URL}/leads`, { headers: getAuthHeaders() });
       setLocalLeads(response.data.leads || []);
     } catch (error) {
       console.error('Error fetching leads:', error);
@@ -97,7 +102,7 @@ const AssignTask = ({
 
   const fetchEmployees = async () => {
     try {
-      const response = await axios.get(`${API_URL}/auth/getAllEmployees`);
+      const response = await axios.get(`${API_URL}/auth/getAllEmployees`, { headers: getAuthHeaders() });
       setLocalEmployees(response.data.employees || []);
     } catch (error) {
       console.error('Error fetching employees:', error);

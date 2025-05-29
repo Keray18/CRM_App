@@ -453,7 +453,7 @@ const PolicyStatus = ({ addCustomer }) => {
   // Add fetchLeads function
   const fetchLeads = async () => {
     try {
-      const response = await axios.get(`${API_URL}/leads`);
+      const response = await axios.get(`${API_URL}/leads`, { headers: getAuthHeaders() });
       setLocalLeads(response.data.leads || []);
     } catch (error) {
       console.error("Error fetching leads:", error);
@@ -463,6 +463,11 @@ const PolicyStatus = ({ addCustomer }) => {
         severity: "error",
       });
     }
+  };
+
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
   // Add useEffect to fetch leads when component mounts
