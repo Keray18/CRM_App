@@ -16,7 +16,7 @@ const AddEmployee = () => {
         salary: '',
         education: '',
         experience: '',
-        role: 'standard'
+        role: 'Employee'
     });
     const [open, setOpen] = useState(false);
     const [message, setMessage] = useState('');
@@ -115,7 +115,7 @@ const AddEmployee = () => {
                     salary: '',
                     education: '',
                     experience: '',
-                    role: 'standard'
+                    role: 'Employee'
                 });
             }
         } catch (error) {
@@ -273,8 +273,8 @@ const AddEmployee = () => {
                     onChange={handleChange}
                     label="Role"
                 >
-                    <MenuItem value="standard">Standard</MenuItem>
-                    <MenuItem value="privileged">Privileged</MenuItem>
+                    <MenuItem value="Employee">Employee</MenuItem>
+                    <MenuItem value="Admin">Admin</MenuItem>
                 </Select>
             </FormControl>
             <Button

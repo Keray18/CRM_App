@@ -36,8 +36,6 @@ import {
 import {
   CheckCircle,
   Delete,
-  Edit,
-  Visibility,
   Upload as UploadIcon,
   Warning,
   Search as SearchIcon,
@@ -159,16 +157,11 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
     setPage(0);
   };
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
-
   // Memoize fetchLeads to prevent unnecessary re-renders
   const fetchLeads = useCallback(async () => {
     setTableLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/leads`, { headers: getAuthHeaders() });
+      const response = await axios.get(`${API_URL}/leads`);
       if (response.data && response.data.leads) {
         setLeads(response.data.leads);
       }
@@ -820,22 +813,9 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
                         <IconButton
                           color="error"
                           onClick={() => lead?.id && handleDeleteClick(lead)}
-                          // disabled={!lead?.id}
-                          disabled={localStorage.getItem('userRole') === 'standard'}
+                          disabled={!lead?.id}
                         >
                           <Delete />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Edit Lead">
-                        <IconButton
-                          disabled={localStorage.getItem('userRole') === 'standard'}
-                        >
-                          <Edit />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="View Lead">
-                        <IconButton>
-                          <Visibility />
                         </IconButton>
                       </Tooltip>
                     </TableCell>

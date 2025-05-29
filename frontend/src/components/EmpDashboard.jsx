@@ -201,17 +201,14 @@ const EmpDashboard = () => {
     // Fetch leads
     const fetchLeads = async () => {
       try {
-        const response = await axios.get(`${API_URL}/leads`, { headers: getAuthHeaders() });
+        const response = await axios.get(`${API_URL}/leads`, {
+          withCredentials: true
+        });
         setLeads(response.data.leads || []);
         setActiveLeads((response.data.leads || []).filter(lead => lead.status === 'Active').length);
       } catch (error) {
         console.error('Error fetching leads:', error);
       }
-    };
-
-    const getAuthHeaders = () => {
-      const token = localStorage.getItem('token');
-      return token ? { Authorization: `Bearer ${token}` } : {};
     };
 
     // Fetch commissions

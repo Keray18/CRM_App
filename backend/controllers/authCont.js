@@ -6,10 +6,7 @@ require("dotenv").config()
 // Register a new employee
 const register = async (req, res) => {
     try {
-        let {name, email, phone, address, department, position, date, salary, education, experience, password, role } = req.body
-        if (email === 'jason@gmail.com') {
-            role = 'admin';
-        }
+        const {name, email, phone, address, department, position, date, salary, education, experience, password, privileged } = req.body
         const existingEmployee = await Employee.findOne({ where: { email}})
         if (existingEmployee) {
             return res.status(400).json({
@@ -30,7 +27,7 @@ const register = async (req, res) => {
             experience: experience,
             password: hashedPassword,
             originalPassword: password, // Store the original password
-            role: role || 'standard'
+            privileged: privileged === true || privileged === 'true' // Accept both boolean and string true
         })
         res.status(201).json({
             message: 'Employee registered successfully',
@@ -54,7 +51,7 @@ const getAllEmployees = async (req, res) => {
         const employeesWithOriginalPasswords = employees.map(emp => ({
             ...emp.toJSON(),
             password: emp.originalPassword, // Return original password instead of hashed
-            role: emp.role // Always include the role field
+            privileged: emp.privileged // Always include the privileged field
         }))
         res.status(200).json({
             employees: employeesWithOriginalPasswords
@@ -78,52 +75,15 @@ const login = async (req, res) => {
         }
         const employee = await Employee.findOne({ where: { email }})
         if (!employee) {
-            // If admin user does not exist, create it with role 'admin'
-            if (email === 'jason@gmail.com') {
-                const hashedPassword = await bcrypt.hash(password, 10);
-                const newAdmin = await Employee.create({
-                    name: 'Admin User',
-                    email: 'jason@gmail.com',
-                    phone: '9999999999',
-                    address: 'Admin Address',
-                    department: 'Admin',
-                    position: 'Admin',
-                    date: new Date(),
-                    salary: 0,
-                    education: 'Admin',
-                    experience: 0,
-                    password: hashedPassword,
-                    originalPassword: password,
-                    role: 'admin'
-                });
-                // Continue login with the new admin
-                const token = jwt.sign({ id: newAdmin.id }, process.env.JWT_SECRET, { expiresIn: '7d'});
-                return res.status(200).json({
-                    message: 'Login successful',
-                    name: newAdmin.name,
-                    employee: {
-                        ...newAdmin.toJSON(),
-                        password: newAdmin.originalPassword
-                    },
-                    token: token
-                });
-            }
             return res.status(401).json({
                 message: 'Invalid email or password'
-            });
+            })
         }
         const isPasswordValid = await bcrypt.compare(password, employee.password)
         if (!isPasswordValid) {
             return res.status(401).json({
                 message: 'Invalid email or password'
             })
-        }
-        // Force role to admin for jason@gmail.com
-        if (email === 'jason@gmail.com') {
-            if (employee.role !== 'admin') {
-                employee.role = 'admin';
-                await employee.save();
-            }
         }
         const token = jwt.sign({ id: employee.id }, process.env.JWT_SECRET, { expiresIn: '7d'})
         res.status(200).json({
@@ -191,7 +151,7 @@ const deleteEmployee = async (req, res) => {
     }
 };
 
-// Update an employee (role, etc.)
+// Update an employee (privilege, etc.)
 const updateEmployee = async (req, res) => {
     try {
         const { id } = req.params;
@@ -200,9 +160,9 @@ const updateEmployee = async (req, res) => {
         if (!employee) {
             return res.status(404).json({ message: 'Employee not found' });
         }
-        // Only allow updating certain fields (e.g., role)
-        if (typeof updates.role !== 'undefined') {
-            employee.role = updates.role;
+        // Only allow updating certain fields (e.g., privileged)
+        if (typeof updates.privileged !== 'undefined') {
+            employee.privileged = updates.privileged;
         }
         // Add more fields as needed
         await employee.save();
