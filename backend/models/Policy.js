@@ -130,7 +130,8 @@ const Policy = sequelize.define('Policy', {
 }, {
   timestamps: true,
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  tableName: 'policy'
 });
 
 module.exports = Policy; 
