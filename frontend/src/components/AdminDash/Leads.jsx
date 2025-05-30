@@ -36,6 +36,8 @@ import {
 import {
   CheckCircle,
   Delete,
+  Edit,
+  Visibility,
   Upload as UploadIcon,
   Warning,
   Search as SearchIcon,
@@ -45,6 +47,7 @@ import {
 import dayjs from "dayjs";
 import axios from "axios";
 import { API_URL } from "../../config/config";
+import authHeader from '../../services/authHeader';
 
 const Leads = ({ leads, setLeads, addCustomer }) => {
   const [leadData, setLeadData] = useState({
@@ -157,11 +160,16 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
     setPage(0);
   };
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
   // Memoize fetchLeads to prevent unnecessary re-renders
   const fetchLeads = useCallback(async () => {
     setTableLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/leads`);
+      const response = await axios.get(`${API_URL}/leads`, { headers: getAuthHeaders() });
       if (response.data && response.data.leads) {
         setLeads(response.data.leads);
       }
@@ -376,7 +384,8 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
 
       const response = await axios.post(`${API_URL}/leads/submit`, formData, {
         headers: {
-          "Content-Type": "multipart/form-data",
+          ...authHeader(),
+          "Content-Type": "multipart/form-data"
         },
       });
 
@@ -813,9 +822,22 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
                         <IconButton
                           color="error"
                           onClick={() => lead?.id && handleDeleteClick(lead)}
-                          disabled={!lead?.id}
+                          // disabled={!lead?.id}
+                          disabled={localStorage.getItem('userRole') === 'standard'}
                         >
                           <Delete />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Edit Lead">
+                        <IconButton
+                          disabled={localStorage.getItem('userRole') === 'standard'}
+                          >
+                          <Edit />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="View Lead">
+                        <IconButton>
+                          <Visibility />
                         </IconButton>
                       </Tooltip>
                     </TableCell>

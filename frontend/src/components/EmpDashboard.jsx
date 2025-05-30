@@ -53,6 +53,7 @@ import {
   Line,
   ResponsiveContainer,
 } from "recharts";
+import authHeader from '../services/authHeader';
 
 // Import the components
 import MyTasks from "./EmpDashboard/MyTasks";
@@ -70,12 +71,16 @@ const StyledDrawer = styled(Drawer)({
 });
 
 const Sidebar = ({ section, setSection, name }) => {
+  const role = localStorage.getItem('role'); // 'privileged' or 'standard'
+  const isPrivileged = role === 'privileged';
+
   const menuItems = [
     { text: "Dashboard", icon: <DashboardIcon /> },
     { text: "My Tasks", icon: <TaskIcon /> },
     { text: "My Documents", icon: <DocumentIcon /> },
     { text: "My Policies", icon: <PolicyIcon /> },
     { text: "My Leads", icon: <LeadsIcon /> },
+    { text: "Payments", icon: <MoneyIcon /> },
   ];
 
   return (
@@ -138,18 +143,22 @@ const EmpDashboard = () => {
   const [leads, setLeads] = useState([]);
   const [activeLeads, setActiveLeads] = useState(0);
 
-  // State for commissions
-  const [commissions, setCommissions] = useState([]);
-  const [totalCommission, setTotalCommission] = useState(0);
+  // State for payments
+  const [payments, setPayments] = useState([]);
 
   // Get employee name and id from localStorage
   const employeeName = localStorage.getItem('employeeName') || '';
   const employeeId = localStorage.getItem('employeeId') || '';
 
+  // Get the role at the top of EmpDashboard
+  const role = localStorage.getItem('role'); // 'privileged' or 'standard'
+  const isPrivileged = role === 'privileged';
+
   // Fetch tasks for the employee
   const fetchTasks = async () => {
     try {
       const response = await axios.get(`${API_URL}/tasks/employee/${employeeId}`, {
+        headers: authHeader(),
         withCredentials: true
       });
       
@@ -176,6 +185,7 @@ const EmpDashboard = () => {
     const fetchPolicies = async () => {
       try {
         const response = await axios.get(`${API_URL}/policies`, {
+          headers: authHeader(),
           withCredentials: true
         });
         setPolicies(response.data || []);
@@ -189,6 +199,7 @@ const EmpDashboard = () => {
     const fetchDocuments = async () => {
       try {
         const response = await axios.get(`${API_URL}/documents`, {
+          headers: authHeader(),
           withCredentials: true
         });
         setDocuments(response.data || []);
@@ -202,6 +213,7 @@ const EmpDashboard = () => {
     const fetchLeads = async () => {
       try {
         const response = await axios.get(`${API_URL}/leads`, {
+          headers: authHeader(),
           withCredentials: true
         });
         setLeads(response.data.leads || []);
@@ -211,21 +223,13 @@ const EmpDashboard = () => {
       }
     };
 
-    // Fetch commissions
-    const fetchCommissions = async () => {
+    // Fetch payments
+    const fetchPayments = async () => {
       try {
-        const response = await axios.get(`${API_URL}/commissions`, {
-          withCredentials: true
-        });
-        setCommissions(response.data || []);
-        // Calculate total commission based on the commission structure
-        const total = (response.data || []).reduce((sum, comm) => {
-          const commissionAmount = comm.effectiveCommission || 0;
-          return sum + parseFloat(commissionAmount);
-        }, 0);
-        setTotalCommission(total);
+        const response = await axios.get(`${API_URL}/payments`, { headers: authHeader(), withCredentials: true });
+        setPayments(response.data.payments || []);
       } catch (error) {
-        console.error('Error fetching commissions:', error);
+        setPayments([]);
       }
     };
 
@@ -233,8 +237,8 @@ const EmpDashboard = () => {
     fetchPolicies();
     fetchDocuments();
     fetchLeads();
-    fetchCommissions();
-  }, [employeeId]);
+    fetchPayments();
+  }, [employeeId, isPrivileged, section]);
 
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
@@ -252,26 +256,50 @@ const EmpDashboard = () => {
         return <MyPolicies policies={policies} setPolicies={setPolicies} />;
       case "My Leads":
         return <MyLeads leads={leads} setLeads={setLeads} />;
+      case "Payments":
+        if (!isPrivileged) return null;
+        return (
+          <Box sx={{ p: 3 }}>
+            <Typography variant="h4" color="primary" sx={{ mb: 3, fontWeight: 'bold' }}>
+              Payments
+            </Typography>
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead sx={{ bgcolor: 'primary.main' }}>
+                  <TableRow>
+                    <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Company</TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Amount</TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Payment Date</TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Status</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {payments.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} align="center">No payments found</TableCell>
+                    </TableRow>
+                  ) : (
+                    payments.map((payment) => (
+                      <TableRow key={payment.id} hover>
+                        <TableCell>{payment.companyName}</TableCell>
+                        <TableCell>₹{payment.amount}</TableCell>
+                        <TableCell>{payment.paymentDate}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={payment.status}
+                            color={payment.status === 'Completed' ? 'success' : 'warning'}
+                            size="small"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        );
       default:
-        // Prepare data for charts
-        const commissionByMonth = [
-          { month: 'Jan', amount: 25000 },
-          { month: 'Feb', amount: 30000 },
-          { month: 'Mar', amount: 28000 },
-          { month: 'Apr', amount: 35000 },
-          { month: 'May', amount: 32000 },
-          { month: 'Jun', amount: 40000 },
-        ];
-
-        const policyTypeDistribution = [
-          { name: 'Health', value: 40 },
-          { name: 'Life', value: 25 },
-          { name: 'Vehicle', value: 20 },
-          { name: 'Property', value: 15 },
-        ];
-
-        const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
-
         return (
           <Box>
             {/* Summary Cards */}
@@ -339,125 +367,7 @@ const EmpDashboard = () => {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={12} md={3}>
-                <Card sx={{ 
-                  bgcolor: theme.palette.warning.main,
-                  color: 'white',
-                  '&:hover': {
-                    bgcolor: theme.palette.warning.dark,
-                  },
-                }}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <MoneyIcon sx={{ mr: 1 }} />
-                      <Typography variant="h6">
-                        Total Commission
-                      </Typography>
-                    </Box>
-                    <Typography variant="h3">
-                      ₹{totalCommission.toLocaleString()}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
             </Grid>
-
-            {/* Charts Section */}
-            <Grid container spacing={3} sx={{ mt: 2 }}>
-              {/* Commission Trend */}
-              <Grid item xs={12} md={8}>
-                <Paper sx={{ p: 2, height: '400px' }}>
-                  <Typography variant="h6" gutterBottom color="primary">
-                    Commission Trend
-                  </Typography>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={commissionByMonth}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Line 
-                        type="monotone" 
-                        dataKey="amount" 
-                        stroke="#8884d8" 
-                        name="Commission Amount"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </Paper>
-              </Grid>
-
-              {/* Policy Type Distribution */}
-              <Grid item xs={12} md={4}>
-                <Paper sx={{ p: 2, height: '400px' }}>
-                  <Typography variant="h6" gutterBottom color="primary">
-                    Policy Distribution
-                  </Typography>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={policyTypeDistribution}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {policyTypeDistribution.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </Paper>
-              </Grid>
-            </Grid>
-
-            {/* Commission Details Table */}
-            <Paper sx={{ mt: 3, p: 2 }}>
-              <Typography variant="h6" gutterBottom color="primary">
-                Recent Commission Details
-              </Typography>
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Company</TableCell>
-                      <TableCell>Policy Type</TableCell>
-                      <TableCell>TP Commission</TableCell>
-                      <TableCell>OD Commission</TableCell>
-                      <TableCell>Addon Commission</TableCell>
-                      <TableCell>Effective Commission</TableCell>
-                      <TableCell>Status</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {commissions.slice(0, 5).map((commission) => (
-                      <TableRow key={commission.id} hover>
-                        <TableCell>{commission.company}</TableCell>
-                        <TableCell>{commission.policyType}</TableCell>
-                        <TableCell>{commission.tpCommission}%</TableCell>
-                        <TableCell>{commission.odCommission}%</TableCell>
-                        <TableCell>{commission.addonCommission}%</TableCell>
-                        <TableCell>{commission.effectiveCommission}%</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={commission.isActive ? 'Active' : 'Inactive'}
-                            color={commission.isActive ? 'success' : 'warning'}
-                            size="small"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
           </Box>
         );
     }

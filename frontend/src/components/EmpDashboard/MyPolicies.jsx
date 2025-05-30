@@ -28,6 +28,7 @@ import {
   CheckCircle as RenewIcon,
 } from '@mui/icons-material';
 import PolicyStatus from '../AdminDash/PolicyStatus';
+import authHeader from '../../services/authHeader';
 
 const MyPolicies = ({ policies, setPolicies }) => {
   const [page, setPage] = useState(0);

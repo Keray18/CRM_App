@@ -49,6 +49,7 @@ import {
   Tooltip,
   CircularProgress,
   Backdrop,
+  Checkbox,
 } from "@mui/material";
 import {
   Search as SearchIcon,
@@ -85,6 +86,7 @@ import {
 // import axios from 'axios'; // Already imported above
 import { API_URL } from "../../config/config";
 import { createCustomer } from "../../services/customerService";
+import authHeader from "../../services/authHeader";
 
 const VisuallyHiddenInput = styled("input")({
   clip: "rect(0 0 0 0)",
@@ -160,12 +162,16 @@ const PolicyStatus = ({ addCustomer }) => {
     preExisting: ""
   });
 
+  // Add this state at the top with other useState hooks:
+  const [preExistingOptions, setPreExistingOptions] = useState([]);
+
   // Fetch POSI Types from master data when insuranceType is "others"
   useEffect(() => {
     const fetchPosiTypes = async () => {
       try {
         const response = await axios.get(
-          `${API_URL}/masterdata/type/Policy Type`
+          `${API_URL}/masterdata/type/Policy Type`,
+          { headers: authHeader() }
         );
         // Assuming response.data is an array of objects with a 'name' property
         setPosiTypes(response.data.map((item) => item.name));
@@ -187,7 +193,8 @@ const PolicyStatus = ({ addCustomer }) => {
     const fetchInsuranceCompanies = async () => {
       try {
         const response = await axios.get(
-          `${API_URL}/masterdata/type/Insurance Company`
+          `${API_URL}/masterdata/type/Insurance Company`,
+          { headers: authHeader() }
         );
         setInsuranceCompanies(response.data.map((item) => item.name));
       } catch (error) {
@@ -283,6 +290,7 @@ const PolicyStatus = ({ addCustomer }) => {
     totalCommissionAmount: "",
     effectiveCommissionPercentage: "",
     netPremium: "",
+    preExistingConditions: [],
   });
 
   // Add useEffect to update policy type when insurance type changes
@@ -298,7 +306,7 @@ const PolicyStatus = ({ addCustomer }) => {
     const fetchAllLeads = async () => {
       try {
         // Use the provided API endpoint
-        const response = await axios.get(`http://localhost:8080/api/leads`);
+        const response = await axios.get(`${API_URL}/leads`, { headers: authHeader() });
         if (response.data && Array.isArray(response.data.leads)) {
           setAllLeadsForSearch(response.data.leads);
         } else {
@@ -453,7 +461,7 @@ const PolicyStatus = ({ addCustomer }) => {
   // Add fetchLeads function
   const fetchLeads = async () => {
     try {
-      const response = await axios.get(`${API_URL}/leads`);
+      const response = await axios.get(`${API_URL}/leads`, { headers: authHeader() });
       setLocalLeads(response.data.leads || []);
     } catch (error) {
       console.error("Error fetching leads:", error);
@@ -1399,6 +1407,35 @@ const PolicyStatus = ({ addCustomer }) => {
         setOpenFamilyModal(false);
       }
     }
+  };
+
+  useEffect(() => {
+    const fetchPreExistingOptions = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/masterdata/type/Pre-existing Condition`, { headers: authHeader() });
+        let options = response.data.map((item) => item.name);
+        // Always ensure 'None' is present as the first option
+        options = ['None', ...options.filter(opt => opt !== 'None')];
+        setPreExistingOptions(options);
+      } catch (error) {
+        setPreExistingOptions(['None']); // fallback to just 'None'
+        setSnackbar({
+          open: true,
+          message: "Error fetching pre-existing conditions",
+          severity: "error",
+        });
+      }
+    };
+    fetchPreExistingOptions();
+  }, [API_URL]);
+
+  const MenuProps = {
+    PaperProps: {
+      style: {
+        maxHeight: 240, // About 4-5 items visible at once
+        width: 220, // Reduced width
+      },
+    },
   };
 
   return (
@@ -3615,19 +3652,57 @@ const PolicyStatus = ({ addCustomer }) => {
                       </FormControl>
                     </Grid>
                     <Grid item xs={12}>
-                      <TextField
+                      <FormControl
                         fullWidth
-                        label="Pre-existing Conditions"
-                        value={newPolicy.preExisting || ""}
-                        onChange={handleNewPolicyChange("preExisting")}
-                        multiline
-                        rows={2}
-                        placeholder="Enter pre-existing conditions (if any)"
-                        sx={{
-                          "& .MuiInputLabel-root": { color: "#ffffff" },
-                          "& .MuiOutlinedInput-root": { color: "#ffffff" },
-                        }}
-                      />
+                        error={!!errors.preExistingConditions}
+                        sx={{ minWidth: 180, maxWidth: 220 }} // Add this line
+                      >
+                        <InputLabel>Pre-existing Conditions</InputLabel>
+                        <Select
+                          multiple
+                          value={newPolicy.preExistingConditions || []}
+                          onChange={(e) => {
+                            setNewPolicy((prev) => ({
+                              ...prev,
+                              preExistingConditions: e.target.value,
+                            }));
+                            // Clear error if any
+                            if (errors.preExistingConditions) {
+                              setErrors((prev) => ({
+                                ...prev,
+                                preExistingConditions: undefined,
+                              }));
+                            }
+                          }}
+                          label="Pre-existing Conditions"
+                          renderValue={(selected) => (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {selected.map((value) => (
+                                <Chip key={value} label={value} size="small" />
+                              ))}
+                            </Box>
+                          )}
+                          MenuProps={MenuProps}
+                          sx={{ minWidth: 180, maxWidth: 220 }} // Add this line
+                        >
+                          {preExistingOptions.map((option) => (
+                            <MenuItem key={option} value={option}>
+                              <Checkbox checked={newPolicy.preExistingConditions?.includes(option)} />
+                              <ListItemText primary={option} />
+                            </MenuItem>
+                          ))}
+                          <MenuItem
+                            disabled={!(newPolicy.preExistingConditions && newPolicy.preExistingConditions.length)}
+                            onClick={() => setNewPolicy((prev) => ({ ...prev, preExistingConditions: [] }))}
+                            sx={{ justifyContent: 'center', color: 'red' }}
+                          >
+                            Clear All
+                          </MenuItem>
+                        </Select>
+                        {errors.preExistingConditions && (
+                          <FormHelperText error>{errors.preExistingConditions}</FormHelperText>
+                        )}
+                      </FormControl>
                     </Grid>
                   </Grid>
                 </Box>

@@ -59,10 +59,10 @@ const Employee = sequelize.define('Employee',
             type: DataTypes.STRING,
             allowNull: false,
         },
-        privileged: {
-            type: DataTypes.BOOLEAN,
+        role: {
+            type: DataTypes.STRING,
             allowNull: false,
-            defaultValue: false,
+            defaultValue: "standard",
         }
     }, {
         timestamps: true,

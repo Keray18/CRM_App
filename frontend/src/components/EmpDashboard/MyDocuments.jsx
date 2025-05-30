@@ -48,6 +48,7 @@ import {
 } from '@mui/icons-material';
 import axios from 'axios';
 import { API_URL } from '../../config/config';
+import authHeader from '../../services/authHeader';
 
 const MyDocuments = ({ leads = [] }) => {
   const [selectedLead, setSelectedLead] = useState('');
@@ -93,7 +94,7 @@ const MyDocuments = ({ leads = [] }) => {
     setLoading(true);
     try {
       const response = await axios.get(`${API_URL}/documents/lead/${selectedLead}`, {
-        withCredentials: true
+        headers: authHeader()
       });
       setDocuments(response.data.documents || []);
     } catch (error) {
@@ -144,7 +145,8 @@ const MyDocuments = ({ leads = [] }) => {
     try {
       await axios.post(`${API_URL}/documents/lead/${selectedLead}`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'multipart/form-data',
+          ...authHeader()
         },
         withCredentials: true
       });
@@ -201,6 +203,7 @@ const MyDocuments = ({ leads = [] }) => {
   const handleDelete = async (documentId) => {
     try {
       await axios.delete(`${API_URL}/documents/${documentId}`, {
+        headers: authHeader(),
         withCredentials: true
       });
       setSnackbar({ 
@@ -219,9 +222,7 @@ const MyDocuments = ({ leads = [] }) => {
     }
   };
 
-  // Determine privilege
-  const isAdmin = localStorage.getItem('userRole') === 'admin';
-  const isPrivileged = localStorage.getItem('privileged') === 'true';
+  const isPrivileged = localStorage.getItem('role') === 'privileged';
 
   return (
     <Box>
@@ -291,17 +292,15 @@ const MyDocuments = ({ leads = [] }) => {
 
       {selectedLead && (
         <>
-          {(isAdmin || isPrivileged) && (
-            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setOpenUploadDialog(true)}
-              >
-                Upload Document
-              </Button>
-            </Box>
-          )}
+          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setOpenUploadDialog(true)}
+            >
+              Upload Document
+            </Button>
+          </Box>
 
           <TableContainer component={Paper}>
             <Table>
@@ -335,14 +334,18 @@ const MyDocuments = ({ leads = [] }) => {
                         {new Date(doc.uploadedAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <IconButton color="primary" onClick={() => handleDownload(doc)}>
+                        <IconButton 
+                          color="primary" 
+                          onClick={() => handleDownload(doc)}
+                        >
                           <DownloadIcon />
                         </IconButton>
-                        {(isAdmin || isPrivileged) && (
-                          <IconButton color="error" onClick={() => handleDelete(doc.id)}>
-                            <DeleteIcon />
-                          </IconButton>
-                        )}
+                        <IconButton
+                          color="error"
+                          onClick={() => handleDelete(doc.id)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
                         <IconButton color="primary" onClick={() => handleView(doc)}>
                           <ViewIcon />
                         </IconButton>

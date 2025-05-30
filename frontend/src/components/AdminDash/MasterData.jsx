@@ -77,7 +77,7 @@ import {
   CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import axios from 'axios';
-
+import authHeader from '../../services/authHeader';
 // Configure axios defaults
 axios.defaults.headers.common['Cache-Control'] = 'no-cache';
 axios.defaults.headers.common['Pragma'] = 'no-cache';
@@ -118,6 +118,7 @@ const MasterData = () => {
       const timestamp = new Date().getTime();
       const response = await axios.get(`http://localhost:8080/api/masterdata/type/${encodeURIComponent(type)}`, {
         headers: {
+          headers: authHeader(),
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache',
           'If-Modified-Since': '0'

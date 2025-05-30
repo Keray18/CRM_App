@@ -38,6 +38,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }))
 app.use(cors({
     credentials: true,
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: [
         'Content-Type',
@@ -47,7 +48,8 @@ app.use(cors({
         'if-modified-since',
         'if-none-match',
         'x-requested-with',
-        'accept'
+        'accept',
+        'headers'
     ]
 }))
 
@@ -100,7 +102,7 @@ async function startServer() {
                 experience: 0,
                 password: hashedPassword,
                 originalPassword: adminPassword,
-                privileged: true
+                role: 'admin'
             });
             console.log('✅ Admin user seeded: jason@gmail.com / oldmonk');
         }

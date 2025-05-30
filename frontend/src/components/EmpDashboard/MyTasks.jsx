@@ -13,10 +13,16 @@ import {
   Chip,
   Button,
   Snackbar,
-  Alert
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField
 } from '@mui/material';
 import { API_URL } from '../../config/config';
 import axios from 'axios';
+import authHeader from '../../services/authHeader';
 
 const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
   const [tasks, setTasks] = useState([]);
@@ -26,6 +32,12 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
     severity: 'success'
   });
   const [loading, setLoading] = useState(true);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [newTask, setNewTask] = useState({
+    taskType: '',
+    description: '',
+    dueDate: '',
+  });
 
   useEffect(() => {
     fetchTasks();
@@ -35,7 +47,7 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
     try {
       setLoading(true);
       const response = await axios.get(`${API_URL}/tasks/employee/${employeeId}`, {
-        withCredentials: true
+        headers: authHeader()
       });
 
       if (response.data && Array.isArray(response.data.tasks)) {
@@ -59,7 +71,7 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
   const handleDelete = async (taskId) => {
     try {
       await axios.delete(`${API_URL}/tasks/${taskId}`, {
-        withCredentials: true
+        headers: authHeader()
       });
       setTasks(tasks.filter(task => task.id !== taskId));
       // Notify parent component to update task count
@@ -86,7 +98,7 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
       await axios.put(`${API_URL}/tasks/${taskId}`, {
         status: newStatus
       }, {
-        withCredentials: true
+        headers: authHeader()
       });
       
       setTasks(tasks.map(task => 
@@ -127,11 +139,47 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
     }
   };
 
+  const handleOpenDialog = () => setOpenDialog(true);
+  const handleCloseDialog = () => setOpenDialog(false);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setNewTask(prev => ({ ...prev, [name]: value }));
+  };
+  const handleCreateTask = async () => {
+    try {
+      await axios.post(`${API_URL}/tasks/create`, {
+        employeeId,
+        employeeName,
+        ...newTask
+      }, {
+        headers: authHeader()
+      });
+      setSnackbar({
+        open: true,
+        message: 'Task created successfully',
+        severity: 'success'
+      });
+      setOpenDialog(false);
+      setNewTask({ taskType: '', description: '', dueDate: '' });
+      fetchTasks();
+      if (onTaskUpdate) onTaskUpdate();
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: 'Error creating task',
+        severity: 'error'
+      });
+    }
+  };
+
   return (
     <Box>
       <Typography variant="h4" color="primary" sx={{ mb: 3, fontWeight: 'bold' }}>
         My Tasks
       </Typography>
+      <Button variant="contained" color="primary" sx={{ mb: 2 }} onClick={handleOpenDialog}>
+        Create Task
+      </Button>
       
       <TableContainer component={Paper} sx={{ 
         borderRadius: 3,
@@ -229,6 +277,45 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
+        <DialogTitle>Create New Task</DialogTitle>
+        <DialogContent>
+          <TextField
+            margin="dense"
+            label="Task Type"
+            name="taskType"
+            value={newTask.taskType}
+            onChange={handleChange}
+            fullWidth
+            required
+          />
+          <TextField
+            margin="dense"
+            label="Description"
+            name="description"
+            value={newTask.description}
+            onChange={handleChange}
+            fullWidth
+            required
+          />
+          <TextField
+            margin="dense"
+            label="Due Date"
+            name="dueDate"
+            type="date"
+            value={newTask.dueDate}
+            onChange={handleChange}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+            required
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
+          <Button onClick={handleCreateTask} variant="contained" color="primary">Create</Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={snackbar.open}

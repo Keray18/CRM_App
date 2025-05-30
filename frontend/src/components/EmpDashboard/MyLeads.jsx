@@ -21,6 +21,7 @@ import {
   Email as EmailIcon,
 } from '@mui/icons-material';
 import Leads from 'components/AdminDash/Leads';
+import authHeader from '../../services/authHeader';
 
 const MyLeads = () => {
   const [page, setPage] = useState(0);

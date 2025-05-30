@@ -33,6 +33,7 @@ import {
   Description as PolicyIcon,
   Business as LeadIcon
 } from "@mui/icons-material";
+import authHeader from '../../services/authHeader';
 
 const AssignTask = ({ 
   employees = [], 
@@ -97,7 +98,7 @@ const AssignTask = ({
 
   const fetchEmployees = async () => {
     try {
-      const response = await axios.get(`${API_URL}/auth/getAllEmployees`);
+      const response = await axios.get(`${API_URL}/auth/getAllEmployees`, { headers: authHeader() });
       setLocalEmployees(response.data.employees || []);
     } catch (error) {
       console.error('Error fetching employees:', error);

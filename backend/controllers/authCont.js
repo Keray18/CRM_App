@@ -6,7 +6,7 @@ require("dotenv").config()
 // Register a new employee
 const register = async (req, res) => {
     try {
-        const {name, email, phone, address, department, position, date, salary, education, experience, password, privileged } = req.body
+        const {name, email, phone, address, department, position, date, salary, education, experience, password, role } = req.body
         const existingEmployee = await Employee.findOne({ where: { email}})
         if (existingEmployee) {
             return res.status(400).json({
@@ -26,8 +26,8 @@ const register = async (req, res) => {
             education: education,
             experience: experience,
             password: hashedPassword,
-            originalPassword: password, // Store the original password
-            privileged: privileged === true || privileged === 'true' // Accept both boolean and string true
+            originalPassword: password, 
+            role: role || "standard"
         })
         res.status(201).json({
             message: 'Employee registered successfully',
@@ -51,7 +51,7 @@ const getAllEmployees = async (req, res) => {
         const employeesWithOriginalPasswords = employees.map(emp => ({
             ...emp.toJSON(),
             password: emp.originalPassword, // Return original password instead of hashed
-            privileged: emp.privileged // Always include the privileged field
+            role: emp.role // Always include the role field
         }))
         res.status(200).json({
             employees: employeesWithOriginalPasswords
@@ -85,13 +85,14 @@ const login = async (req, res) => {
                 message: 'Invalid email or password'
             })
         }
-        const token = jwt.sign({ id: employee.id }, process.env.JWT_SECRET, { expiresIn: '7d'})
+        const token = jwt.sign({ id: employee.id, role: employee.role }, process.env.JWT_SECRET, { expiresIn: '7d'})
         res.status(200).json({
             message: 'Login successful',
             name: employee.name,
             employee: {
                 ...employee.toJSON(),
-                password: employee.originalPassword // Return original password
+                password: employee.originalPassword, // Return original password
+                role: employee.role
             },
             token: token
         })
@@ -125,7 +126,8 @@ const resetPassword = async (req, res) => {
             message: 'Password reset successfully',
             employee: {
                 ...employee.toJSON(),
-                password: newPassword // Return the new original password
+                password: newPassword, // Return the new original password
+                role: employee.role
             }
         })
     } catch (error) {
@@ -151,7 +153,7 @@ const deleteEmployee = async (req, res) => {
     }
 };
 
-// Update an employee (privilege, etc.)
+// Update an employee (role, etc.)
 const updateEmployee = async (req, res) => {
     try {
         const { id } = req.params;
@@ -160,9 +162,9 @@ const updateEmployee = async (req, res) => {
         if (!employee) {
             return res.status(404).json({ message: 'Employee not found' });
         }
-        // Only allow updating certain fields (e.g., privileged)
-        if (typeof updates.privileged !== 'undefined') {
-            employee.privileged = updates.privileged;
+        // Only allow updating certain fields (e.g., role)
+        if (typeof updates.role !== 'undefined') {
+            employee.role = updates.role;
         }
         // Add more fields as needed
         await employee.save();

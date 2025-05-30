@@ -155,9 +155,15 @@ const taskController = {
 
     // Get tasks by employee
     async getTasksByEmployee(req, res) {
-        try {
-            const { employeeId } = req.params;
+        const { employeeId } = req.params;
+        const user = req.user;
 
+        // Only allow non-admins to fetch their own tasks
+        if (user.role !== 'admin' && user.id.toString() !== employeeId) {
+            return res.status(403).json({ message: 'Forbidden: You can only view your own tasks.' });
+        }
+
+        try {
             const tasks = await Task.findAll({
                 where: { employeeId },
                 order: [['assignedDate', 'DESC']]

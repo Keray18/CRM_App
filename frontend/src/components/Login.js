@@ -15,6 +15,18 @@ import {
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import authHeader from '../services/authHeader';
+
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -34,6 +46,7 @@ function Login() {
         password
       });
       localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('token', data.token);
       // Set userRole based on backend response (if available)
       if (data.role === 'admin' || data.isAdmin || data.employee?.position === 'Admin') {
         localStorage.setItem('userRole', 'admin');

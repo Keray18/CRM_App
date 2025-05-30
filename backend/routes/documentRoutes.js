@@ -1,6 +1,8 @@
 const { getLeadDocuments, uploadDocument, deleteDocument } = require('../controllers/documentController');
 const router = require('express').Router();
 const Document = require('../models/documentModel');
+const checkRole = require('../middleware/checkRole');
+const authenticate = require('../middleware/authenticate');
 
 // Get all documents
 router.get('/', async (req, res) => {
@@ -18,12 +20,12 @@ router.get('/', async (req, res) => {
 });
 
 // Get all documents for a lead
-router.get('/lead/:leadId', getLeadDocuments);
+router.get('/lead/:leadId', authenticate, checkRole(['standard', 'privileged', 'admin']), getLeadDocuments);
 
 // Upload a new document for a lead
-router.post('/lead/:leadId', uploadDocument);
+router.post('/lead/:leadId', authenticate, checkRole(['privileged', 'admin']), uploadDocument);
 
 // Delete a document
-router.delete('/:id', deleteDocument);
+router.delete('/:id', authenticate, checkRole(['privileged', 'admin']), deleteDocument);
 
 module.exports = router; 

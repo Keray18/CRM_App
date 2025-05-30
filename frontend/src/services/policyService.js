@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_URL } from '../config/config';
+import authHeader from './authHeader';
 
 // Get all policies with filtering
 export const getAllPolicies = async (filters = {}) => {
@@ -12,6 +13,7 @@ export const getAllPolicies = async (filters = {}) => {
         _t: timestamp
       },
       headers: {
+        ...authHeader(),
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache',
         'If-Modified-Since': '0'
@@ -34,6 +36,7 @@ export const getAllPolicies = async (filters = {}) => {
 export const getPolicyStats = async () => {
   try {
     const response = await axios.get(`${API_URL}/policies/stats`, {
+      headers: authHeader(),
       withCredentials: true
     });
     return response.data;
@@ -47,6 +50,7 @@ export const getLeadsForPolicy = async (search = '') => {
   try {
     const response = await axios.get(`${API_URL}/policies/leads`, {
       params: { search },
+      headers: authHeader(),
       withCredentials: true
     });
     return response.data;
@@ -59,6 +63,7 @@ export const getLeadsForPolicy = async (search = '') => {
 export const getPolicyById = async (id) => {
   try {
     const response = await axios.get(`${API_URL}/policies/${id}`, {
+      headers: authHeader(),
       withCredentials: true
     });
     return response.data;
@@ -73,6 +78,7 @@ export const createPolicy = async (policyData) => {
     console.log('Making API request to create policy:', policyData);
     const response = await axios.post(`${API_URL}/policies`, policyData, {
       headers: {
+        ...authHeader(),
         'Content-Type': 'application/json'
       },
       withCredentials: true
@@ -93,6 +99,7 @@ export const createPolicy = async (policyData) => {
 export const updatePolicy = async (id, policyData) => {
   try {
     const response = await axios.put(`${API_URL}/policies/${id}`, policyData, {
+      headers: authHeader(),
       withCredentials: true
     });
     return response.data;
@@ -105,6 +112,7 @@ export const updatePolicy = async (id, policyData) => {
 export const deletePolicy = async (id) => {
   try {
     const response = await axios.delete(`${API_URL}/policies/${id}`, {
+      headers: authHeader(),
       withCredentials: true
     });
     return response.data;
@@ -117,6 +125,7 @@ export const deletePolicy = async (id) => {
 export const updatePolicyStatus = async (id, status) => {
   try {
     const response = await axios.patch(`${API_URL}/policies/${id}/status`, { status }, {
+      headers: authHeader(),
       withCredentials: true
     });
     return response.data;
@@ -131,6 +140,7 @@ export const sendRenewalReminder = async (id) => {
     console.log('Making API request to send renewal reminder for policy:', id);
     const response = await axios.post(`${API_URL}/policies/${id}/send-reminder`, {}, {
       headers: {
+        ...authHeader(),
         'Content-Type': 'application/json'
       },
       withCredentials: true
