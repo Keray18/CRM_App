@@ -69,7 +69,9 @@ import {
   CalendarToday as CalendarTodayIcon,
   Info as InfoIcon,
   Description,
-  Autorenew as RenewIcon, // Change 'Renew' to 'Autorenew'
+  Autorenew as RenewIcon,
+  InsertDriveFile as InsertDriveFileIcon,
+  CloudUpload as CloudUploadIcon,
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import {
@@ -237,52 +239,24 @@ const PolicyStatus = ({ addCustomer }) => {
     insuredName: "",
     mobile: "",
     email: "",
-    startDate: "",
-    endDate: "",
+    startDate: new Date().toISOString().split("T")[0],
+    endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split("T")[0],
     company: "",
     business: "New",
-    type: "vehicle",
+    type: "",
     policyCategory: "",
-    // Vehicle specific
-    vehicleType: "",
-    vehicleNumber: "",
-    make: "",
-    model: "",
-    year: "",
-    // Premium details
-    basicPremium: "",
-    odPremium: "",
-    tpPremium: "",
-    ncbDiscount: "",
-    addonPremium: "",
-    gst: "",
-    totalPremium: "",
-    paymentMode: "",
-    paymentReference: "",
+    sumInsured: "",
+    premium: "",
+    commissionPercentage: "",
     // Health specific
     healthPlan: "",
-    sumInsured: "",
-    age: "",
-    preExisting: "No",
-    // Travel specific
-    travelType: "",
-    destination: "",
-    tripDuration: "",
-    // Common
-    premium: "",
-    nominee: "",
-    documents: [],
-    // Add commission fields
-    commissionAmount: "",
-    commissionPercentage: "",
-    // New fields for vehicle insurance commission
-    commissionType: "",
-    odCommissionPercentage: "",
-    tpCommissionPercentage: "",
-    addonCommissionPercentage: "",
-    totalCommissionAmount: "",
-    effectiveCommissionPercentage: "",
-    netPremium: "",
+    dateOfBirth: "",
+    height: "",
+    weight: "",
+    bloodGroup: "",
+    preExisting: "",
+    numberOfFamilyMembers: "",
+    familyMembers: [],
   });
 
   // Add useEffect to update policy type when insurance type changes
@@ -538,80 +512,42 @@ const PolicyStatus = ({ addCustomer }) => {
     setNewPolicy((prev) => {
       const updated = { ...prev, [field]: value };
 
-      // Calculate GST and total premium for vehicle insurance
-      if (insuranceType === "vehicle" && (
-        field === "basicPremium" ||
-        field === "ncbDiscount" ||
-        field === "tpPremium" ||
-        field === "addonPremium"
-      )) {
-        const basicPremium = parseFloat(updated.basicPremium || 0);
-        const ncbDiscount = parseFloat(updated.ncbDiscount || 0);
-        const tpPremium = parseFloat(updated.tpPremium || 0);
-        const addonPremium = parseFloat(updated.addonPremium || 0);
-
-        // Calculate net premium
-        const ncbAmount = (basicPremium * ncbDiscount) / 100;
-        const netPremium = basicPremium - ncbAmount + tpPremium + addonPremium;
-
-        // Calculate total premium with 18% GST
-        const gstAmount = netPremium * 0.18;
-        const totalPremium = netPremium + gstAmount;
-
-        // Recalculate commission if commission percentage exists
-        const commissionPercentage = parseFloat(updated.commissionPercentage || 0);
-        const commissionAmount = (totalPremium * commissionPercentage) / 100;
-
-        return {
-          ...updated,
-          netPremium: netPremium.toFixed(2),
-          gst: gstAmount.toFixed(2),
-          totalPremium: totalPremium.toFixed(2),
-          commissionAmount: commissionAmount.toFixed(2),
-          totalCommissionAmount: commissionAmount.toFixed(2),
-        };
-      }
-
-      // Calculate GST and total premium for health and travel insurance
-      if ((insuranceType === "health" || insuranceType === "travel") && field === "sumInsured") {
-        const sumInsured = parseFloat(value || 0);
+      // Calculate net premium and GST for health and others policies
+      if ((insuranceType === "health" || insuranceType === "others") && 
+          (field === "sumInsured" || field === "premium" || field === "commissionPercentage")) {
+        const sumInsured = parseFloat(field === "sumInsured" ? value : updated.sumInsured) || 0;
         
         // Calculate GST (18% of sum insured)
         const gstAmount = sumInsured * 0.18;
-        const totalPremium = sumInsured + gstAmount;
+        
+        // Calculate net premium (sum insured + GST)
+        const netPremium = sumInsured + gstAmount;
+        const totalPremium = netPremium;
 
-        // Recalculate commission if commission percentage exists
-        const commissionPercentage = parseFloat(updated.commissionPercentage || 0);
+        // Calculate commission
+        const commissionPercentage = parseFloat(field === "commissionPercentage" ? value : updated.commissionPercentage) || 0;
         const commissionAmount = (totalPremium * commissionPercentage) / 100;
 
         return {
           ...updated,
           gst: gstAmount.toFixed(2),
+          netPremium: netPremium.toFixed(2),
           totalPremium: totalPremium.toFixed(2),
-          commissionAmount: commissionAmount.toFixed(2),
-          totalCommissionAmount: commissionAmount.toFixed(2),
-        };
-      }
-
-      // Handle commission percentage changes for health and travel insurance
-      if ((insuranceType === "health" || insuranceType === "travel") && field === "commissionPercentage") {
-        const sumInsured = parseFloat(updated.sumInsured || 0);
-        const gstAmount = sumInsured * 0.18;
-        const totalPremium = sumInsured + gstAmount;
-        
-        // Calculate commission on total premium (sum insured + GST)
-        const commissionPercentage = parseFloat(value || 0);
-        const commissionAmount = (totalPremium * commissionPercentage) / 100;
-
-        return {
-          ...updated,
-          commissionAmount: commissionAmount.toFixed(2),
-          totalCommissionAmount: commissionAmount.toFixed(2),
+          premium: totalPremium.toFixed(2),
+          commissionAmount: commissionAmount.toFixed(2)
         };
       }
 
       return updated;
     });
+
+    // Clear error for this field
+    if (errors[field]) {
+      setErrors((prev) => ({
+        ...prev,
+        [field]: undefined,
+      }));
+    }
   };
 
   const calculateCommission = (policy) => {
@@ -691,157 +627,59 @@ const PolicyStatus = ({ addCustomer }) => {
       newErrors.insuredName = "Insured Name is required";
     if (!newPolicy.mobile?.trim())
       newErrors.mobile = "Mobile Number is required";
-    if (!newPolicy.email?.trim()) newErrors.email = "Email is required";
+    if (!newPolicy.email?.trim()) 
+      newErrors.email = "Email is required";
     if (!newPolicy.company?.trim())
       newErrors.company = "Insurance Company is required";
-    if (!newPolicy.business?.trim())
-      newErrors.business = "Policy Type is required";
-
-    // Date validations
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (!newPolicy.startDate) {
-      newErrors.startDate = "Start Date is required";
-    } else {
-      const startDate = new Date(newPolicy.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      if (startDate < today) {
-        newErrors.startDate = "Start Date cannot be in the past";
-      }
-    }
-
-    if (!newPolicy.endDate) {
+    // if (!newPolicy.startDate) 
+    //   newErrors.startDate = "Start Date is required";
+    if (!newPolicy.endDate) 
       newErrors.endDate = "End Date is required";
-    } else if (newPolicy.startDate) {
-      const startDate = new Date(newPolicy.startDate);
-      const endDate = new Date(newPolicy.endDate);
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(0, 0, 0, 0);
-      if (endDate <= startDate) {
-        newErrors.endDate = "End Date must be after Start Date";
-      }
-    }
-
-    // Vehicle specific validations
-    if (insuranceType === "vehicle") {
-      if (!newPolicy.vehicleType?.trim())
-        newErrors.vehicleType = "Vehicle Type is required";
-      if (!newPolicy.vehicleNumber?.trim())
-        newErrors.vehicleNumber = "Vehicle Number is required";
-
-      // Premium validations for vehicle insurance
-      if (!newPolicy.basicPremium || newPolicy.basicPremium <= 0) {
-        newErrors.basicPremium =
-          "Basic Premium is required and must be greater than 0";
-      }
-      if (!newPolicy.totalPremium || newPolicy.totalPremium <= 0) {
-        newErrors.totalPremium =
-          "Total Premium is required and must be greater than 0";
-      }
-
-      // Commission validations for vehicle insurance
-      if (!newPolicy.commissionType) {
-        newErrors.commissionType = "Please select commission type";
-      }
-
-      if (
-        newPolicy.commissionType === "OD" ||
-        newPolicy.commissionType === "TP_OD" ||
-        newPolicy.commissionType === "BOTH"
-      ) {
-        if (!newPolicy.odPremium || newPolicy.odPremium <= 0) {
-          newErrors.odPremium =
-            "OD Premium is required and must be greater than 0";
-        }
-        if (
-          !newPolicy.odCommissionPercentage ||
-          newPolicy.odCommissionPercentage <= 0 ||
-          newPolicy.odCommissionPercentage > 100
-        ) {
-          newErrors.odCommissionPercentage =
-            "OD Commission Percentage must be between 0 and 100";
-        }
-      }
-
-      if (
-        newPolicy.commissionType === "TP_OD" ||
-        newPolicy.commissionType === "BOTH"
-      ) {
-        if (!newPolicy.tpPremium || newPolicy.tpPremium <= 0) {
-          newErrors.tpPremium =
-            "TP Premium is required and must be greater than 0";
-        }
-        if (
-          !newPolicy.tpCommissionPercentage ||
-          newPolicy.tpCommissionPercentage <= 0 ||
-          newPolicy.tpCommissionPercentage > 100
-        ) {
-          newErrors.tpCommissionPercentage =
-            "TP Commission Percentage must be between 0 and 100";
-        }
-      }
-
-      if (newPolicy.commissionType === "TP_OD" && newPolicy.addonPremium > 0) {
-        if (
-          !newPolicy.addonCommissionPercentage ||
-          newPolicy.addonCommissionPercentage <= 0 ||
-          newPolicy.addonCommissionPercentage > 100
-        ) {
-          newErrors.addonCommissionPercentage =
-            "Add-on Commission Percentage must be between 0 and 100";
-        }
-      }
-    }
 
     // Health specific validations
     if (insuranceType === "health") {
       if (!newPolicy.healthPlan?.trim())
         newErrors.healthPlan = "Health Plan is required";
-      if (!newPolicy.sumInsured || newPolicy.sumInsured <= 0) {
-        newErrors.sumInsured =
-          "Sum Insured is required and must be greater than 0";
-      }
+      if (!newPolicy.sumInsured || isNaN(Number(newPolicy.sumInsured)) || Number(newPolicy.sumInsured) <= 0)
+        newErrors.sumInsured = "Sum Insured is required and must be greater than 0";
+      if (!newPolicy.premium || isNaN(Number(newPolicy.premium)) || Number(newPolicy.premium) <= 0)
+        newErrors.premium = "Premium is required and must be greater than 0";
+      if (!newPolicy.commissionPercentage || isNaN(Number(newPolicy.commissionPercentage)) || Number(newPolicy.commissionPercentage) <= 0)
+        newErrors.commissionPercentage = "Commission Percentage is required and must be greater than 0";
       if (!newPolicy.dateOfBirth?.trim())
         newErrors.dateOfBirth = "Date of Birth is required";
-      if (!newPolicy.height || newPolicy.height <= 0) {
+      if (!newPolicy.height || isNaN(Number(newPolicy.height)) || Number(newPolicy.height) <= 0)
         newErrors.height = "Height is required and must be greater than 0";
-      }
-      if (!newPolicy.weight || newPolicy.weight <= 0) {
+      if (!newPolicy.weight || isNaN(Number(newPolicy.weight)) || Number(newPolicy.weight) <= 0)
         newErrors.weight = "Weight is required and must be greater than 0";
-      }
       if (!newPolicy.bloodGroup?.trim())
         newErrors.bloodGroup = "Blood Group is required";
-      if (
-        !newPolicy.preExistingConditions ||
-        newPolicy.preExistingConditions.length === 0
-      ) {
-        newErrors.preExistingConditions =
-          "Please select at least one option (or None)";
-      }
-      // Only require family members for Family Floater plan
-      if (
-        newPolicy.healthPlan === "Family Floater Plan" &&
-        (!newPolicy.familyMembers || newPolicy.familyMembers <= 0)
-      ) {
-        newErrors.familyMembers = "Please select number of family members";
+      
+      // Only validate family members if it's a family plan
+      if (newPolicy.healthPlan?.includes("Family")) {
+        if (!newPolicy.numberOfFamilyMembers || Number(newPolicy.numberOfFamilyMembers) <= 0)
+          newErrors.numberOfFamilyMembers = "Number of family members is required";
+        if (familyMembers.length < Number(newPolicy.numberOfFamilyMembers))
+          newErrors.familyMembers = "Please add all family members";
       }
     }
 
-    // Travel specific validations
-    if (insuranceType === "travel") {
-      if (!newPolicy.travelType?.trim())
-        newErrors.travelType = "Travel Type is required";
-      if (!newPolicy.destination?.trim())
-        newErrors.destination = "Destination is required";
-      if (!newPolicy.tripDuration || newPolicy.tripDuration <= 0) {
-        newErrors.tripDuration =
-          "Trip Duration is required and must be greater than 0";
-      }
+    // Others specific validations
+    if (insuranceType === "others") {
+      if (!newPolicy.type?.trim()) 
+        newErrors.type = "Policy Type is required";
+      // if (!newPolicy.policyCategory?.trim())
+      //   newErrors.policyCategory = "Policy Category is required";
+      if (!newPolicy.sumInsured || isNaN(Number(newPolicy.sumInsured)) || Number(newPolicy.sumInsured) <= 0)
+        newErrors.sumInsured = "Sum Insured is required and must be greater than 0";
+      // if (!newPolicy.premium || isNaN(Number(newPolicy.premium)) || Number(newPolicy.premium) <= 0)
+      //   newErrors.premium = "Premium is required and must be greater than 0";
+      if (!newPolicy.commissionPercentage || isNaN(Number(newPolicy.commissionPercentage)) || Number(newPolicy.commissionPercentage) <= 0)
+        newErrors.commissionPercentage = "Commission Percentage is required and must be greater than 0";
     }
 
-    // Document validation for vehicle insurance
-    if (insuranceType === "vehicle" && uploadedFiles.length === 0) {
+    // Document validation for all types
+    if (!uploadedFiles || uploadedFiles.length === 0) {
       newErrors.documents = "At least one document is required";
       setSnackbar({
         open: true,
@@ -849,41 +687,7 @@ const PolicyStatus = ({ addCustomer }) => {
         severity: "error",
       });
     }
-    // ...inside validateForm function, after travel validation, add this for "others" type...
 
-    // Others specific validations
-    // ...inside validateForm...
-    // ...inside validateForm...
-    if (insuranceType === "others") {
-      if (!newPolicy.policyNumber?.trim())
-        newErrors.policyNumber = "Policy Number is required";
-      if (!newPolicy.type?.trim()) newErrors.type = "Policy Type is required";
-      if (!newPolicy.policyCategory?.trim())
-        newErrors.policyCategory = "Policy Category is required";
-      if (!newPolicy.insuredName?.trim())
-        newErrors.insuredName = "Insured Name is required";
-      if (!newPolicy.mobile?.trim())
-        newErrors.mobile = "Mobile Number is required";
-      if (!newPolicy.email?.trim()) newErrors.email = "Email is required";
-      if (!newPolicy.company?.trim())
-        newErrors.company = "Insurance Company is required";
-      if (!newPolicy.business?.trim())
-        newErrors.business = "Business Type is required";
-      if (!newPolicy.startDate) newErrors.startDate = "Start Date is required";
-      if (!newPolicy.endDate) newErrors.endDate = "End Date is required";
-      if (!newPolicy.sumInsured || isNaN(Number(newPolicy.sumInsured)))
-        newErrors.sumInsured = "Insured Value is required";
-      if (
-        !newPolicy.commissionAmount ||
-        isNaN(Number(newPolicy.commissionAmount))
-      )
-        newErrors.commissionAmount = "Commission Amount is required";
-      if (!uploadedFiles || uploadedFiles.length === 0)
-        newErrors.documents = "At least one document is required";
-    }
-
-    // ...existing code...
-    console.log("Validation Errors:", newErrors); // Debug log
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -893,64 +697,65 @@ const PolicyStatus = ({ addCustomer }) => {
     try {
       // Validate the form first
       if (!validateForm()) {
+        console.log("Form validation failed", errors);
         return;
       }
-
+      
       setLoading(true);
+      // For others type, we need to ensure we're not overriding the type
+      const baseType = insuranceType === "others" ? newPolicy.type : insuranceType;
+      console.log("Insurance type:", insuranceType);
+      console.log("Base type:", baseType);
+      
       const policyToAdd = {
-        ...newPolicy,
-        type: insuranceType,
+        policyNumber: newPolicy.policyNumber,
+        insuredName: newPolicy.insuredName,
+        mobile: newPolicy.mobile,
+        email: newPolicy.email,
+        startDate: newPolicy.startDate,
+        endDate: newPolicy.endDate,
+        company: newPolicy.company,
+        business: newPolicy.business || "New",
+        type: baseType,
         status: "Live Policy",
         documents: uploadedFiles.map((file) => ({
           name: file.name,
           type: file.type,
           uploadDate: new Date(),
         })),
-        sumInsured: newPolicy.sumInsured ? Number(newPolicy.sumInsured) : null,
-        tripDuration: newPolicy.tripDuration
-          ? Number(newPolicy.tripDuration)
-          : null,
-        height: newPolicy.height ? Number(newPolicy.height) : null,
-        weight: newPolicy.weight ? Number(newPolicy.weight) : null,
-        year: newPolicy.year ? Number(newPolicy.year) : null,
-        basicPremium: newPolicy.basicPremium
-          ? Number(newPolicy.basicPremium)
-          : null,
-        odPremium: newPolicy.odPremium ? Number(newPolicy.odPremium) : null,
-        tpPremium: newPolicy.tpPremium ? Number(newPolicy.tpPremium) : null,
-        ncbDiscount: newPolicy.ncbDiscount
-          ? Number(newPolicy.ncbDiscount)
-          : null,
-        addonPremium: newPolicy.addonPremium
-          ? Number(newPolicy.addonPremium)
-          : null,
-        gst: newPolicy.gst ? Number(newPolicy.gst) : null,
-        totalPremium: newPolicy.totalPremium
-          ? Number(newPolicy.totalPremium)
-          : null,
-        netPremium: newPolicy.netPremium ? Number(newPolicy.netPremium) : null,
-        odCommissionPercentage: newPolicy.odCommissionPercentage
-          ? Number(newPolicy.odCommissionPercentage)
-          : null,
-        tpCommissionPercentage: newPolicy.tpCommissionPercentage
-          ? Number(newPolicy.tpCommissionPercentage)
-          : null,
-        addonCommissionPercentage: newPolicy.addonCommissionPercentage
-          ? Number(newPolicy.addonCommissionPercentage)
-          : null,
-        commissionAmount: newPolicy.commissionAmount
-          ? Number(newPolicy.commissionAmount)
-          : null,
-        totalCommissionAmount: newPolicy.totalCommissionAmount
-          ? Number(newPolicy.totalCommissionAmount)
-          : null,
-        effectiveCommissionPercentage: newPolicy.effectiveCommissionPercentage
-          ? Number(newPolicy.effectiveCommissionPercentage)
-          : null,
-        age: newPolicy.age ? Number(newPolicy.age) : null,
+        // Basic fields for all types
+        sumInsured: Number(newPolicy.sumInsured) || 0,
+        premium: Number(newPolicy.premium) || 0,
+        commissionPercentage: Number(newPolicy.commissionPercentage) || 0,
+        commissionAmount: (Number(newPolicy.premium) * Number(newPolicy.commissionPercentage)) / 100,
       };
 
+      // Add health specific fields
+      if (insuranceType === "health") {
+        Object.assign(policyToAdd, {
+          healthPlan: newPolicy.healthPlan,
+          height: Number(newPolicy.height) || 0,
+          weight: Number(newPolicy.weight) || 0,
+          bloodGroup: newPolicy.bloodGroup,
+          preExisting: newPolicy.preExisting,
+          dateOfBirth: newPolicy.dateOfBirth,
+          familyMembers: newPolicy.healthPlan?.includes("Family") ? familyMembers : [],
+          numberOfFamilyMembers: newPolicy.healthPlan?.includes("Family") ? 
+            Number(newPolicy.numberOfFamilyMembers) : 0,
+        });
+      }
+      
+      // Add others specific fields
+      if (insuranceType === "others") {
+        Object.assign(policyToAdd, {
+          policyCategory: newPolicy.policyCategory,
+        });
+      }
+
+      console.log("Policy to add:", policyToAdd);
+
       const createdPolicy = await createPolicy(policyToAdd);
+      console.log("Created policy:", createdPolicy);
 
       // Reset filters to show all policies
       setCurrentTab("all");
@@ -971,6 +776,7 @@ const PolicyStatus = ({ addCustomer }) => {
           conversionDate: createdPolicy.startDate || new Date().toISOString(),
         });
       }
+
       // Also create customer in backend
       try {
         await createCustomer({
@@ -978,13 +784,14 @@ const PolicyStatus = ({ addCustomer }) => {
           phone: createdPolicy.mobile,
           email: createdPolicy.email,
           policy: createdPolicy.type,
-          conversionDate:
-            createdPolicy.startDate || new Date().toISOString().split("T")[0],
+          conversionDate: createdPolicy.startDate || new Date().toISOString().split("T")[0],
           status: "Active",
         });
       } catch (err) {
+        console.log("Error creating customer:", err);
         // Ignore error if customer already exists
       }
+
       resetForm();
       setOpenNewPolicy(false);
       setSnackbar({
@@ -993,6 +800,7 @@ const PolicyStatus = ({ addCustomer }) => {
         severity: "success",
       });
     } catch (error) {
+      console.error("Error in handleAddPolicy:", error);
       setSnackbar({
         open: true,
         message: error.message || "Error adding policy",
@@ -1021,35 +829,24 @@ const PolicyStatus = ({ addCustomer }) => {
       endDate: nextYearStr,
       company: "",
       business: "New",
-      type: insuranceType,
-      policyCategory: "", // Add policy category reset
-      vehicleType: "",
-      vehicleNumber: "",
-      make: "",
-      model: "",
-      year: "",
-      basicPremium: "",
-      odPremium: "",
-      tpPremium: "",
-      ncbDiscount: "",
-      addonPremium: "",
-      gst: "",
-      totalPremium: "",
-      paymentMode: "",
-      paymentReference: "",
-      healthPlan: "",
+      type: "",
+      policyCategory: "",
       sumInsured: "",
-      age: "",
-      preExisting: "No",
-      travelType: "",
-      destination: "",
-      tripDuration: "",
-      commissionAmount: "",
+      premium: "",
       commissionPercentage: "",
-      documents: [],
+      // Health specific
+      healthPlan: "",
+      dateOfBirth: "",
+      height: "",
+      weight: "",
+      bloodGroup: "",
+      preExisting: "",
+      numberOfFamilyMembers: "",
+      familyMembers: [],
     });
     setUploadedFiles([]);
     setInsuranceType("vehicle");
+    setFamilyMembers([]);
     setErrors({});
   };
 
@@ -1399,6 +1196,79 @@ const PolicyStatus = ({ addCustomer }) => {
         setOpenFamilyModal(false);
       }
     }
+  };
+
+  // Add these fields to the form for health and others policies
+  const renderNetPremiumFields = () => {
+    if (insuranceType === "health" || insuranceType === "others") {
+      return (
+        <>
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              label="GST (18%)"
+              value={newPolicy.gst || "0.00"}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">₹</InputAdornment>
+                ),
+                readOnly: true,
+              }}
+              sx={{
+                "& .MuiInputLabel-root": { color: "#ffffff" },
+                "& .MuiOutlinedInput-root": {
+                  color: "#ffffff",
+                  backgroundColor: "rgba(255, 255, 255, 0.1)",
+                },
+              }}
+            />
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              label="Net Premium"
+              value={newPolicy.netPremium || "0.00"}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">₹</InputAdornment>
+                ),
+                readOnly: true,
+              }}
+              sx={{
+                "& .MuiInputLabel-root": { color: "#ffffff" },
+                "& .MuiOutlinedInput-root": {
+                  color: "#ffffff",
+                  backgroundColor: "rgba(255, 255, 255, 0.1)",
+                },
+              }}
+            />
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              label="Total Premium"
+              value={newPolicy.totalPremium || "0.00"}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">₹</InputAdornment>
+                ),
+                readOnly: true,
+              }}
+              sx={{
+                "& .MuiInputLabel-root": { color: "#ffffff" },
+                "& .MuiOutlinedInput-root": {
+                  color: "#ffffff",
+                  backgroundColor: "rgba(255, 255, 255, 0.1)",
+                },
+              }}
+            />
+          </Grid>
+        </>
+      );
+    }
+    return null;
   };
 
   return (
@@ -3402,233 +3272,380 @@ const PolicyStatus = ({ addCustomer }) => {
                     </Grid>
 
                     {/* Health Specific Fields */}
-                    <Grid item xs={12} md={6}>
-                      <FormControl fullWidth error={!!errors.healthPlan}>
-                        <InputLabel sx={{ color: "#ffffff" }}>
-                          Health Plan
-                        </InputLabel>
-                        <Select
-                          value={newPolicy.healthPlan || ""}
-                          onChange={handleNewPolicyChange("healthPlan")}
-                          label="Health Plan"
-                          sx={{ color: "#ffffff" }}
-                        >
-                          {healthPlans.map((plan) => (
-                            <MenuItem key={plan} value={plan}>
-                              {plan}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {errors.healthPlan && (
-                          <FormHelperText error>
-                            {errors.healthPlan}
-                          </FormHelperText>
-                        )}
-                      </FormControl>
-                    </Grid>
-                    {/* Add Family Members section when Family Plan is selected */}
-                    {(newPolicy.healthPlan === "Family Floater" || newPolicy.healthPlan?.includes("Family")) && (
+                    {insuranceType === "health" && (
                       <>
+                        <Grid item xs={12} md={6}>
+                          <FormControl fullWidth error={!!errors.healthPlan}>
+                            <InputLabel sx={{ color: "#ffffff" }}>
+                              Health Plan
+                            </InputLabel>
+                            <Select
+                              value={newPolicy.healthPlan || ""}
+                              onChange={handleNewPolicyChange("healthPlan")}
+                              label="Health Plan"
+                              sx={{ color: "#ffffff" }}
+                              required
+                            >
+                              {healthPlans.map((plan) => (
+                                <MenuItem key={plan} value={plan}>
+                                  {plan}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                            {errors.healthPlan && (
+                              <FormHelperText error>
+                                {errors.healthPlan}
+                              </FormHelperText>
+                            )}
+                          </FormControl>
+                        </Grid>
+
                         <Grid item xs={12} md={6}>
                           <TextField
                             fullWidth
-                            label="Number of Family Members"
+                            label="Sum Insured"
                             type="number"
-                            value={newPolicy.numberOfFamilyMembers || ""}
-                            onChange={(e) => {
-                              handleNewPolicyChange("numberOfFamilyMembers")(e);
-                              if (parseInt(e.target.value) > 0) {
-                                setOpenFamilyModal(true);
-                              }
-                            }}
-                            InputProps={{
-                              inputProps: { min: 1 }
-                            }}
+                            value={newPolicy.sumInsured || ""}
+                            onChange={handleNewPolicyChange("sumInsured")}
                             required
-                            error={!!errors.numberOfFamilyMembers}
-                            helperText={errors.numberOfFamilyMembers}
+                            error={!!errors.sumInsured}
+                            helperText={errors.sumInsured}
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">₹</InputAdornment>
+                              ),
+                            }}
                             sx={{
                               "& .MuiInputLabel-root": { color: "#ffffff" },
                               "& .MuiOutlinedInput-root": { color: "#ffffff" },
                             }}
                           />
                         </Grid>
-                        
-                        {/* Display added family members */}
-                        {familyMembers.length > 0 && (
-                          <Grid item xs={12}>
-                            <Box sx={{ mt: 2, mb: 2 }}>
-                              <Typography variant="subtitle1" sx={{ color: "#ffffff", mb: 1 }}>
-                                Added Family Members:
-                              </Typography>
-                              {familyMembers.map((member, index) => (
-                                <Box 
-                                  key={index} 
-                                  sx={{ 
-                                    p: 1, 
-                                    mb: 1, 
-                                    bgcolor: "rgba(255, 255, 255, 0.1)",
-                                    borderRadius: 1,
-                                    color: "#ffffff"
-                                  }}
-                                >
-                                  <Typography variant="body2">
-                                    {member.name} ({member.relation}) - Age: {new Date().getFullYear() - new Date(member.dateOfBirth).getFullYear()}
-                                  </Typography>
-                                </Box>
+                        {renderNetPremiumFields()}
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            label="Premium"
+                            type="number"
+                            value={newPolicy.premium || ""}
+                            onChange={handleNewPolicyChange("premium")}
+                            required
+                            error={!!errors.premium}
+                            helperText={errors.premium}
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">₹</InputAdornment>
+                              ),
+                            }}
+                            sx={{
+                              "& .MuiInputLabel-root": { color: "#ffffff" },
+                              "& .MuiOutlinedInput-root": { color: "#ffffff" },
+                            }}
+                          />
+                        </Grid>
+
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            label="Commission Percentage"
+                            type="number"
+                            value={newPolicy.commissionPercentage || ""}
+                            onChange={handleNewPolicyChange("commissionPercentage")}
+                            required
+                            error={!!errors.commissionPercentage}
+                            helperText={errors.commissionPercentage}
+                            sx={{
+                              "& .MuiInputLabel-root": { color: "#ffffff" },
+                              "& .MuiOutlinedInput-root": { color: "#ffffff" },
+                            }}
+                          />
+                        </Grid>
+
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            label="Date of Birth"
+                            type="date"
+                            value={newPolicy.dateOfBirth || ""}
+                            onChange={handleNewPolicyChange("dateOfBirth")}
+                            required
+                            error={!!errors.dateOfBirth}
+                            helperText={errors.dateOfBirth}
+                            InputLabelProps={{ shrink: true }}
+                            sx={{
+                              "& .MuiInputLabel-root": { color: "#ffffff" },
+                              "& .MuiOutlinedInput-root": { color: "#ffffff" },
+                            }}
+                          />
+                        </Grid>
+
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            label="Height (cm)"
+                            value={newPolicy.height || ""}
+                            onChange={handleNewPolicyChange("height")}
+                            type="number"
+                            error={!!errors.height}
+                            helperText={errors.height}
+                            required
+                            sx={{
+                              "& .MuiInputLabel-root": { color: "#ffffff" },
+                              "& .MuiOutlinedInput-root": { color: "#ffffff" },
+                            }}
+                          />
+                        </Grid>
+
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            label="Weight (kg)"
+                            value={newPolicy.weight || ""}
+                            onChange={handleNewPolicyChange("weight")}
+                            type="number"
+                            error={!!errors.weight}
+                            helperText={errors.weight}
+                            required
+                            sx={{
+                              "& .MuiInputLabel-root": { color: "#ffffff" },
+                              "& .MuiOutlinedInput-root": { color: "#ffffff" },
+                            }}
+                          />
+                        </Grid>
+
+                        <Grid item xs={12} md={6}>
+                          <FormControl fullWidth error={!!errors.bloodGroup}>
+                            <InputLabel sx={{ color: "#ffffff" }}>
+                              Blood Group
+                            </InputLabel>
+                            <Select
+                              value={newPolicy.bloodGroup || ""}
+                              onChange={handleNewPolicyChange("bloodGroup")}
+                              label="Blood Group"
+                              sx={{ color: "#ffffff" }}
+                              required
+                            >
+                              <MenuItem value="">
+                                <em>None</em>
+                              </MenuItem>
+                              {[
+                                "A+",
+                                "A-",
+                                "B+",
+                                "B-",
+                                "O+",
+                                "O-",
+                                "AB+",
+                                "AB-",
+                              ].map((group) => (
+                                <MenuItem key={group} value={group}>
+                                  {group}
+                                </MenuItem>
                               ))}
-                              {familyMembers.length < newPolicy.numberOfFamilyMembers && (
-                                <Button
-                                  variant="outlined"
-                                  onClick={() => setOpenFamilyModal(true)}
-                                  sx={{ mt: 1, color: "#ffffff", borderColor: "#ffffff" }}
-                                >
-                                  Add More Family Members
-                                </Button>
-                              )}
-                            </Box>
-                          </Grid>
+                            </Select>
+                            {errors.bloodGroup && (
+                              <FormHelperText error>
+                                {errors.bloodGroup}
+                              </FormHelperText>
+                            )}
+                          </FormControl>
+                        </Grid>
+
+                        <Grid item xs={12}>
+                          <TextField
+                            fullWidth
+                            label="Pre-existing Conditions"
+                            value={newPolicy.preExisting || ""}
+                            onChange={handleNewPolicyChange("preExisting")}
+                            multiline
+                            rows={2}
+                            placeholder="Enter pre-existing conditions (if any)"
+                            sx={{
+                              "& .MuiInputLabel-root": { color: "#ffffff" },
+                              "& .MuiOutlinedInput-root": { color: "#ffffff" },
+                            }}
+                          />
+                        </Grid>
+
+                        {/* Family Members section for Family Plans */}
+                        {newPolicy.healthPlan?.includes("Family") && (
+                          <>
+                            <Grid item xs={12} md={6}>
+                              <TextField
+                                fullWidth
+                                label="Number of Family Members"
+                                type="number"
+                                value={newPolicy.numberOfFamilyMembers || ""}
+                                onChange={(e) => {
+                                  handleNewPolicyChange("numberOfFamilyMembers")(e);
+                                  if (parseInt(e.target.value) > 0) {
+                                    setOpenFamilyModal(true);
+                                  }
+                                }}
+                                required
+                                error={!!errors.numberOfFamilyMembers}
+                                helperText={errors.numberOfFamilyMembers}
+                                InputProps={{
+                                  inputProps: { min: 1 }
+                                }}
+                                sx={{
+                                  "& .MuiInputLabel-root": { color: "#ffffff" },
+                                  "& .MuiOutlinedInput-root": { color: "#ffffff" },
+                                }}
+                              />
+                            </Grid>
+
+                            {/* Display added family members */}
+                            {familyMembers.length > 0 && (
+                              <Grid item xs={12}>
+                                <Box sx={{ mt: 2, mb: 2 }}>
+                                  <Typography variant="subtitle1" sx={{ color: "#ffffff", mb: 1 }}>
+                                    Added Family Members:
+                                  </Typography>
+                                  {familyMembers.map((member, index) => (
+                                    <Box 
+                                      key={index} 
+                                      sx={{ 
+                                        p: 1, 
+                                        mb: 1, 
+                                        bgcolor: "rgba(255, 255, 255, 0.1)",
+                                        borderRadius: 1,
+                                        color: "#ffffff"
+                                      }}
+                                    >
+                                      <Typography variant="body2">
+                                        {member.name} ({member.relation}) - Age: {new Date().getFullYear() - new Date(member.dateOfBirth).getFullYear()}
+                                      </Typography>
+                                    </Box>
+                                  ))}
+                                  {familyMembers.length < newPolicy.numberOfFamilyMembers && (
+                                    <Button
+                                      variant="outlined"
+                                      onClick={() => setOpenFamilyModal(true)}
+                                      sx={{ mt: 1, color: "#ffffff", borderColor: "#ffffff" }}
+                                    >
+                                      Add More Family Members
+                                    </Button>
+                                  )}
+                                </Box>
+                              </Grid>
+                            )}
+                          </>
                         )}
                       </>
                     )}
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Sum Insured"
-                        value={newPolicy.sumInsured}
-                        onChange={handleNewPolicyChange("sumInsured")}
-                        type="number"
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">₹</InputAdornment>
-                          ),
-                        }}
-                        error={!!errors.sumInsured}
-                        helperText={errors.sumInsured}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                    <TextField
-                        fullWidth
-                        label="GST (18%)"
-                        value={newPolicy.gst}
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">₹</InputAdornment>
-                          ),
-                          readOnly: true,
-                        }}
-                        sx={{
-                          "& .MuiInputLabel-root": { color: "#ffffff" },
-                          "& .MuiOutlinedInput-root": {
-                            color: "#ffffff",
-                            backgroundColor: "rgba(255, 255, 255, 0.1)",
-                          },
-                        }}
-                      />
 
-                    </Grid>
-                    
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Date of Birth"
-                        type="date"
-                        value={newPolicy.dateOfBirth || ""}
-                        onChange={handleNewPolicyChange("dateOfBirth")}
-                        InputLabelProps={{ shrink: true }}
-                        error={!!errors.dateOfBirth}
-                        helperText={errors.dateOfBirth}
-                        required
-                        sx={{
-                          "& .MuiInputLabel-root": { color: "#ffffff" },
-                          "& .MuiOutlinedInput-root": { color: "#ffffff" },
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Height (cm)"
-                        value={newPolicy.height}
-                        onChange={handleNewPolicyChange("height")}
-                        type="number"
-                        error={!!errors.height}
-                        helperText={errors.height}
-                        required
-                        sx={{
-                          "& .MuiInputLabel-root": { color: "#ffffff" },
-                          "& .MuiOutlinedInput-root": { color: "#ffffff" },
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Weight (kg)"
-                        value={newPolicy.weight}
-                        onChange={handleNewPolicyChange("weight")}
-                        type="number"
-                        error={!!errors.weight}
-                        helperText={errors.weight}
-                        required
-                        sx={{
-                          "& .MuiInputLabel-root": { color: "#ffffff" },
-                          "& .MuiOutlinedInput-root": { color: "#ffffff" },
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <FormControl fullWidth error={!!errors.bloodGroup}>
-                        <InputLabel sx={{ color: "#ffffff" }}>
-                          Blood Group
-                        </InputLabel>
-                        <Select
-                          value={newPolicy.bloodGroup || ""}
-                          onChange={handleNewPolicyChange("bloodGroup")}
-                          label="Blood Group"
-                          sx={{ color: "#ffffff" }}
-                        >
-                          <MenuItem value="">
-                            <em>None</em>
-                          </MenuItem>
-                          {[
-                            "A+",
-                            "A-",
-                            "B+",
-                            "B-",
-                            "O+",
-                            "O-",
-                            "AB+",
-                            "AB-",
-                          ].map((group) => (
-                            <MenuItem key={group} value={group}>
-                              {group}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {errors.bloodGroup && (
-                          <FormHelperText error>
-                            {errors.bloodGroup}
-                          </FormHelperText>
-                        )}
-                      </FormControl>
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        label="Pre-existing Conditions"
-                        value={newPolicy.preExisting || ""}
-                        onChange={handleNewPolicyChange("preExisting")}
-                        multiline
-                        rows={2}
-                        placeholder="Enter pre-existing conditions (if any)"
-                        sx={{
-                          "& .MuiInputLabel-root": { color: "#ffffff" },
-                          "& .MuiOutlinedInput-root": { color: "#ffffff" },
-                        }}
-                      />
-                    </Grid>
+                    {/* Others Specific Fields */}
+                    {insuranceType === "others" && (
+                      <>
+                        <Grid item xs={12} md={6}>
+                          <FormControl fullWidth error={!!errors.type}>
+                            <InputLabel sx={{ color: "#ffffff" }}>Policy Type</InputLabel>
+                            <Select
+                              value={newPolicy.type || ""}
+                              onChange={handleNewPolicyChange("type")}
+                              label="Policy Type"
+                              required
+                              sx={{ color: "#ffffff" }}
+                            >
+                              {posiTypes.map((type) => (
+                                <MenuItem key={type} value={type}>
+                                  {type}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                            {errors.type && (
+                              <FormHelperText error>{errors.type}</FormHelperText>
+                            )}
+                          </FormControl>
+                        </Grid>
+
+                        <Grid item xs={12} md={6}>
+                          <FormControl fullWidth error={!!errors.policyCategory}>
+                            <InputLabel sx={{ color: "#ffffff" }}>Policy Category</InputLabel>
+                            <Select
+                              value={newPolicy.policyCategory || ""}
+                              onChange={handleNewPolicyChange("policyCategory")}
+                              label="Policy Category"
+                              required
+                              sx={{ color: "#ffffff" }}
+                            >
+                              <MenuItem value="Individual">Individual</MenuItem>
+                              <MenuItem value="Group">Group</MenuItem>
+                              <MenuItem value="Corporate">Corporate</MenuItem>
+                              <MenuItem value="Other">Other</MenuItem>
+                            </Select>
+                            {errors.policyCategory && (
+                              <FormHelperText error>{errors.policyCategory}</FormHelperText>
+                            )}
+                          </FormControl>
+                        </Grid>
+
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            label="Sum Insured"
+                            type="number"
+                            value={newPolicy.sumInsured || ""}
+                            onChange={handleNewPolicyChange("sumInsured")}
+                            required
+                            error={!!errors.sumInsured}
+                            helperText={errors.sumInsured}
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">₹</InputAdornment>
+                              ),
+                            }}
+                            sx={{
+                              "& .MuiInputLabel-root": { color: "#ffffff" },
+                              "& .MuiOutlinedInput-root": { color: "#ffffff" },
+                            }}
+                          />
+                        </Grid>
+                        {renderNetPremiumFields()}
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            label="Premium"
+                            type="number"
+                            value={newPolicy.premium || ""}
+                            onChange={handleNewPolicyChange("premium")}
+                            required
+                            error={!!errors.premium}
+                            helperText={errors.premium}
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">₹</InputAdornment>
+                              ),
+                            }}
+                            sx={{
+                              "& .MuiInputLabel-root": { color: "#ffffff" },
+                              "& .MuiOutlinedInput-root": { color: "#ffffff" },
+                            }}
+                          />
+                        </Grid>
+
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            label="Commission Percentage"
+                            type="number"
+                            value={newPolicy.commissionPercentage || ""}
+                            onChange={handleNewPolicyChange("commissionPercentage")}
+                            required
+                            error={!!errors.commissionPercentage}
+                            helperText={errors.commissionPercentage}
+                            InputProps={{
+                              inputProps: { min: 0, max: 100 }
+                            }}
+                            sx={{
+                              "& .MuiInputLabel-root": { color: "#ffffff" },
+                              "& .MuiOutlinedInput-root": { color: "#ffffff" },
+                            }}
+                          />
+                        </Grid>
+                      </>
+                    )}
                   </Grid>
                 </Box>
 
@@ -4115,10 +4132,31 @@ const PolicyStatus = ({ addCustomer }) => {
                       />
                     </Grid>
                     <Grid item xs={12} md={6}>
-                    <TextField
+                      <TextField
                         fullWidth
                         label="GST (18%)"
                         value={newPolicy.gst}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">₹</InputAdornment>
+                          ),
+                          readOnly: true,
+                        }}
+                        
+                        sx={{
+                          "& .MuiInputLabel-root": { color: "#ffffff" },
+                          "& .MuiOutlinedInput-root": {
+                            color: "#ffffff",
+                            backgroundColor: "rgba(255, 255, 255, 0.1)",
+                          },
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Net Premium"
+                        value={newPolicy.netPremium || "0.00"}
                         InputProps={{
                           startAdornment: (
                             <InputAdornment position="start">₹</InputAdornment>
@@ -4261,6 +4299,121 @@ const PolicyStatus = ({ addCustomer }) => {
                 >
                   Others Policy Details
                 </Typography>
+                {/* Document Upload Section */}
+                <Box
+                  sx={{
+                    p: 1.5,
+                    border: "1px solid #e0e0e0",
+                    borderRadius: 1,
+                    backgroundColor: "#ffffff",
+                    mb: 2,
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 2,
+                      flex: 1,
+                    }}
+                  >
+                    <Tooltip
+                      title={
+                        <Box sx={{ p: 1 }}>
+                          <Typography
+                            variant="caption"
+                            sx={{ fontWeight: "bold" }}
+                          >
+                            Required documents:
+                          </Typography>
+                          <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                            <li key="id-proof">ID & Address Proof</li>
+                            <li key="prev-policy">Previous Insurance Policy</li>
+                            <li key="photos">Supporting Documents</li>
+                          </Box>
+                        </Box>
+                      }
+                      arrow
+                    >
+                      <Typography
+                        variant="subtitle2"
+                        sx={{
+                          color: "#1976d2",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                          cursor: "help",
+                        }}
+                      >
+                        <InfoIcon sx={{ fontSize: 16 }} />
+                        Required Documents
+                      </Typography>
+                    </Tooltip>
+                    <Box sx={{ flex: 1 }}>
+                      <input
+                        type="file"
+                        multiple
+                        onChange={handleFileUpload}
+                        style={{ display: "none" }}
+                        id="document-upload-others"
+                      />
+                      <label htmlFor="document-upload-others">
+                        <Button
+                          variant="outlined"
+                          component="span"
+                          startIcon={<CloudUploadIcon />}
+                          sx={{ color: "#1976d2" }}
+                        >
+                          Upload Documents
+                        </Button>
+                      </label>
+                    </Box>
+                    <Box sx={{ flex: 2 }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          gap: 1,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        {uploadedFiles.length > 0 ? (
+                          uploadedFiles.map((file, index) => (
+                            <Chip
+                              key={index}
+                              label={file.name}
+                              onDelete={() => removeFile(index)}
+                              sx={{
+                                backgroundColor: "#e3f2fd",
+                                "& .MuiChip-deleteIcon": {
+                                  color: "#1976d2",
+                                },
+                              }}
+                            />
+                          ))
+                        ) : (
+                          <Typography
+                            variant="caption"
+                            sx={{ color: "#666666" }}
+                          >
+                            No files uploaded
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  </Box>
+                </Box>
+
+                {errors.documents && (
+                  <Typography
+                    variant="caption"
+                    color="error"
+                    sx={{ ml: 1 }}
+                  >
+                    {errors.documents}
+                  </Typography>
+                )}
                 <Grid container spacing={3}>
                   <Grid item xs={12} md={6}>
                     <TextField
@@ -4394,7 +4547,7 @@ const PolicyStatus = ({ addCustomer }) => {
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
-                      label="Insured Value"
+                      label="Sum Insured"
                       value={newPolicy.sumInsured || ""}
                       onChange={handleNewPolicyChange("sumInsured")}
                       type="number"
@@ -4408,6 +4561,26 @@ const PolicyStatus = ({ addCustomer }) => {
                         fullWidth
                         label="GST (18%)"
                         value={newPolicy.gst}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">₹</InputAdornment>
+                          ),
+                          readOnly: true,
+                        }}
+                        sx={{
+                          "& .MuiInputLabel-root": { color: "#ffffff" },
+                          "& .MuiOutlinedInput-root": {
+                            color: "#ffffff",
+                            backgroundColor: "rgba(255, 255, 255, 0.1)",
+                          },
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Net Premium"
+                        value={newPolicy.netPremium || "0.00"}
                         InputProps={{
                           startAdornment: (
                             <InputAdornment position="start">₹</InputAdornment>
@@ -4444,54 +4617,70 @@ const PolicyStatus = ({ addCustomer }) => {
                       helperText={errors.commissionAmount}
                     />
                   </Grid>
-                  {/* Documents Upload */}
+
+                  {/* Commission Section */}
                   <Grid item xs={12}>
-                    <Button
-                      component="label"
-                      variant="outlined"
-                      size="small"
-                      startIcon={<UploadIcon />}
-                      sx={{ mb: 1 }}
-                    >
-                      Upload Documents
-                      <VisuallyHiddenInput
-                        type="file"
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files);
-                          setUploadedFiles((prev) => [...prev, ...files]);
+                    <Box sx={{ mb: 4 }}>
+                      <Typography
+                        variant="h6"
+                        gutterBottom
+                        sx={{
+                          color: "#1976d2",
+                          borderBottom: "2px solid #1976d2",
+                          pb: 1,
                         }}
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        multiple
-                      />
-                    </Button>
-                    <Box sx={{ mt: 1 }}>
-                      {uploadedFiles.length > 0 ? (
-                        uploadedFiles.map((file, idx) => (
-                          <Chip
-                            key={idx}
-                            label={file.name}
-                            onDelete={() =>
-                              setUploadedFiles((prev) =>
-                                prev.filter((_, i) => i !== idx)
-                              )
-                            }
-                            size="small"
-                            sx={{ mr: 1, mb: 1 }}
-                          />
-                        ))
-                      ) : (
-                        <Typography variant="caption">
-                          No files uploaded
-                        </Typography>
-                      )}
-                    </Box>
-                    {errors.documents && (
-                      <Typography variant="caption" color="error">
-                        {errors.documents}
+                      >
+                        Commission Details
                       </Typography>
-                    )}
+                      <Grid container spacing={3}>
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            label="Commission Percentage"
+                            value={newPolicy.commissionPercentage}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              handleNewPolicyChange("commissionPercentage")({
+                                target: { value },
+                              });
+
+                              // Calculate commission amount based on net premium
+                              const netPremium = parseFloat(newPolicy.netPremium) || 0;
+                              const commissionAmount = (netPremium * (parseFloat(value) || 0)) / 100;
+
+                              setNewPolicy((prev) => ({
+                                ...prev,
+                                commissionAmount: commissionAmount.toFixed(2),
+                                totalCommissionAmount: commissionAmount.toFixed(2),
+                              }));
+                            }}
+                            type="number"
+                            InputProps={{
+                              endAdornment: (
+                                <InputAdornment position="end">%</InputAdornment>
+                              ),
+                              inputProps: { min: 0, max: 100 },
+                            }}
+                            error={!!errors.commissionPercentage}
+                            helperText={errors.commissionPercentage}
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            label="Commission Amount"
+                            value={newPolicy.commissionAmount}
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">₹</InputAdornment>
+                              ),
+                              readOnly: true,
+                            }}
+                          />
+                        </Grid>
+                      </Grid>
+                    </Box>
                   </Grid>
-                  {/* Add Policy Category Dropdown */}
                 </Grid>
               </Box>
             )}
