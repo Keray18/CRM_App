@@ -227,7 +227,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
     const fetchPolicyTypes = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:8080/api/masterdata/type/Policy Type"
+          `${API_URL}api/masterdata/type/Policy Type`
         );
         setPolicyTypes(
           response.data

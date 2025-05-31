@@ -78,6 +78,7 @@ import {
 } from '@mui/icons-material';
 import axios from 'axios';
 import authHeader from '../../services/authHeader';
+import { API_URL } from '../../config';
 // Configure axios defaults
 axios.defaults.headers.common['Cache-Control'] = 'no-cache';
 axios.defaults.headers.common['Pragma'] = 'no-cache';
@@ -116,7 +117,7 @@ const MasterData = () => {
   const fetchMasterDataByType = async (type) => {
     try {
       const timestamp = new Date().getTime();
-      const response = await axios.get(`http://localhost:8080/api/masterdata/type/${encodeURIComponent(type)}`, {
+      const response = await axios.get(`${API_URL}api/masterdata/type/${encodeURIComponent(type)}`, {
         headers: {
           headers: authHeader(),
           'Cache-Control': 'no-cache',
@@ -188,7 +189,7 @@ const MasterData = () => {
     }
     try {
       if (selectedItem) {
-        const response = await axios.put(`http://localhost:8080/api/masterdata/${selectedItem.id}`, {
+        const response = await axios.put(`${API_URL}api/masterdata/${selectedItem.id}`, {
           ...formData,
           type: activeTab
         });
@@ -198,7 +199,7 @@ const MasterData = () => {
           await fetchMasterDataByType(activeTab);
         }
       } else {
-        const response = await axios.post('http://localhost:8080/api/masterdata', {
+        const response = await axios.post(`${API_URL}api/masterdata`, {
           ...formData,
           type: activeTab
         });
@@ -217,7 +218,7 @@ const MasterData = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this item?')) {
       try {
-        const response = await axios.delete(`http://localhost:8080/api/masterdata/${id}`);
+        const response = await axios.delete(`${API_URL}api/masterdata/${id}`);
         if (response.data) {
           showSnackbar('Master data deleted successfully');
           await fetchMasterDataByType(activeTab);

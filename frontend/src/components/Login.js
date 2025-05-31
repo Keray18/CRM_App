@@ -22,6 +22,7 @@ import { Visibility, VisibilityOff, Business, Security, Speed, GroupAdd } from '
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import authHeader from '../services/authHeader';
+import { API_URL } from '../config';
 
 axios.interceptors.request.use(
   (config) => {
@@ -51,7 +52,7 @@ function Login() {
     setError('');
 
     try {
-      const { data } = await axios.post('http://localhost:8080/api/auth/login', {
+      const { data } = await axios.post(`${API_URL}api/auth/login`, {
         email,
         password
       });
