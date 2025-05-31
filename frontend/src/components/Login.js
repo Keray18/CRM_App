@@ -22,7 +22,7 @@ import { Visibility, VisibilityOff, Business, Security, Speed, GroupAdd } from '
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import authHeader from '../services/authHeader';
-import { API_URL } from '../config';
+import { API_URL } from '../config/config';
 
 axios.interceptors.request.use(
   (config) => {
