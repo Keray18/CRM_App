@@ -78,7 +78,7 @@ import {
 } from '@mui/icons-material';
 import axios from 'axios';
 import authHeader from '../../services/authHeader';
-import { API_URL } from '../../config';
+import { API_URL } from '../../config/config';
 // Configure axios defaults
 axios.defaults.headers.common['Cache-Control'] = 'no-cache';
 axios.defaults.headers.common['Pragma'] = 'no-cache';
