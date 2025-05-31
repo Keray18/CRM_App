@@ -189,7 +189,7 @@ const MasterData = () => {
     }
     try {
       if (selectedItem) {
-        const response = await axios.put(`${API_URL}api/masterdata/${selectedItem.id}`, {
+        const response = await axios.put(`${API_URL}/masterdata/${selectedItem.id}`, {
           ...formData,
           type: activeTab
         });
@@ -199,7 +199,7 @@ const MasterData = () => {
           await fetchMasterDataByType(activeTab);
         }
       } else {
-        const response = await axios.post(`${API_URL}api/masterdata`, {
+        const response = await axios.post(`${API_URL}/masterdata`, {
           ...formData,
           type: activeTab
         });
@@ -218,7 +218,7 @@ const MasterData = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this item?')) {
       try {
-        const response = await axios.delete(`${API_URL}api/masterdata/${id}`);
+        const response = await axios.delete(`${API_URL}/masterdata/${id}`);
         if (response.data) {
           showSnackbar('Master data deleted successfully');
           await fetchMasterDataByType(activeTab);
