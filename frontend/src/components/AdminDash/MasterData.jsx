@@ -117,7 +117,7 @@ const MasterData = () => {
   const fetchMasterDataByType = async (type) => {
     try {
       const timestamp = new Date().getTime();
-      const response = await axios.get(`${API_URL}api/masterdata/type/${encodeURIComponent(type)}`, {
+      const response = await axios.get(`${API_URL}/masterdata/type/${encodeURIComponent(type)}`, {
         headers: {
           headers: authHeader(),
           'Cache-Control': 'no-cache',
