@@ -29,6 +29,12 @@ const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
         timestamps: true,
         underscored: true, // Use snake_case for column names
         freezeTableName: true // Don't pluralize table names
+    },
+    pool: {
+        max: 2,      // <= LIMIT THIS TO 2 or 3 (never 5)
+        min: 0,
+        acquire: 30000,
+        idle: 10000
     }
 });
 
