@@ -56,6 +56,7 @@ import {
   Legend
 } from 'chart.js';
 import PaymentManagement from './PaymentManagement';
+import authHeader from '../../services/authHeader';
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend);
 
 function Commission() {
@@ -114,7 +115,7 @@ function Commission() {
     const fetchCommissions = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${API_URL}/commissions`);
+        const response = await axios.get(`${API_URL}/commissions`, { headers: authHeader() });
         setCommissions(response.data);
       } catch (error) {
         setCommissions([]);
@@ -126,12 +127,12 @@ function Commission() {
   }, []);
 
   useEffect(() => {
-    axios.get(`${API_URL}/masterdata/type/Insurance Company`)
+    axios.get(`${API_URL}/masterdata/type/Insurance Company`, { headers: authHeader() })
       .then(res => setCompanies(res.data.filter(item => item.isActive).map(item => item.name)));
   }, []);
   const fetchPayments = async () => {
       try {
-        const response = await axios.get(`${API_URL}/payments`);
+        const response = await axios.get(`${API_URL}/payments`, { headers: authHeader() });
         setPayments(response.data);
       } catch (error) {
         setPayments([]);
@@ -220,11 +221,11 @@ function Commission() {
     try {
     if (selectedCommission) {
         // Update
-        const response = await axios.put(`${API_URL}/commissions/${selectedCommission.id}`, formData);
+        const response = await axios.put(`${API_URL}/commissions/${selectedCommission.id}`, formData, { headers: authHeader() });
         setCommissions(commissions.map(comm => comm.id === selectedCommission.id ? response.data : comm));
     } else {
         // Create
-        const response = await axios.post(`${API_URL}/commissions`, formData);
+        const response = await axios.post(`${API_URL}/commissions`, formData, { headers: authHeader() });
         setCommissions([...commissions, response.data]);
     }
     handleCloseDialog();
@@ -237,11 +238,11 @@ function Commission() {
     try {
     if (selectedPayment) {
         // Update
-        const response = await axios.put(`${API_URL}/payments/${selectedPayment.id}`, paymentForm);
+        const response = await axios.put(`${API_URL}/payments/${selectedPayment.id}`, paymentForm, { headers: authHeader() });
         setPayments(payments.map(pay => pay.id === selectedPayment.id ? response.data : pay));
     } else {
         // Create
-        const response = await axios.post(`${API_URL}/payments`, paymentForm);
+        const response = await axios.post(`${API_URL}/payments`, paymentForm, { headers: authHeader() });
         setPayments([...payments, response.data]);
       }
       handleClosePaymentDialog();
@@ -303,7 +304,7 @@ function Commission() {
   // Add delete logic
   const handleDeleteCommission = async (id) => {
     try {
-      await axios.delete(`${API_URL}/commissions/${id}`);
+      await axios.delete(`${API_URL}/commissions/${id}`, { headers: authHeader() });
       setCommissions(commissions.filter(comm => comm.id !== id));
     } catch (error) {
       // Optionally show error
@@ -312,7 +313,7 @@ function Commission() {
 
   const handleDeletePayment = async (id) => {
     try {
-      await axios.delete(`${API_URL}/payments/${id}`);
+      await axios.delete(`${API_URL}/payments/${id}`, { headers: authHeader() });
       setPayments(payments.filter(pay => pay.id !== id));
     } catch (error) {
       // Optionally show error
@@ -324,7 +325,7 @@ function Commission() {
     setBreakdownDialogOpen(true);
     setBreakdownData([]);
     try {
-      const res = await axios.get(`${API_URL}/commissions/breakdown/${encodeURIComponent(company)}`);
+      const res = await axios.get(`${API_URL}/commissions/breakdown/${encodeURIComponent(company)}`, { headers: authHeader() });
       setBreakdownData(res.data);
     } catch {
       setBreakdownData([]);
