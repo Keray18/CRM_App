@@ -17,6 +17,7 @@ import {
   FormControlLabel,
   Checkbox,
   CircularProgress,
+  Backdrop,
 } from '@mui/material';
 import { Visibility, VisibilityOff, Business, Security, Speed, GroupAdd } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -132,6 +133,11 @@ function Login() {
         }
       }}
     >
+      {/* Loading Spinner Overlay */}
+      <Backdrop open={loading} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 2 }}>
+        <CircularProgress color="inherit" />
+      </Backdrop>
+
       <AppBar 
         position="static" 
         elevation={0}

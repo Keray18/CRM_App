@@ -24,7 +24,9 @@ import {
   Select,
   Autocomplete,
   Snackbar,
-  Alert
+  Alert,
+  CircularProgress,
+  Backdrop
 } from "@mui/material";
 import {
   Assignment as TaskIcon,
@@ -61,12 +63,12 @@ const AssignTask = ({
   });
   const [localLeads, setLocalLeads] = useState([]);
   const [localEmployees, setLocalEmployees] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   // Fetch tasks on component mount
   useEffect(() => {
-    fetchTasks();
-    fetchLeads();
-    fetchEmployees();
+    setLoading(true);
+    Promise.all([fetchTasks(), fetchLeads(), fetchEmployees()]).finally(() => setLoading(false));
   }, []);
 
   const fetchTasks = async () => {
@@ -243,6 +245,11 @@ const AssignTask = ({
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Loading Spinner Overlay */}
+      <Backdrop open={loading} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 2 }}>
+        <CircularProgress color="inherit" />
+      </Backdrop>
+
       <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ mb: 3 }} color="#0C47A0">
         <TaskIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
         Task Assignments
