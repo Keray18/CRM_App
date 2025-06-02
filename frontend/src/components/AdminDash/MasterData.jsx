@@ -50,7 +50,8 @@ import {
   ListItemText,
   ListItemSecondaryAction,
   Switch,
-  Tooltip
+  Tooltip,
+  CircularProgress
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -91,7 +92,8 @@ const types = [
   'Status',
   'Document Type',
   'Commission Type',
-  'Insurance Company'
+  'Insurance Company',
+  'Pre-existing Condition'
 ];
 
 const MasterData = () => {
@@ -109,6 +111,7 @@ const MasterData = () => {
     message: '',
     severity: 'success'
   });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchMasterDataByType(activeTab);
@@ -116,10 +119,11 @@ const MasterData = () => {
 
   const fetchMasterDataByType = async (type) => {
     try {
+      setLoading(true);
       const timestamp = new Date().getTime();
       const response = await axios.get(`${API_URL}/masterdata/type/${encodeURIComponent(type)}`, {
         headers: {
-          headers: authHeader(),
+          ...authHeader(),
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache',
           'If-Modified-Since': '0'
@@ -132,8 +136,10 @@ const MasterData = () => {
       setMasterData([]);
       setTimeout(() => {
         setMasterData([...response.data]);
+        setLoading(false);
       }, 0);
     } catch (error) {
+      setLoading(false);
       console.error('Error fetching master data:', error);
       showSnackbar('Error fetching master data', 'error');
     }
@@ -271,7 +277,23 @@ const MasterData = () => {
           Add New
         </Button>
       </Box>
-      <TableContainer component={Paper} sx={{ boxShadow: 3, background: '#fff', borderRadius: 2 }}>
+      <TableContainer component={Paper} sx={{ boxShadow: 3, background: '#fff', borderRadius: 2, position: 'relative' }}>
+        {loading && (
+          <Box sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            bgcolor: 'rgba(255,255,255,0.7)',
+            zIndex: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <CircularProgress />
+          </Box>
+        )}
         <Table>
           <TableHead>
             <TableRow sx={{ background: '#0C47A0' }}>

@@ -1204,6 +1204,33 @@ const PolicyStatus = ({ addCustomer }) => {
     }
   };
 
+  // Add useEffect to fetch pre-existing conditions from masterdata
+  useEffect(() => {
+    const fetchPreExistingOptions = async () => {
+      try {
+        const response = await axios.get(
+          `${API_URL}/masterdata/type/Pre-existing Condition`,
+          { headers: authHeader() }
+        );
+        let options = response.data.map((item) => item.name);
+        if (!options.includes('None')) {
+          options = ['None', ...options];
+        } else {
+          // Move 'None' to the front if it exists
+          options = ['None', ...options.filter(opt => opt !== 'None')];
+        }
+        setPreExistingOptions(options);
+      } catch (error) {
+        setSnackbar({
+          open: true,
+          message: "Error fetching pre-existing conditions",
+          severity: "error",
+        });
+      }
+    };
+    fetchPreExistingOptions();
+  }, []);
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography
@@ -3416,19 +3443,49 @@ const PolicyStatus = ({ addCustomer }) => {
                       </FormControl>
                     </Grid>
                     <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        label="Pre-existing Conditions"
-                        value={newPolicy.preExisting || ""}
-                        onChange={handleNewPolicyChange("preExisting")}
-                        multiline
-                        rows={2}
-                        placeholder="Enter pre-existing conditions (if any)"
-                        sx={{
-                          "& .MuiInputLabel-root": { color: "#ffffff" },
-                          "& .MuiOutlinedInput-root": { color: "#ffffff" },
-                        }}
-                      />
+                      <FormControl fullWidth error={!!errors.preExisting}>
+                        <InputLabel>Pre-existing Conditions</InputLabel>
+                        <Select
+                          multiple
+                          value={Array.isArray(newPolicy.preExisting) ? newPolicy.preExisting : (newPolicy.preExisting ? [newPolicy.preExisting] : [])}
+                          onChange={e => {
+                            setNewPolicy(prev => ({
+                              ...prev,
+                              preExisting: e.target.value,
+                            }));
+                            if (errors.preExisting) {
+                              setErrors(prev => ({ ...prev, preExisting: undefined }));
+                            }
+                          }}
+                          label="Pre-existing Conditions"
+                          renderValue={selected => (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {selected.map(value => (
+                                <Chip key={value} label={value} size="small" />
+                              ))}
+                            </Box>
+                          )}
+                          MenuProps={{
+                            PaperProps: {
+                              style: {
+                                maxHeight: 200,
+                                width: 220,
+                              },
+                            },
+                          }}
+                          sx={{ minWidth: 120, maxWidth: 220 }}
+                        >
+                          {preExistingOptions.map((option) => (
+                            <MenuItem key={option} value={option}>
+                              <Checkbox checked={Array.isArray(newPolicy.preExisting) ? newPolicy.preExisting.indexOf(option) > -1 : false} />
+                              <ListItemText primary={option} />
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {errors.preExisting && (
+                          <FormHelperText error>{errors.preExisting}</FormHelperText>
+                        )}
+                      </FormControl>
                     </Grid>
                   </Grid>
                 </Box>

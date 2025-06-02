@@ -227,7 +227,8 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
     const fetchPolicyTypes = async () => {
       try {
         const response = await axios.get(
-          `${API_URL}api/masterdata/type/Policy Type`
+          `${API_URL}/masterdata/type/Policy Type`,
+          { headers: authHeader() }
         );
         setPolicyTypes(
           response.data
@@ -436,7 +437,8 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
     setDeleteLoading(true);
     try {
       const response = await axios.delete(
-        `${API_URL}/leads/${deleteDialog.leadId}`
+        `${API_URL}/leads/${deleteDialog.leadId}`,
+        { headers: authHeader() }
       );
 
       if (response.status === 200) {
@@ -549,8 +551,8 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
                 onChange={handleLeadChange}
                 label="Policy Type"
               >
-                {policyTypes.map((type) => (
-                  <MenuItem key={type.value} value={type.value}>
+                {policyTypes.map((type, idx) => (
+                  <MenuItem key={`${type.value}-${idx}`} value={type.value}>
                     {type.label}
                   </MenuItem>
                 ))}
@@ -689,175 +691,166 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
         </Box>
 
         <Box sx={{ p: 0 }}>
-          {/* ...existing code... */}
-          <Box sx={{ mt: 0 }}>
-            
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 2,
-              }}
-            >
-              <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-                {/* ...existing search/filter UI... */}
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  onClick={handleDownloadCSV}
-                >
-                  Download CSV
-                </Button>
-              </Box>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 2,
+            }}
+          >
+            <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={handleDownloadCSV}
+              >
+                Download CSV
+              </Button>
             </Box>
-            {/* ...existing table and rest of the code... */}
           </Box>
-          {/* ...existing code... */}
-        </Box>
-
-        <TableContainer component={Paper} sx={{ position: "relative" }}>
-          {tableLoading && (
-            <Box
-              sx={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                bgcolor: "rgba(255, 255, 255, 0.7)",
-                zIndex: 1,
-              }}
-            >
-              <CircularProgress />
-            </Box>
-          )}
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell
-                  onClick={() => handleSort("leadName")}
-                  sx={{ cursor: "pointer" }}
-                >
-                  Name{" "}
-                  {sortField === "leadName" &&
-                    (sortDirection === "asc" ? "↑" : "↓")}
-                </TableCell>
-                <TableCell
-                  onClick={() => handleSort("leadPhone")}
-                  sx={{ cursor: "pointer" }}
-                >
-                  Phone{" "}
-                  {sortField === "leadPhone" &&
-                    (sortDirection === "asc" ? "↑" : "↓")}
-                </TableCell>
-                <TableCell
-                  onClick={() => handleSort("leadEmail")}
-                  sx={{ cursor: "pointer" }}
-                >
-                  Email{" "}
-                  {sortField === "leadEmail" &&
-                    (sortDirection === "asc" ? "↑" : "↓")}
-                </TableCell>
-                <TableCell>Policy Type</TableCell>
-                <TableCell
-                  onClick={() => handleSort("leadCreateDate")}
-                  sx={{ cursor: "pointer" }}
-                >
-                  Create Date{" "}
-                  {sortField === "leadCreateDate" &&
-                    (sortDirection === "asc" ? "↑" : "↓")}
-                </TableCell>
-                <TableCell>Remarks</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {paginatedLeads.length === 0 ? (
+          <TableContainer component={Paper} sx={{ position: "relative" }}>
+            {tableLoading && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  bgcolor: "rgba(255, 255, 255, 0.7)",
+                  zIndex: 1,
+                }}
+              >
+                <CircularProgress />
+              </Box>
+            )}
+            <Table>
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
-                    {searchTerm || filterPolicyType !== "all"
-                      ? "No leads match your search criteria"
-                      : "No leads found"}
+                  <TableCell
+                    onClick={() => handleSort("leadName")}
+                    sx={{ cursor: "pointer" }}
+                  >
+                    Name{" "}
+                    {sortField === "leadName" &&
+                      (sortDirection === "asc" ? "↑" : "↓")}
                   </TableCell>
+                  <TableCell
+                    onClick={() => handleSort("leadPhone")}
+                    sx={{ cursor: "pointer" }}
+                  >
+                    Phone{" "}
+                    {sortField === "leadPhone" &&
+                      (sortDirection === "asc" ? "↑" : "↓")}
+                  </TableCell>
+                  <TableCell
+                    onClick={() => handleSort("leadEmail")}
+                    sx={{ cursor: "pointer" }}
+                  >
+                    Email{" "}
+                    {sortField === "leadEmail" &&
+                      (sortDirection === "asc" ? "↑" : "↓")}
+                  </TableCell>
+                  <TableCell>Policy Type</TableCell>
+                  <TableCell
+                    onClick={() => handleSort("leadCreateDate")}
+                    sx={{ cursor: "pointer" }}
+                  >
+                    Create Date{" "}
+                    {sortField === "leadCreateDate" &&
+                      (sortDirection === "asc" ? "↑" : "↓")}
+                  </TableCell>
+                  <TableCell>Remarks</TableCell>
+                  <TableCell>Actions</TableCell>
                 </TableRow>
-              ) : (
-                paginatedLeads.map((lead) => (
-                  <TableRow key={lead?.id || Math.random()} hover>
-                    <TableCell>{lead?.leadName || "-"}</TableCell>
-                    <TableCell>{lead?.leadPhone || "-"}</TableCell>
-                    <TableCell>{lead?.leadEmail || "-"}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={lead?.leadPolicyType || "Unknown"}
-                        color={
-                          lead?.leadPolicyType === "health"
-                            ? "success"
-                            : lead?.leadPolicyType === "travel"
-                            ? "warning"
-                            : "primary"
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {lead?.leadCreateDate
-                        ? dayjs(lead.leadCreateDate).format("DD/MM/YYYY")
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        size="small"
-                        value={lead?.remarks || ""}
-                        onChange={(e) =>
-                          handleUpdateRemarks(lead?.id, e.target.value)
-                        }
-                        placeholder="Add remarks"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip title="Delete Lead">
-                        <IconButton
-                          color="error"
-                          onClick={() => lead?.id && handleDeleteClick(lead)}
-                          // disabled={!lead?.id}
-                          disabled={localStorage.getItem('userRole') === 'standard'}
-                        >
-                          <Delete />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Edit Lead">
-                        <IconButton
-                          disabled={localStorage.getItem('userRole') === 'standard'}
-                          >
-                          <Edit />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="View Lead">
-                        <IconButton>
-                          <Visibility />
-                        </IconButton>
-                      </Tooltip>
+              </TableHead>
+              <TableBody>
+                {paginatedLeads.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center">
+                      {searchTerm || filterPolicyType !== "all"
+                        ? "No leads match your search criteria"
+                        : "No leads found"}
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  paginatedLeads.map((lead) => (
+                    <TableRow key={lead?.id || Math.random()} hover>
+                      <TableCell>{lead?.leadName || "-"}</TableCell>
+                      <TableCell>{lead?.leadPhone || "-"}</TableCell>
+                      <TableCell>{lead?.leadEmail || "-"}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={lead?.leadPolicyType || "Unknown"}
+                          color={
+                            lead?.leadPolicyType === "health"
+                              ? "success"
+                              : lead?.leadPolicyType === "travel"
+                              ? "warning"
+                              : "primary"
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {lead?.leadCreateDate
+                          ? dayjs(lead.leadCreateDate).format("DD/MM/YYYY")
+                          : "-"}
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          value={lead?.remarks || ""}
+                          onChange={(e) =>
+                            handleUpdateRemarks(lead?.id, e.target.value)
+                          }
+                          placeholder="Add remarks"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Tooltip title="Delete Lead">
+                          <IconButton
+                            color="error"
+                            onClick={() => lead?.id && handleDeleteClick(lead)}
+                            disabled={localStorage.getItem('userRole') === 'standard'}
+                          >
+                            <Delete />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Edit Lead">
+                          <IconButton
+                            disabled={localStorage.getItem('userRole') === 'standard'}
+                          >
+                            <Edit />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="View Lead">
+                          <IconButton>
+                            <Visibility />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
 
-          {/* Pagination */}
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 25, 50]}
-            component="div"
-            count={filteredLeads.length}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-          />
-        </TableContainer>
+            {/* Pagination */}
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25, 50]}
+              component="div"
+              count={filteredLeads.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+            />
+          </TableContainer>
+        </Box>
       </Box>
 
       {/* Delete Confirmation Dialog */}

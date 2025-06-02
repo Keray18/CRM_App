@@ -372,7 +372,7 @@ const Dashboard = () => {
   const fetchEmployees = async () => {
     setIsLoading(true);
     try {
-      const { data } = await axios.get(`${API_URL}api/auth/getAllEmployees`, { headers: authHeader() });
+      const { data } = await axios.get(`${API_URL}/auth/getAllEmployees`, { headers: authHeader() });
       // Extract employees array from the response
       const employeesArray = data.employees || [];
       console.log('Fetched employees:', employeesArray); // Debug log
@@ -491,7 +491,7 @@ const Dashboard = () => {
 
       console.log('Sending data to backend:', formattedData);
 
-      const { data } = await axios.post(`${API_URL}api/auth/register`, formattedData, { headers: authHeader() });
+      const { data } = await axios.post(`${API_URL}/auth/register`, formattedData, { headers: authHeader() });
       
       console.log('Response from backend:', data);
 
@@ -557,7 +557,7 @@ const Dashboard = () => {
     const newPassword = generatePassword();
       
       // Make API call to update password
-      const response = await axios.post(`${API_URL}api/auth/resetPassword`, {
+      const response = await axios.post(`${API_URL}/auth/resetPassword`, {
         employeeId: selectedEmployee.id,
         newPassword: newPassword
       }, { headers: authHeader() });
@@ -666,7 +666,7 @@ const Dashboard = () => {
         status: "Pending"
       };
 
-      const response = await axios.post(`${API_URL}api/tasks/create`, taskData, { headers: authHeader() });
+      const response = await axios.post(`${API_URL}/tasks/create`, taskData, { headers: authHeader() });
       
       if (response.data && response.data.task) {
         setTasks([response.data.task, ...tasks]);
@@ -846,7 +846,7 @@ const Dashboard = () => {
     // Fetch departments
     const fetchDepartments = async () => {
       try {
-        const response = await axios.get(`${API_URL}api/masterdata/type/Department`, { headers: authHeader() });
+        const response = await axios.get(`${API_URL}/masterdata/type/Department`, { headers: authHeader() });
         setDepartments(response.data.filter(item => item.isActive).map(item => item.name));
       } catch (error) {
         setDepartments([]);
@@ -855,7 +855,7 @@ const Dashboard = () => {
     // Fetch positions
     const fetchPositions = async () => {
       try {
-        const response = await axios.get(`${API_URL}api/masterdata/type/Position`, { headers: authHeader() });
+        const response = await axios.get(`${API_URL}/masterdata/type/Position`, { headers: authHeader() });
         setPositions(response.data.filter(item => item.isActive).map(item => item.name));
       } catch (error) {
         setPositions([]);
@@ -976,7 +976,7 @@ const Dashboard = () => {
     try {
       const newRole = emp.role === 'standard' ? 'privileged' : 'standard';
       const updated = { ...emp, role: newRole };
-      await axios.put(`${API_URL}api/auth/${emp.id}`, { role: newRole }, { headers: authHeader() });
+      await axios.put(`${API_URL}/auth/${emp.id}`, { role: newRole }, { headers: authHeader() });
       setEmployees(employees.map(e => e.id === emp.id ? updated : e));
       setSnackbar({ open: true, message: `Privilege ${updated.role === 'privileged' ? 'granted' : 'revoked'} for ${emp.name}`, severity: 'success' });
     } catch (error) {
@@ -1503,11 +1503,11 @@ const Dashboard = () => {
                       ),
                     }}
                   >
-                    {departments.map((dept) => (
-                        <MenuItem key={dept} value={dept}>
-                          {dept}
-                        </MenuItem>
-                      ))}
+                    {departments.map((dept, idx) => (
+                      <MenuItem key={`${dept}-${idx}`} value={dept}>
+                        {dept}
+                      </MenuItem>
+                    ))}
                   </TextField>
                 </Grid>
 
@@ -1529,11 +1529,11 @@ const Dashboard = () => {
                       ),
                     }}
                   >
-                    {positions.map((pos) => (
-                        <MenuItem key={pos} value={pos}>
-                          {pos}
-                        </MenuItem>
-                      ))}
+                    {positions.map((pos, idx) => (
+                      <MenuItem key={`${pos}-${idx}`} value={pos}>
+                        {pos}
+                      </MenuItem>
+                    ))}
                   </TextField>
                 </Grid>
 

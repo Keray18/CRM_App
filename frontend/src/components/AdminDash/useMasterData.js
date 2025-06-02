@@ -5,7 +5,7 @@ export default function useMasterData(type) {
   const [data, setData] = useState([]);
   useEffect(() => {
     if (!type) return;
-    axios.get(`${API_URL}api/masterdata/type/${encodeURIComponent(type)}`)
+    axios.get(`${API_URL}/masterdata/type/${encodeURIComponent(type)}`)
       .then(res => setData(res.data.filter(item => item.isActive)))
       .catch(() => setData([]));
   }, [type]);

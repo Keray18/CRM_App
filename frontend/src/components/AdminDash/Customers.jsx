@@ -21,7 +21,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogContentText,
-  DialogActions
+  DialogActions,
+  CircularProgress,
+  Backdrop
 } from "@mui/material";
 import { Edit, Delete, Search, FilterList } from "@mui/icons-material";
 import dayjs from "dayjs";
@@ -47,6 +49,7 @@ const Customers = () => {
     status: 'Active',
   });
   const [creating, setCreating] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Updated policy types to match creation form options
   const policyTypes = ["Vehicle", "Health", "Travel"];
@@ -55,10 +58,13 @@ const Customers = () => {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
+        setLoading(true);
         const data = await getAllCustomers();
         setCustomers(data);
       } catch (error) {
         setSnackbar({ open: true, message: "Failed to fetch customers", severity: "error" });
+      } finally {
+        setLoading(false);
       }
     };
     fetchCustomers();
@@ -217,178 +223,184 @@ const Customers = () => {
       </Box>
 
       {/* Customers Table */}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead sx={{ backgroundColor: "primary.light" }}>
-            <TableRow>
-              <TableCell>Customer</TableCell>
-              <TableCell>Contact</TableCell>
-              <TableCell>Policy</TableCell>
-              <TableCell>Conversion Date</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {Array.isArray(filteredCustomers) && filteredCustomers.length === 0 ? (
+      <Box sx={{ position: 'relative' }}>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead sx={{ backgroundColor: "primary.light" }}>
               <TableRow>
-                <TableCell colSpan={6} align="center">No customers found</TableCell>
+                <TableCell>Customer</TableCell>
+                <TableCell>Contact</TableCell>
+                <TableCell>Policy</TableCell>
+                <TableCell>Conversion Date</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Actions</TableCell>
               </TableRow>
-            ) : (
-              Array.isArray(filteredCustomers) && filteredCustomers.map((customer) => (
-                <TableRow key={customer.id}>
-                  <TableCell>
-                    <Typography fontWeight="bold">{customer.name}</Typography>
-                    {editingCustomer === customer.id && (
-                      <TextField
-                        fullWidth
-                        size="small"
-                        value={editForm.name}
-                        onChange={(e) => handleEditFormChange('name', e.target.value)}
-                        sx={{ mt: 1 }}
-                      />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Box>
-                      <div>{customer.phone}</div>
-                      {customer.email && <div style={{ fontSize: '0.8rem', color: '#666' }}>{customer.email}</div>}
-                    </Box>
-                    {editingCustomer === customer.id && (
-                      <>
-                        <TextField
-                          fullWidth
-                          size="small"
-                          value={editForm.phone}
-                          onChange={(e) => handleEditFormChange('phone', e.target.value)}
-                          sx={{ mt: 1 }}
-                        />
-                        <TextField
-                          fullWidth
-                          size="small"
-                          value={editForm.email || ''}
-                          onChange={(e) => handleEditFormChange('email', e.target.value)}
-                          sx={{ mt: 1 }}
-                        />
-                      </>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {editingCustomer === customer.id ? (
-                      <TextField
-                        select
-                        fullWidth
-                        size="small"
-                        value={editForm.policy}
-                        onChange={(e) => handleEditFormChange('policy', e.target.value)}
-                      >
-                        {policyTypes.map(policy => (
-                          <MenuItem key={policy} value={policy}>{policy}</MenuItem>
-                        ))}
-                      </TextField>
-                    ) : (
-                      <Chip 
-                        label={customer.policy} 
-                        size="small" 
-                        color={
-                          customer.policy === "Vehicle" ? "primary" :
-                          customer.policy === "Health" ? "success" :
-                          customer.policy === "Travel" ? "info" : "default"
-                        }
-                      />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {editingCustomer === customer.id ? (
-                      <TextField
-                        type="date"
-                        fullWidth
-                        size="small"
-                        value={editForm.conversionDate}
-                        onChange={(e) => handleEditFormChange('conversionDate', e.target.value)}
-                      />
-                    ) : (
-                      customer.conversionDate
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {editingCustomer === customer.id ? (
-                      <TextField
-                        select
-                        fullWidth
-                        size="small"
-                        value={editForm.status || "Active"}
-                        onChange={(e) => handleEditFormChange('status', e.target.value)}
-                        sx={{ minWidth: 120 }}
-                      >
-                        {statusOptions.map(option => (
-                          <MenuItem key={option} value={option}>{option}</MenuItem>
-                        ))}
-                      </TextField>
-                    ) : (
-                      <Chip 
-                        label={customer.status || "Unknown"} 
-                        size="small" 
-                        color={
-                          customer.status === "Active"
-                            ? "success"
-                            : customer.status === "Pending"
-                            ? "warning"
-                            : customer.status === "Inactive"
-                            ? "default"
-                            : "error"
-                        }
-                        sx={{ color: "#fff", fontWeight: "bold" }}
-                      />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {editingCustomer === customer.id ? (
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button 
-                          variant="contained" 
-                          color="primary" 
-                          size="small"
-                          onClick={handleSaveEdit}
-                        >
-                          Save
-                        </Button>
-                        <Button 
-                          variant="outlined" 
-                          color="error" 
-                          size="small"
-                          onClick={handleCancelEdit}
-                        >
-                          Cancel
-                        </Button>
-                      </Box>
-                    ) : (
-                      <>
-                        <Tooltip title="Edit Customer">
-                          <IconButton 
-                            color="primary" 
-                            onClick={() => handleEditCustomer(customer)}
-                          >
-                            <Edit />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete Customer">
-                          <IconButton 
-                            color="error" 
-                            onClick={() => handleDeleteClick(customer)}
-                          >
-                            <Delete />
-                          </IconButton>
-                        </Tooltip>
-                      </>
-                    )}
-                  </TableCell>
+            </TableHead>
+            <TableBody>
+              {Array.isArray(filteredCustomers) && filteredCustomers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">No customers found</TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              ) : (
+                Array.isArray(filteredCustomers) && filteredCustomers.map((customer) => (
+                  <TableRow key={customer.id}>
+                    <TableCell>
+                      <Typography fontWeight="bold">{customer.name}</Typography>
+                      {editingCustomer === customer.id && (
+                        <TextField
+                          fullWidth
+                          size="small"
+                          value={editForm.name}
+                          onChange={(e) => handleEditFormChange('name', e.target.value)}
+                          sx={{ mt: 1 }}
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Box>
+                        <div>{customer.phone}</div>
+                        {customer.email && <div style={{ fontSize: '0.8rem', color: '#666' }}>{customer.email}</div>}
+                      </Box>
+                      {editingCustomer === customer.id && (
+                        <>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            value={editForm.phone}
+                            onChange={(e) => handleEditFormChange('phone', e.target.value)}
+                            sx={{ mt: 1 }}
+                          />
+                          <TextField
+                            fullWidth
+                            size="small"
+                            value={editForm.email || ''}
+                            onChange={(e) => handleEditFormChange('email', e.target.value)}
+                            sx={{ mt: 1 }}
+                          />
+                        </>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {editingCustomer === customer.id ? (
+                        <TextField
+                          select
+                          fullWidth
+                          size="small"
+                          value={editForm.policy}
+                          onChange={(e) => handleEditFormChange('policy', e.target.value)}
+                        >
+                          {policyTypes.map(policy => (
+                            <MenuItem key={policy} value={policy}>{policy}</MenuItem>
+                          ))}
+                        </TextField>
+                      ) : (
+                        <Chip 
+                          label={customer.policy} 
+                          size="small" 
+                          color={
+                            customer.policy === "Vehicle" ? "primary" :
+                            customer.policy === "Health" ? "success" :
+                            customer.policy === "Travel" ? "info" : "default"
+                          }
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {editingCustomer === customer.id ? (
+                        <TextField
+                          type="date"
+                          fullWidth
+                          size="small"
+                          value={editForm.conversionDate}
+                          onChange={(e) => handleEditFormChange('conversionDate', e.target.value)}
+                        />
+                      ) : (
+                        customer.conversionDate
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {editingCustomer === customer.id ? (
+                        <TextField
+                          select
+                          fullWidth
+                          size="small"
+                          value={editForm.status || "Active"}
+                          onChange={(e) => handleEditFormChange('status', e.target.value)}
+                          sx={{ minWidth: 120 }}
+                        >
+                          {statusOptions.map(option => (
+                            <MenuItem key={option} value={option}>{option}</MenuItem>
+                          ))}
+                        </TextField>
+                      ) : (
+                        <Chip 
+                          label={customer.status || "Unknown"} 
+                          size="small" 
+                          color={
+                            customer.status === "Active"
+                              ? "success"
+                              : customer.status === "Pending"
+                              ? "warning"
+                              : customer.status === "Inactive"
+                              ? "default"
+                              : "error"
+                          }
+                          sx={{ color: "#fff", fontWeight: "bold" }}
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {editingCustomer === customer.id ? (
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Button 
+                            variant="contained" 
+                            color="primary" 
+                            size="small"
+                            onClick={handleSaveEdit}
+                          >
+                            Save
+                          </Button>
+                          <Button 
+                            variant="outlined" 
+                            color="error" 
+                            size="small"
+                            onClick={handleCancelEdit}
+                          >
+                            Cancel
+                          </Button>
+                        </Box>
+                      ) : (
+                        <>
+                          <Tooltip title="Edit Customer">
+                            <IconButton 
+                              color="primary" 
+                              onClick={() => handleEditCustomer(customer)}
+                            >
+                              <Edit />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete Customer">
+                            <IconButton 
+                              color="error" 
+                              onClick={() => handleDeleteClick(customer)}
+                            >
+                              <Delete />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        {/* Loading Spinner Overlay */}
+        <Backdrop open={loading} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+          <CircularProgress color="inherit" />
+        </Backdrop>
+      </Box>
 
       {/* Delete Confirmation Dialog */}
       <Dialog

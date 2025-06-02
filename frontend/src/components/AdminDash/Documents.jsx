@@ -48,6 +48,7 @@ import {
 } from '@mui/icons-material';
 import axios from 'axios';
 import { API_URL } from '../../config/config';
+import authHeader from '../../services/authHeader';
 
 const Documents = () => {
   const [leads, setLeads] = useState([]);
@@ -85,7 +86,7 @@ const Documents = () => {
   useEffect(() => {
     const fetchLeads = async () => {
       try {
-        const response = await axios.get(`${API_URL}/leads`);
+        const response = await axios.get(`${API_URL}/leads`, { headers: authHeader() });
         setLeads(response.data.leads || []);
       } catch (error) {
         console.error('Error fetching leads:', error);
@@ -111,7 +112,7 @@ const Documents = () => {
   const fetchDocuments = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/documents/lead/${selectedLead}`);
+      const response = await axios.get(`${API_URL}/documents/lead/${selectedLead}`, { headers: authHeader() });
       setDocuments(response.data.documents || []);
     } catch (error) {
       console.error('Error fetching documents:', error);
@@ -161,6 +162,7 @@ const Documents = () => {
     try {
       await axios.post(`${API_URL}/documents/lead/${selectedLead}`, formData, {
         headers: {
+          ...authHeader(),
           'Content-Type': 'multipart/form-data'
         }
       });
@@ -217,7 +219,7 @@ const Documents = () => {
 
   const handleDelete = async (documentId) => {
     try {
-      await axios.delete(`${API_URL}/documents/${documentId}`);
+      await axios.delete(`${API_URL}/documents/${documentId}`, { headers: authHeader() });
       setSnackbar({ 
         open: true, 
         message: 'Document deleted successfully',

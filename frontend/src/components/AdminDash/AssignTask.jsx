@@ -71,7 +71,7 @@ const AssignTask = ({
 
   const fetchTasks = async () => {
     try {
-      const response = await axios.get(`${API_URL}/tasks`);
+      const response = await axios.get(`${API_URL}/tasks`, { headers: authHeader() });
       setTasks(response.data.tasks);
     } catch (error) {
       setSnackbar({
@@ -84,7 +84,7 @@ const AssignTask = ({
 
   const fetchLeads = async () => {
     try {
-      const response = await axios.get(`${API_URL}/leads`);
+      const response = await axios.get(`${API_URL}/leads`, { headers: authHeader() });
       setLocalLeads(response.data.leads || []);
     } catch (error) {
       console.error('Error fetching leads:', error);
@@ -154,7 +154,7 @@ const AssignTask = ({
         policyId: taskForm.policyId || null
       };
 
-      const response = await axios.post(`${API_URL}/tasks/create`, taskData);
+      const response = await axios.post(`${API_URL}/tasks/create`, taskData, { headers: authHeader() });
       
       if (response.data && response.data.task) {
         setTasks([response.data.task, ...tasks]);
@@ -194,7 +194,7 @@ const AssignTask = ({
     try {
       const response = await axios.patch(`${API_URL}/tasks/${taskId}/status`, {
         status: newStatus
-      });
+      }, { headers: authHeader() });
       
       setTasks(tasks.map(task => 
         task.id === taskId ? response.data.task : task
@@ -216,7 +216,7 @@ const AssignTask = ({
 
   const handleDeleteTask = async (taskId) => {
     try {
-      await axios.delete(`${API_URL}/tasks/${taskId}`);
+      await axios.delete(`${API_URL}/tasks/${taskId}`, { headers: authHeader() });
       
       setTasks(tasks.filter(task => task.id !== taskId));
       
