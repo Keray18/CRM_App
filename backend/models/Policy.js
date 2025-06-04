@@ -114,6 +114,7 @@ const Policy = sequelize.define('Policy', {
   odCommissionPercentage: DataTypes.FLOAT,
   tpCommissionPercentage: DataTypes.FLOAT,
   addonCommissionPercentage: DataTypes.FLOAT,
+  commissionPercentage: DataTypes.FLOAT,
   commissionAmount: DataTypes.FLOAT,
   totalCommissionAmount: DataTypes.FLOAT,
   effectiveCommissionPercentage: DataTypes.FLOAT,

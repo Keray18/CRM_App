@@ -92,8 +92,7 @@ const types = [
   'Status',
   'Document Type',
   'Commission Type',
-  'Insurance Company',
-  'Pre-existing Condition'
+  'Insurance Company'
 ];
 
 const MasterData = () => {

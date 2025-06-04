@@ -164,9 +164,6 @@ const PolicyStatus = ({ addCustomer }) => {
     preExisting: ""
   });
 
-  // Add this state at the top with other useState hooks:
-  const [preExistingOptions, setPreExistingOptions] = useState([]);
-
   // Fetch POSI Types from master data when insuranceType is "others"
   useEffect(() => {
     const fetchPosiTypes = async () => {
@@ -263,6 +260,7 @@ const PolicyStatus = ({ addCustomer }) => {
     totalCommissionAmount: "",
     effectiveCommissionPercentage: "",
     netPremium: "",
+    preExisting: "", // <-- Add this line
   });
 
   // Add useEffect to update policy type when insurance type changes
@@ -743,11 +741,11 @@ const PolicyStatus = ({ addCustomer }) => {
           height: Number(newPolicy.height) || 0,
           weight: Number(newPolicy.weight) || 0,
           bloodGroup: newPolicy.bloodGroup,
-          preExisting: newPolicy.preExisting,
           dateOfBirth: newPolicy.dateOfBirth,
           familyMembers: newPolicy.healthPlan?.includes("Family") ? familyMembers : [],
-          numberOfFamilyMembers: newPolicy.healthPlan?.includes("Family") ? 
-            Number(newPolicy.numberOfFamilyMembers) : 0,
+          numberOfFamilyMembers: newPolicy.healthPlan?.includes("Family") ? Number(newPolicy.numberOfFamilyMembers) : 0,
+          preExistingConditions: newPolicy.preExisting ? newPolicy.preExisting.split(',').map(s => s.trim()).filter(Boolean) : [],
+          referredBy: newPolicy.referredBy || "",
         });
       }
       
@@ -953,12 +951,17 @@ const PolicyStatus = ({ addCustomer }) => {
     setSelectedPolicy(policy);
     setViewModalOpen(true);
     handleMenuClose();
+    console.log('Selected Policy for View:', policy);
   };
 
   // Handle Edit
   const handleEdit = (policy) => {
     setSelectedPolicy(policy);
-    setNewPolicy(policy); // Set form data with selected policy
+    setNewPolicy({
+      ...policy,
+      preExisting: Array.isArray(policy.preExistingConditions) ? policy.preExistingConditions.join(', ') : '',
+      referredBy: policy.referredBy || '',
+    });
     setEditModalOpen(true);
     handleMenuClose();
   };
@@ -975,12 +978,10 @@ const PolicyStatus = ({ addCustomer }) => {
     try {
       setLoading(true);
       await deletePolicy(selectedPolicy.id);
-
-      // Instead of just updating local state, refetch all policies
-      await fetchPolicies();
-
+      await fetchPolicies(); // Refresh list
       setDeleteDialogOpen(false);
       setSelectedPolicy(null);
+      setEditModalOpen(false); // Close edit modal if open
       setSnackbar({
         open: true,
         message: "Policy deleted successfully",
@@ -1004,47 +1005,27 @@ const PolicyStatus = ({ addCustomer }) => {
       const updatedPolicy = await updatePolicy(selectedPolicy.id, {
         ...newPolicy,
         sumInsured: newPolicy.sumInsured ? Number(newPolicy.sumInsured) : null,
-        tripDuration: newPolicy.tripDuration
-          ? Number(newPolicy.tripDuration)
-          : null,
+        tripDuration: newPolicy.tripDuration ? Number(newPolicy.tripDuration) : null,
         height: newPolicy.height ? Number(newPolicy.height) : null,
         weight: newPolicy.weight ? Number(newPolicy.weight) : null,
         year: newPolicy.year ? Number(newPolicy.year) : null,
-        basicPremium: newPolicy.basicPremium
-          ? Number(newPolicy.basicPremium)
-          : null,
+        basicPremium: newPolicy.basicPremium ? Number(newPolicy.basicPremium) : null,
         odPremium: newPolicy.odPremium ? Number(newPolicy.odPremium) : null,
         tpPremium: newPolicy.tpPremium ? Number(newPolicy.tpPremium) : null,
-        ncbDiscount: newPolicy.ncbDiscount
-          ? Number(newPolicy.ncbDiscount)
-          : null,
-        addonPremium: newPolicy.addonPremium
-          ? Number(newPolicy.addonPremium)
-          : null,
+        ncbDiscount: newPolicy.ncbDiscount ? Number(newPolicy.ncbDiscount) : null,
+        addonPremium: newPolicy.addonPremium ? Number(newPolicy.addonPremium) : null,
         gst: newPolicy.gst ? Number(newPolicy.gst) : null,
-        totalPremium: newPolicy.totalPremium
-          ? Number(newPolicy.totalPremium)
-          : null,
+        totalPremium: newPolicy.totalPremium ? Number(newPolicy.totalPremium) : null,
         netPremium: newPolicy.netPremium ? Number(newPolicy.netPremium) : null,
-        odCommissionPercentage: newPolicy.odCommissionPercentage
-          ? Number(newPolicy.odCommissionPercentage)
-          : null,
-        tpCommissionPercentage: newPolicy.tpCommissionPercentage
-          ? Number(newPolicy.tpCommissionPercentage)
-          : null,
-        addonCommissionPercentage: newPolicy.addonCommissionPercentage
-          ? Number(newPolicy.addonCommissionPercentage)
-          : null,
-        commissionAmount: newPolicy.commissionAmount
-          ? Number(newPolicy.commissionAmount)
-          : null,
-        totalCommissionAmount: newPolicy.totalCommissionAmount
-          ? Number(newPolicy.totalCommissionAmount)
-          : null,
-        effectiveCommissionPercentage: newPolicy.effectiveCommissionPercentage
-          ? Number(newPolicy.effectiveCommissionPercentage)
-          : null,
+        odCommissionPercentage: newPolicy.odCommissionPercentage ? Number(newPolicy.odCommissionPercentage) : null,
+        tpCommissionPercentage: newPolicy.tpCommissionPercentage ? Number(newPolicy.tpCommissionPercentage) : null,
+        addonCommissionPercentage: newPolicy.addonCommissionPercentage ? Number(newPolicy.addonCommissionPercentage) : null,
+        commissionAmount: newPolicy.commissionAmount ? Number(newPolicy.commissionAmount) : null,
+        totalCommissionAmount: newPolicy.totalCommissionAmount ? Number(newPolicy.totalCommissionAmount) : null,
+        effectiveCommissionPercentage: newPolicy.effectiveCommissionPercentage ? Number(newPolicy.effectiveCommissionPercentage) : null,
         age: newPolicy.age ? Number(newPolicy.age) : null,
+        preExistingConditions: newPolicy.preExisting ? newPolicy.preExisting.split(',').map(s => s.trim()).filter(Boolean) : [],
+        referredBy: newPolicy.referredBy || "",
       });
       setPolicies((prevPolicies) =>
         prevPolicies.map((policy) =>
@@ -1126,24 +1107,13 @@ const PolicyStatus = ({ addCustomer }) => {
   const handleSendReminder = async (policy) => {
     try {
       setSendingReminder(true);
-      console.log('Attempting to send reminder for policy:', {
-        id: policy.id,
-        policyNumber: policy.policyNumber,
-        email: policy.email
-      });
-
       await sendRenewalReminder(policy.id);
-
       setSnackbar({
         open: true,
         message: 'Renewal reminder sent successfully',
         severity: 'success'
       });
     } catch (error) {
-      console.error('Error sending reminder:', {
-        error: error.message,
-        policyId: policy.id
-      });
       setSnackbar({
         open: true,
         message: error.message || 'Failed to send renewal reminder',
@@ -1203,33 +1173,6 @@ const PolicyStatus = ({ addCustomer }) => {
       }
     }
   };
-
-  // Add useEffect to fetch pre-existing conditions from masterdata
-  useEffect(() => {
-    const fetchPreExistingOptions = async () => {
-      try {
-        const response = await axios.get(
-          `${API_URL}/masterdata/type/Pre-existing Condition`,
-          { headers: authHeader() }
-        );
-        let options = response.data.map((item) => item.name);
-        if (!options.includes('None')) {
-          options = ['None', ...options];
-        } else {
-          // Move 'None' to the front if it exists
-          options = ['None', ...options.filter(opt => opt !== 'None')];
-        }
-        setPreExistingOptions(options);
-      } catch (error) {
-        setSnackbar({
-          open: true,
-          message: "Error fetching pre-existing conditions",
-          severity: "error",
-        });
-      }
-    };
-    fetchPreExistingOptions();
-  }, []);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -1522,7 +1465,7 @@ const PolicyStatus = ({ addCustomer }) => {
                             },
                           }}
                         >
-                          <EmailIcon />
+                          {sendingReminder ? <CircularProgress size={20} color="inherit" /> : <EmailIcon />}
                         </IconButton>
                       </Tooltip>
                     )}
@@ -3443,49 +3386,24 @@ const PolicyStatus = ({ addCustomer }) => {
                       </FormControl>
                     </Grid>
                     <Grid item xs={12}>
-                      <FormControl fullWidth error={!!errors.preExisting}>
-                        <InputLabel>Pre-existing Conditions</InputLabel>
-                        <Select
-                          multiple
-                          value={Array.isArray(newPolicy.preExisting) ? newPolicy.preExisting : (newPolicy.preExisting ? [newPolicy.preExisting] : [])}
-                          onChange={e => {
-                            setNewPolicy(prev => ({
-                              ...prev,
-                              preExisting: e.target.value,
-                            }));
-                            if (errors.preExisting) {
-                              setErrors(prev => ({ ...prev, preExisting: undefined }));
-                            }
-                          }}
-                          label="Pre-existing Conditions"
-                          renderValue={selected => (
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                              {selected.map(value => (
-                                <Chip key={value} label={value} size="small" />
-                              ))}
-                            </Box>
-                          )}
-                          MenuProps={{
-                            PaperProps: {
-                              style: {
-                                maxHeight: 200,
-                                width: 220,
-                              },
-                            },
-                          }}
-                          sx={{ minWidth: 120, maxWidth: 220 }}
-                        >
-                          {preExistingOptions.map((option) => (
-                            <MenuItem key={option} value={option}>
-                              <Checkbox checked={Array.isArray(newPolicy.preExisting) ? newPolicy.preExisting.indexOf(option) > -1 : false} />
-                              <ListItemText primary={option} />
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {errors.preExisting && (
-                          <FormHelperText error>{errors.preExisting}</FormHelperText>
-                        )}
-                      </FormControl>
+                      <TextField
+                        fullWidth
+                        label="Pre-existing Conditions"
+                        value={newPolicy.preExisting}
+                        onChange={e => {
+                          setNewPolicy(prev => ({
+                            ...prev,
+                            preExisting: e.target.value,
+                          }));
+                          if (errors.preExisting) {
+                            setErrors(prev => ({ ...prev, preExisting: undefined }));
+                          }
+                        }}
+                        multiline
+                        rows={2}
+                        error={!!errors.preExisting}
+                        helperText={errors.preExisting}
+                      />
                     </Grid>
                   </Grid>
                 </Box>
@@ -5021,7 +4939,7 @@ const PolicyStatus = ({ addCustomer }) => {
                             Age
                           </Typography>
                           <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {selectedPolicy.age || "N/A"}
+                            {selectedPolicy.dateOfBirth ? new Date().getFullYear() - new Date(selectedPolicy.dateOfBirth).getFullYear() : "N/A"}
                           </Typography>
                         </Box>
                         <Box sx={{ mb: 2 }}>
@@ -5032,9 +4950,9 @@ const PolicyStatus = ({ addCustomer }) => {
                             Pre-existing Conditions
                           </Typography>
                           <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {Array.isArray(selectedPolicy.preExistingConditions)
+                            {Array.isArray(selectedPolicy.preExistingConditions) && selectedPolicy.preExistingConditions.length > 0
                               ? selectedPolicy.preExistingConditions.join(", ")
-                              : selectedPolicy.preExisting || "N/A"}
+                              : "N/A"}
                           </Typography>
                         </Box>
                       </Grid>
@@ -5056,8 +4974,11 @@ const PolicyStatus = ({ addCustomer }) => {
                           >
                             Commission Percentage
                           </Typography>
+                          {console.log("[Health] Selected Policy Commission Percentage:", selectedPolicy.commissionPercentage)}
                           <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {selectedPolicy.commissionPercentage || "N/A"}
+                            {selectedPolicy.commissionPercentage !== undefined && selectedPolicy.commissionPercentage !== null && selectedPolicy.commissionPercentage !== ""
+                              ? selectedPolicy.commissionPercentage
+                              : "N/A"}
                           </Typography>
                         </Box>
                         <Box sx={{ mb: 2 }}>
@@ -5146,8 +5067,11 @@ const PolicyStatus = ({ addCustomer }) => {
                           >
                             Commission Percentage
                           </Typography>
+                          {console.log("[Travel] Selected Policy Commission Percentage:", selectedPolicy.commissionPercentage)}
                           <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {selectedPolicy.commissionPercentage || "N/A"}
+                            {selectedPolicy.commissionPercentage !== undefined && selectedPolicy.commissionPercentage !== null && selectedPolicy.commissionPercentage !== ""
+                              ? selectedPolicy.commissionPercentage
+                              : "N/A"}
                           </Typography>
                         </Box>
                         <Box sx={{ mb: 2 }}>
@@ -5354,6 +5278,26 @@ const PolicyStatus = ({ addCustomer }) => {
               Update Policy
             </Button>
           </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+            <Button
+              color="error"
+              variant="outlined"
+              onClick={() => setDeleteDialogOpen(true)}
+              disabled={loading}
+            >
+              {loading ? 'Deleting...' : 'Delete Policy'}
+            </Button>
+            <Button
+              color="primary"
+              variant="outlined"
+              onClick={() => handleSendReminder(selectedPolicy)}
+              disabled={sendingReminder}
+              sx={{ ml: 2 }}
+            >
+              {sendingReminder ? <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} /> : null}
+              Send Reminder
+            </Button>
+          </Box>
         </Box>
       </Modal>
 
@@ -5372,8 +5316,9 @@ const PolicyStatus = ({ addCustomer }) => {
             onClick={handleConfirmDelete}
             color="error"
             variant="contained"
+            disabled={loading} // Disable while deleting
           >
-            Delete
+            {loading ? 'Deleting...' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -5559,6 +5504,16 @@ const PolicyStatus = ({ addCustomer }) => {
           )}
         </Box>
       </Modal>
+
+      {/* Add a loading spinner overlay to the Policy Status section */}
+      {loading && (
+        <Backdrop open={true} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 3 }}>
+          <CircularProgress color="inherit" />
+          <Typography variant="h6" sx={{ mt: 2, ml: 2 }}>
+            Loading policies...
+          </Typography>
+        </Backdrop>
+      )}
     </Box>
   );
 };
