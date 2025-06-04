@@ -695,12 +695,6 @@ const PolicyStatus = ({ addCustomer }) => {
         newErrors.sumInsured =
           "Sum Insured is required and must be greater than 0";
       if (
-        !newPolicy.premium ||
-        isNaN(Number(newPolicy.premium)) ||
-        Number(newPolicy.premium) <= 0
-      )
-        newErrors.premium = "Premium is required and must be greater than 0";
-      if (
         !newPolicy.commissionPercentage ||
         isNaN(Number(newPolicy.commissionPercentage)) ||
         Number(newPolicy.commissionPercentage) <= 0
