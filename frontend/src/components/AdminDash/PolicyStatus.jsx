@@ -83,12 +83,13 @@ import {
   updatePolicy,
   deletePolicy,
   updatePolicyStatus,
-  sendRenewalReminder
+  sendRenewalReminder,
 } from "../../services/policyService";
 // import axios from 'axios'; // Already imported above
 import { API_URL } from "../../config/config";
 import { createCustomer } from "../../services/customerService";
 import authHeader from "../../services/authHeader";
+import Documents from "./Documents";
 
 const VisuallyHiddenInput = styled("input")({
   clip: "rect(0 0 0 0)",
@@ -161,7 +162,7 @@ const PolicyStatus = ({ addCustomer }) => {
     height: "",
     weight: "",
     bloodGroup: "",
-    preExisting: ""
+    preExisting: "",
   });
 
   // Add this state at the top with other useState hooks:
@@ -247,12 +248,16 @@ const PolicyStatus = ({ addCustomer }) => {
     mobile: "",
     email: "",
     startDate: new Date().toISOString().split("T")[0],
-    endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split("T")[0],
+    endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1))
+      .toISOString()
+      .split("T")[0],
     company: "",
     business: "New",
     type: "",
     policyCategory: "",
     sumInsured: "",
+    fuelType: "",
+    cngAmount: "",
     premium: "",
     commissionPercentage: "",
     // New fields for vehicle insurance commission
@@ -278,7 +283,9 @@ const PolicyStatus = ({ addCustomer }) => {
     const fetchAllLeads = async () => {
       try {
         // Use the provided API endpoint
-        const response = await axios.get(`${API_URL}/leads`, { headers: authHeader() });
+        const response = await axios.get(`${API_URL}/leads`, {
+          headers: authHeader(),
+        });
         if (response.data && Array.isArray(response.data.leads)) {
           setAllLeadsForSearch(response.data.leads);
         } else {
@@ -359,27 +366,34 @@ const PolicyStatus = ({ addCustomer }) => {
 
       const data = await getAllPolicies(filters);
       console.log("Fetched policies from backend:", data); // Debug log
-      
+
       // Check and update lapsed policies
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const updatedPolicies = await Promise.all(data.map(async (policy) => {
-        const endDate = new Date(policy.endDate);
-        endDate.setHours(0, 0, 0, 0);
+      const updatedPolicies = await Promise.all(
+        data.map(async (policy) => {
+          const endDate = new Date(policy.endDate);
+          endDate.setHours(0, 0, 0, 0);
 
-        if (policy.status === "Live Policy" && endDate < today) {
-          // Update policy status to Lapsed
-          try {
-            const updatedPolicy = await updatePolicyStatus(policy.id, "Lapsed");
-            return Array.isArray(updatedPolicy) ? updatedPolicy[0] : updatedPolicy;
-          } catch (error) {
-            console.error("Error updating lapsed policy:", error);
-            return policy;
+          if (policy.status === "Live Policy" && endDate < today) {
+            // Update policy status to Lapsed
+            try {
+              const updatedPolicy = await updatePolicyStatus(
+                policy.id,
+                "Lapsed"
+              );
+              return Array.isArray(updatedPolicy)
+                ? updatedPolicy[0]
+                : updatedPolicy;
+            } catch (error) {
+              console.error("Error updating lapsed policy:", error);
+              return policy;
+            }
           }
-        }
-        return policy;
-      }));
+          return policy;
+        })
+      );
 
       // Filter for about to end policies if that tab is selected
       if (currentTab === "aboutToEnd") {
@@ -433,7 +447,9 @@ const PolicyStatus = ({ addCustomer }) => {
   // Add fetchLeads function
   const fetchLeads = async () => {
     try {
-      const response = await axios.get(`${API_URL}/leads`, { headers: authHeader() });
+      const response = await axios.get(`${API_URL}/leads`, {
+        headers: authHeader(),
+      });
       setLocalLeads(response.data.leads || []);
     } catch (error) {
       console.error("Error fetching leads:", error);
@@ -513,37 +529,63 @@ const PolicyStatus = ({ addCustomer }) => {
   };
 
   // Update the handleNewPolicyChange function
+  // ...existing code...
   const handleNewPolicyChange = (field) => (event) => {
     const value = event.target.value;
     setNewPolicy((prev) => {
       const updated = { ...prev, [field]: value };
 
-      // Calculate net premium and GST for health and others policies
-      if ((insuranceType === "health" || insuranceType === "others") && 
-          (field === "sumInsured" || field === "premium" || field === "commissionPercentage")) {
-        const sumInsured = parseFloat(field === "sumInsured" ? value : updated.sumInsured) || 0;
-        
-        // Calculate GST (18% of sum insured)
-        const gstAmount = sumInsured * 0.18;
-        
-        // Calculate net premium (sum insured + GST)
-        const netPremium = sumInsured + gstAmount;
-        const totalPremium = netPremium;
+      // Vehicle GST and premium calculation
+      if (
+        insuranceType === "vehicle" &&
+        [
+          "basicPremium",
+          "odPremium",
+          "tpPremium",
+          "addonPremium",
+          "cngAmount",
+          "ncbDiscount",
+          "fuelType",
+        ].includes(field)
+      ) {
+        const basicPremium =
+          parseFloat(field === "basicPremium" ? value : updated.basicPremium) ||
+          0;
+        const tpPremium =
+          parseFloat(field === "tpPremium" ? value : updated.tpPremium) || 0;
+        const addonPremium =
+          parseFloat(field === "addonPremium" ? value : updated.addonPremium) ||
+          0;
+        const cngAmount =
+          parseFloat(field === "cngAmount" ? value : updated.cngAmount) || 0;
+        const ncbDiscount =
+          parseFloat(field === "ncbDiscount" ? value : updated.ncbDiscount) ||
+          0;
 
-        // Calculate commission
-        const commissionPercentage = parseFloat(field === "commissionPercentage" ? value : updated.commissionPercentage) || 0;
-        const commissionAmount = (totalPremium * commissionPercentage) / 100;
+        // OD Premium calculation for CNG/Petrol
+        let odPremium =
+          parseFloat(field === "odPremium" ? value : updated.odPremium) || 0;
+        if (updated.fuelType === "CNG" || updated.fuelType === "Petrol") {
+          odPremium = basicPremium + cngAmount - ncbDiscount;
+        }
+
+        // Net premium is sum of all premiums
+        const netPremium = basicPremium + odPremium + tpPremium + addonPremium;
+        // GST is 18% of net premium
+        const gstAmount = netPremium * 0.18;
+        // Total premium is net premium + GST
+        const totalPremium = netPremium + gstAmount;
 
         return {
           ...updated,
-          gst: gstAmount.toFixed(2),
+          odPremium: odPremium.toFixed(2),
           netPremium: netPremium.toFixed(2),
+          gst: gstAmount.toFixed(2),
           totalPremium: totalPremium.toFixed(2),
-          premium: totalPremium.toFixed(2),
-          commissionAmount: commissionAmount.toFixed(2)
         };
       }
 
+      // ...existing health/others logic...
       return updated;
     });
 
@@ -555,6 +597,7 @@ const PolicyStatus = ({ addCustomer }) => {
       }));
     }
   };
+  // ...existing code...
 
   const calculateCommission = (policy) => {
     if (!policy || !policy.commissionType) return null;
@@ -633,38 +676,62 @@ const PolicyStatus = ({ addCustomer }) => {
       newErrors.insuredName = "Insured Name is required";
     if (!newPolicy.mobile?.trim())
       newErrors.mobile = "Mobile Number is required";
-    if (!newPolicy.email?.trim()) 
-      newErrors.email = "Email is required";
+    if (!newPolicy.email?.trim()) newErrors.email = "Email is required";
     if (!newPolicy.company?.trim())
       newErrors.company = "Insurance Company is required";
-    // if (!newPolicy.startDate) 
+    // if (!newPolicy.startDate)
     //   newErrors.startDate = "Start Date is required";
-    if (!newPolicy.endDate) 
-      newErrors.endDate = "End Date is required";
+    if (!newPolicy.endDate) newErrors.endDate = "End Date is required";
 
     // Health specific validations
     if (insuranceType === "health") {
       if (!newPolicy.healthPlan?.trim())
         newErrors.healthPlan = "Health Plan is required";
-      if (!newPolicy.sumInsured || isNaN(Number(newPolicy.sumInsured)) || Number(newPolicy.sumInsured) <= 0)
-        newErrors.sumInsured = "Sum Insured is required and must be greater than 0";
-      if (!newPolicy.premium || isNaN(Number(newPolicy.premium)) || Number(newPolicy.premium) <= 0)
+      if (
+        !newPolicy.sumInsured ||
+        isNaN(Number(newPolicy.sumInsured)) ||
+        Number(newPolicy.sumInsured) <= 0
+      )
+        newErrors.sumInsured =
+          "Sum Insured is required and must be greater than 0";
+      if (
+        !newPolicy.premium ||
+        isNaN(Number(newPolicy.premium)) ||
+        Number(newPolicy.premium) <= 0
+      )
         newErrors.premium = "Premium is required and must be greater than 0";
-      if (!newPolicy.commissionPercentage || isNaN(Number(newPolicy.commissionPercentage)) || Number(newPolicy.commissionPercentage) <= 0)
-        newErrors.commissionPercentage = "Commission Percentage is required and must be greater than 0";
+      if (
+        !newPolicy.commissionPercentage ||
+        isNaN(Number(newPolicy.commissionPercentage)) ||
+        Number(newPolicy.commissionPercentage) <= 0
+      )
+        newErrors.commissionPercentage =
+          "Commission Percentage is required and must be greater than 0";
       if (!newPolicy.dateOfBirth?.trim())
         newErrors.dateOfBirth = "Date of Birth is required";
-      if (!newPolicy.height || isNaN(Number(newPolicy.height)) || Number(newPolicy.height) <= 0)
+      if (
+        !newPolicy.height ||
+        isNaN(Number(newPolicy.height)) ||
+        Number(newPolicy.height) <= 0
+      )
         newErrors.height = "Height is required and must be greater than 0";
-      if (!newPolicy.weight || isNaN(Number(newPolicy.weight)) || Number(newPolicy.weight) <= 0)
+      if (
+        !newPolicy.weight ||
+        isNaN(Number(newPolicy.weight)) ||
+        Number(newPolicy.weight) <= 0
+      )
         newErrors.weight = "Weight is required and must be greater than 0";
       if (!newPolicy.bloodGroup?.trim())
         newErrors.bloodGroup = "Blood Group is required";
-      
+
       // Only validate family members if it's a family plan
       if (newPolicy.healthPlan?.includes("Family")) {
-        if (!newPolicy.numberOfFamilyMembers || Number(newPolicy.numberOfFamilyMembers) <= 0)
-          newErrors.numberOfFamilyMembers = "Number of family members is required";
+        if (
+          !newPolicy.numberOfFamilyMembers ||
+          Number(newPolicy.numberOfFamilyMembers) <= 0
+        )
+          newErrors.numberOfFamilyMembers =
+            "Number of family members is required";
         if (familyMembers.length < Number(newPolicy.numberOfFamilyMembers))
           newErrors.familyMembers = "Please add all family members";
       }
@@ -672,16 +739,25 @@ const PolicyStatus = ({ addCustomer }) => {
 
     // Others specific validations
     if (insuranceType === "others") {
-      if (!newPolicy.type?.trim()) 
-        newErrors.type = "Policy Type is required";
+      if (!newPolicy.type?.trim()) newErrors.type = "Policy Type is required";
       // if (!newPolicy.policyCategory?.trim())
       //   newErrors.policyCategory = "Policy Category is required";
-      if (!newPolicy.sumInsured || isNaN(Number(newPolicy.sumInsured)) || Number(newPolicy.sumInsured) <= 0)
-        newErrors.sumInsured = "Sum Insured is required and must be greater than 0";
+      if (
+        !newPolicy.sumInsured ||
+        isNaN(Number(newPolicy.sumInsured)) ||
+        Number(newPolicy.sumInsured) <= 0
+      )
+        newErrors.sumInsured =
+          "Sum Insured is required and must be greater than 0";
       // if (!newPolicy.premium || isNaN(Number(newPolicy.premium)) || Number(newPolicy.premium) <= 0)
       //   newErrors.premium = "Premium is required and must be greater than 0";
-      if (!newPolicy.commissionPercentage || isNaN(Number(newPolicy.commissionPercentage)) || Number(newPolicy.commissionPercentage) <= 0)
-        newErrors.commissionPercentage = "Commission Percentage is required and must be greater than 0";
+      if (
+        !newPolicy.commissionPercentage ||
+        isNaN(Number(newPolicy.commissionPercentage)) ||
+        Number(newPolicy.commissionPercentage) <= 0
+      )
+        newErrors.commissionPercentage =
+          "Commission Percentage is required and must be greater than 0";
     }
 
     // Document validation for all types
@@ -706,13 +782,14 @@ const PolicyStatus = ({ addCustomer }) => {
         console.log("Form validation failed", errors);
         return;
       }
-      
+
       setLoading(true);
       // For others type, we need to ensure we're not overriding the type
-      const baseType = insuranceType === "others" ? newPolicy.type : insuranceType;
+      const baseType =
+        insuranceType === "others" ? newPolicy.type : insuranceType;
       console.log("Insurance type:", insuranceType);
       console.log("Base type:", baseType);
-      
+
       const policyToAdd = {
         policyNumber: newPolicy.policyNumber,
         insuredName: newPolicy.insuredName,
@@ -733,7 +810,9 @@ const PolicyStatus = ({ addCustomer }) => {
         sumInsured: Number(newPolicy.sumInsured) || 0,
         premium: Number(newPolicy.premium) || 0,
         commissionPercentage: Number(newPolicy.commissionPercentage) || 0,
-        commissionAmount: (Number(newPolicy.premium) * Number(newPolicy.commissionPercentage)) / 100,
+        commissionAmount:
+          (Number(newPolicy.premium) * Number(newPolicy.commissionPercentage)) /
+          100,
       };
 
       // Add health specific fields
@@ -745,12 +824,15 @@ const PolicyStatus = ({ addCustomer }) => {
           bloodGroup: newPolicy.bloodGroup,
           preExisting: newPolicy.preExisting,
           dateOfBirth: newPolicy.dateOfBirth,
-          familyMembers: newPolicy.healthPlan?.includes("Family") ? familyMembers : [],
-          numberOfFamilyMembers: newPolicy.healthPlan?.includes("Family") ? 
-            Number(newPolicy.numberOfFamilyMembers) : 0,
+          familyMembers: newPolicy.healthPlan?.includes("Family")
+            ? familyMembers
+            : [],
+          numberOfFamilyMembers: newPolicy.healthPlan?.includes("Family")
+            ? Number(newPolicy.numberOfFamilyMembers)
+            : 0,
         });
       }
-      
+
       // Add others specific fields
       if (insuranceType === "others") {
         Object.assign(policyToAdd, {
@@ -790,7 +872,8 @@ const PolicyStatus = ({ addCustomer }) => {
           phone: createdPolicy.mobile,
           email: createdPolicy.email,
           policy: createdPolicy.type,
-          conversionDate: createdPolicy.startDate || new Date().toISOString().split("T")[0],
+          conversionDate:
+            createdPolicy.startDate || new Date().toISOString().split("T")[0],
           status: "Active",
         });
       } catch (err) {
@@ -1126,28 +1209,28 @@ const PolicyStatus = ({ addCustomer }) => {
   const handleSendReminder = async (policy) => {
     try {
       setSendingReminder(true);
-      console.log('Attempting to send reminder for policy:', {
+      console.log("Attempting to send reminder for policy:", {
         id: policy.id,
         policyNumber: policy.policyNumber,
-        email: policy.email
+        email: policy.email,
       });
 
       await sendRenewalReminder(policy.id);
 
       setSnackbar({
         open: true,
-        message: 'Renewal reminder sent successfully',
-        severity: 'success'
+        message: "Renewal reminder sent successfully",
+        severity: "success",
       });
     } catch (error) {
-      console.error('Error sending reminder:', {
+      console.error("Error sending reminder:", {
         error: error.message,
-        policyId: policy.id
+        policyId: policy.id,
       });
       setSnackbar({
         open: true,
-        message: error.message || 'Failed to send renewal reminder',
-        severity: 'error'
+        message: error.message || "Failed to send renewal reminder",
+        severity: "error",
       });
     } finally {
       setSendingReminder(false);
@@ -1160,8 +1243,8 @@ const PolicyStatus = ({ addCustomer }) => {
   const getAboutToEndPolicies = () => {
     const today = new Date();
     const oneMonthFromNow = new Date(today.setMonth(today.getMonth() + 1));
-    
-    return policies.filter(policy => {
+
+    return policies.filter((policy) => {
       if (!policy.endDate) return false;
       const endDate = new Date(policy.endDate);
       return endDate <= oneMonthFromNow && endDate > new Date();
@@ -1170,22 +1253,24 @@ const PolicyStatus = ({ addCustomer }) => {
 
   // Add this function to handle family member changes
   const handleFamilyMemberChange = (field) => (event) => {
-    setCurrentFamilyMember(prev => ({
+    setCurrentFamilyMember((prev) => ({
       ...prev,
-      [field]: event.target.value
+      [field]: event.target.value,
     }));
   };
 
   // Add this function to add family member
   const handleAddFamilyMember = () => {
-    if (familyMembers.length < (parseInt(newPolicy.numberOfFamilyMembers) || 0)) {
-      setFamilyMembers(prev => [...prev, currentFamilyMember]);
+    if (
+      familyMembers.length < (parseInt(newPolicy.numberOfFamilyMembers) || 0)
+    ) {
+      setFamilyMembers((prev) => [...prev, currentFamilyMember]);
       // Update the policy with the new family member
-      setNewPolicy(prev => ({
+      setNewPolicy((prev) => ({
         ...prev,
-        familyMembers: [...familyMembers, currentFamilyMember]
+        familyMembers: [...familyMembers, currentFamilyMember],
       }));
-      
+
       // Reset the current family member form
       setCurrentFamilyMember({
         name: "",
@@ -1194,11 +1279,14 @@ const PolicyStatus = ({ addCustomer }) => {
         height: "",
         weight: "",
         bloodGroup: "",
-        preExisting: ""
+        preExisting: "",
       });
 
       // Close modal if all members are added
-      if (familyMembers.length + 1 === parseInt(newPolicy.numberOfFamilyMembers)) {
+      if (
+        familyMembers.length + 1 ===
+        parseInt(newPolicy.numberOfFamilyMembers)
+      ) {
         setOpenFamilyModal(false);
       }
     }
@@ -1213,11 +1301,11 @@ const PolicyStatus = ({ addCustomer }) => {
           { headers: authHeader() }
         );
         let options = response.data.map((item) => item.name);
-        if (!options.includes('None')) {
-          options = ['None', ...options];
+        if (!options.includes("None")) {
+          options = ["None", ...options];
         } else {
           // Move 'None' to the front if it exists
-          options = ['None', ...options.filter(opt => opt !== 'None')];
+          options = ["None", ...options.filter((opt) => opt !== "None")];
         }
         setPreExistingOptions(options);
       } catch (error) {
@@ -1480,7 +1568,7 @@ const PolicyStatus = ({ addCustomer }) => {
                   </FormControl>
                 </TableCell>
                 <TableCell>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Box sx={{ display: "flex", gap: 1 }}>
                     <Tooltip title="View Policy">
                       <IconButton
                         size="small"
@@ -2084,7 +2172,6 @@ const PolicyStatus = ({ addCustomer }) => {
                         )}
                       </FormControl>
                     </Grid>
-
                     {/* Date Fields */}
                     <Grid item xs={12} md={6}>
                       <TextField
@@ -2120,7 +2207,6 @@ const PolicyStatus = ({ addCustomer }) => {
                         }}
                       />
                     </Grid>
-
                     {/* Customer Details */}
                     <Grid item xs={12} md={6}>
                       <TextField
@@ -2201,7 +2287,48 @@ const PolicyStatus = ({ addCustomer }) => {
                         onChange={handleNewPolicyChange("referredBy")}
                       />
                     </Grid>
-
+                    <Grid item xs={12} md={4}>
+                      <FormControl fullWidth error={!!errors.fuelType}>
+                        <InputLabel>Fuel Type</InputLabel>
+                        <Select
+                          value={newPolicy.fuelType}
+                          onChange={handleNewPolicyChange("fuelType")}
+                          label="Fuel Type"
+                        >
+                          <MenuItem value="Petrol">Petrol</MenuItem>
+                          <MenuItem value="Diesel">Diesel</MenuItem>
+                          <MenuItem value="CNG">CNG</MenuItem>
+                          <MenuItem value="Electric">Electric</MenuItem>
+                          <MenuItem value="LPG">LPG</MenuItem>
+                        </Select>
+                        {errors.fuelType && (
+                          <FormHelperText error>
+                            {errors.fuelType}
+                          </FormHelperText>
+                        )}
+                      </FormControl>
+                    </Grid>
+                    {(newPolicy.fuelType === "CNG" ||
+                      newPolicy.fuelType === "LPG") && (
+                      <Grid item xs={12} md={4}>
+                        <TextField
+                          fullWidth
+                          label="CNG/LPG Amount"
+                          value={newPolicy.cngAmount}
+                          onChange={handleNewPolicyChange("cngAmount")}
+                          type="number"
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                ₹
+                              </InputAdornment>
+                            ),
+                          }}
+                          error={!!errors.cngAmount}
+                          helperText={errors.cngAmount}
+                        />
+                      </Grid>
+                    )}
                     {/* Vehicle Details */}
                     <Grid item xs={12} md={6}>
                       <FormControl fullWidth error={!!errors.vehicleType}>
@@ -3259,6 +3386,139 @@ const PolicyStatus = ({ addCustomer }) => {
                             )}
                           </FormControl>
                         </Grid>
+                        {/* Show number of family members if plan is family */}
+                        {newPolicy.healthPlan &&
+                          newPolicy.healthPlan
+                            .toLowerCase()
+                            .includes("family") && (
+                            <Grid item xs={12} md={6}>
+                              <TextField
+                                fullWidth
+                                label="Number of Family Members"
+                                value={newPolicy.numberOfFamilyMembers || ""}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(
+                                    /\D/,
+                                    ""
+                                  );
+                                  setNewPolicy((prev) => ({
+                                    ...prev,
+                                    numberOfFamilyMembers: value,
+                                  }));
+                                  if (familyMembers.length > value) {
+                                    setFamilyMembers((prev) =>
+                                      prev.slice(0, value)
+                                    );
+                                  }
+                                }}
+                                type="number"
+                                inputProps={{ min: 1, max: 20 }}
+                                error={!!errors.numberOfFamilyMembers}
+                                helperText={errors.numberOfFamilyMembers}
+                                required
+                              />
+                            </Grid>
+                          )}
+                        {/* Add/Show Family Members */}
+                        {newPolicy.healthPlan &&
+                          newPolicy.healthPlan
+                            .toLowerCase()
+                            .includes("family") && (
+                            <Grid item xs={12}>
+                              <Box sx={{ mt: 2, mb: 2 }}>
+                                <Typography
+                                  variant="subtitle1"
+                                  sx={{ color: "#ffffff", mb: 1 }}
+                                >
+                                  Added Family Members:
+                                </Typography>
+                                {familyMembers.map((member, index) => (
+                                  <Box
+                                    key={index}
+                                    sx={{
+                                      p: 1,
+                                      mb: 1,
+                                      bgcolor: "rgba(255, 255, 255, 0.1)",
+                                      borderRadius: 1,
+                                      color: "#ffffff",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "space-between",
+                                    }}
+                                  >
+                                    <Typography variant="body2">
+                                      {member.name} ({member.relation}) - Age:{" "}
+                                      {new Date().getFullYear() -
+                                        new Date(
+                                          member.dateOfBirth
+                                        ).getFullYear()}
+                                    </Typography>
+                                    <Box>
+                                      <Button
+                                        size="small"
+                                        variant="outlined"
+                                        sx={{
+                                          ml: 1,
+                                          color: "#1976d2",
+                                          borderColor: "#1976d2",
+                                        }}
+                                        onClick={() => {
+                                          setCurrentFamilyMember(member);
+                                          setOpenFamilyModal(true);
+                                        }}
+                                      >
+                                        Edit
+                                      </Button>
+                                      <Button
+                                        size="small"
+                                        variant="outlined"
+                                        sx={{
+                                          ml: 1,
+                                          color: "#d32f2f",
+                                          borderColor: "#d32f2f",
+                                        }}
+                                        onClick={() => {
+                                          setFamilyMembers(
+                                            familyMembers.filter(
+                                              (_, i) => i !== index
+                                            )
+                                          );
+                                        }}
+                                      >
+                                        Delete
+                                      </Button>
+                                    </Box>
+                                  </Box>
+                                ))}
+                                {familyMembers.length <
+                                  (parseInt(newPolicy.numberOfFamilyMembers) ||
+                                    0) && (
+                                  <Button
+                                    variant="outlined"
+                                    onClick={() => {
+                                      setCurrentFamilyMember({
+                                        name: "",
+                                        relation: "",
+                                        dateOfBirth: "",
+                                        height: "",
+                                        weight: "",
+                                        bloodGroup: "",
+                                        preExisting: "",
+                                      });
+                                      setOpenFamilyModal(true);
+                                    }}
+                                    sx={{
+                                      mt: 1,
+                                      color: "#ffffff",
+                                      borderColor: "#ffffff",
+                                    }}
+                                  >
+                                    Add Family Member
+                                  </Button>
+                                )}
+                              </Box>
+                            </Grid>
+                          )}
 
                         <Grid item xs={12} md={6}>
                           <TextField
@@ -3272,7 +3532,9 @@ const PolicyStatus = ({ addCustomer }) => {
                             helperText={errors.sumInsured}
                             InputProps={{
                               startAdornment: (
-                                <InputAdornment position="start">₹</InputAdornment>
+                                <InputAdornment position="start">
+                                  ₹
+                                </InputAdornment>
                               ),
                             }}
                             sx={{
@@ -3281,35 +3543,47 @@ const PolicyStatus = ({ addCustomer }) => {
                             }}
                           />
                         </Grid>
-                        
+
                         {/* Display added family members */}
                         {familyMembers.length > 0 && (
                           <Grid item xs={12}>
                             <Box sx={{ mt: 2, mb: 2 }}>
-                              <Typography variant="subtitle1" sx={{ color: "#ffffff", mb: 1 }}>
+                              <Typography
+                                variant="subtitle1"
+                                sx={{ color: "#ffffff", mb: 1 }}
+                              >
                                 Added Family Members:
                               </Typography>
                               {familyMembers.map((member, index) => (
-                                <Box 
-                                  key={index} 
-                                  sx={{ 
-                                    p: 1, 
-                                    mb: 1, 
+                                <Box
+                                  key={index}
+                                  sx={{
+                                    p: 1,
+                                    mb: 1,
                                     bgcolor: "rgba(255, 255, 255, 0.1)",
                                     borderRadius: 1,
-                                    color: "#ffffff"
+                                    color: "#ffffff",
                                   }}
                                 >
                                   <Typography variant="body2">
-                                    {member.name} ({member.relation}) - Age: {new Date().getFullYear() - new Date(member.dateOfBirth).getFullYear()}
+                                    {member.name} ({member.relation}) - Age:{" "}
+                                    {new Date().getFullYear() -
+                                      new Date(
+                                        member.dateOfBirth
+                                      ).getFullYear()}
                                   </Typography>
                                 </Box>
                               ))}
-                              {familyMembers.length < newPolicy.numberOfFamilyMembers && (
+                              {familyMembers.length <
+                                newPolicy.numberOfFamilyMembers && (
                                 <Button
                                   variant="outlined"
                                   onClick={() => setOpenFamilyModal(true)}
-                                  sx={{ mt: 1, color: "#ffffff", borderColor: "#ffffff" }}
+                                  sx={{
+                                    mt: 1,
+                                    color: "#ffffff",
+                                    borderColor: "#ffffff",
+                                  }}
                                 >
                                   Add More Family Members
                                 </Button>
@@ -3336,7 +3610,7 @@ const PolicyStatus = ({ addCustomer }) => {
                       />
                     </Grid>
                     <Grid item xs={12} md={6}>
-                    <TextField
+                      <TextField
                         fullWidth
                         label="GST (18%)"
                         value={newPolicy.gst}
@@ -3354,9 +3628,8 @@ const PolicyStatus = ({ addCustomer }) => {
                           },
                         }}
                       />
-
                     </Grid>
-                    
+
                     <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
@@ -3447,20 +3720,35 @@ const PolicyStatus = ({ addCustomer }) => {
                         <InputLabel>Pre-existing Conditions</InputLabel>
                         <Select
                           multiple
-                          value={Array.isArray(newPolicy.preExisting) ? newPolicy.preExisting : (newPolicy.preExisting ? [newPolicy.preExisting] : [])}
-                          onChange={e => {
-                            setNewPolicy(prev => ({
+                          value={
+                            Array.isArray(newPolicy.preExisting)
+                              ? newPolicy.preExisting
+                              : newPolicy.preExisting
+                              ? [newPolicy.preExisting]
+                              : []
+                          }
+                          onChange={(e) => {
+                            setNewPolicy((prev) => ({
                               ...prev,
                               preExisting: e.target.value,
                             }));
                             if (errors.preExisting) {
-                              setErrors(prev => ({ ...prev, preExisting: undefined }));
+                              setErrors((prev) => ({
+                                ...prev,
+                                preExisting: undefined,
+                              }));
                             }
                           }}
                           label="Pre-existing Conditions"
-                          renderValue={selected => (
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                              {selected.map(value => (
+                          renderValue={(selected) => (
+                            <Box
+                              sx={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: 0.5,
+                              }}
+                            >
+                              {selected.map((value) => (
                                 <Chip key={value} label={value} size="small" />
                               ))}
                             </Box>
@@ -3477,13 +3765,21 @@ const PolicyStatus = ({ addCustomer }) => {
                         >
                           {preExistingOptions.map((option) => (
                             <MenuItem key={option} value={option}>
-                              <Checkbox checked={Array.isArray(newPolicy.preExisting) ? newPolicy.preExisting.indexOf(option) > -1 : false} />
+                              <Checkbox
+                                checked={
+                                  Array.isArray(newPolicy.preExisting)
+                                    ? newPolicy.preExisting.indexOf(option) > -1
+                                    : false
+                                }
+                              />
                               <ListItemText primary={option} />
                             </MenuItem>
                           ))}
                         </Select>
                         {errors.preExisting && (
-                          <FormHelperText error>{errors.preExisting}</FormHelperText>
+                          <FormHelperText error>
+                            {errors.preExisting}
+                          </FormHelperText>
                         )}
                       </FormControl>
                     </Grid>
@@ -3983,7 +4279,6 @@ const PolicyStatus = ({ addCustomer }) => {
                           ),
                           readOnly: true,
                         }}
-                        
                         sx={{
                           "& .MuiInputLabel-root": { color: "#ffffff" },
                           "& .MuiOutlinedInput-root": {
@@ -4247,11 +4542,7 @@ const PolicyStatus = ({ addCustomer }) => {
                 </Box>
 
                 {errors.documents && (
-                  <Typography
-                    variant="caption"
-                    color="error"
-                    sx={{ ml: 1 }}
-                  >
+                  <Typography variant="caption" color="error" sx={{ ml: 1 }}>
                     {errors.documents}
                   </Typography>
                 )}
@@ -4399,44 +4690,44 @@ const PolicyStatus = ({ addCustomer }) => {
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <TextField
-                        fullWidth
-                        label="GST (18%)"
-                        value={newPolicy.gst}
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">₹</InputAdornment>
-                          ),
-                          readOnly: true,
-                        }}
-                        sx={{
-                          "& .MuiInputLabel-root": { color: "#ffffff" },
-                          "& .MuiOutlinedInput-root": {
-                            color: "#ffffff",
-                            backgroundColor: "rgba(255, 255, 255, 0.1)",
-                          },
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Net Premium"
-                        value={newPolicy.netPremium || "0.00"}
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">₹</InputAdornment>
-                          ),
-                          readOnly: true,
-                        }}
-                        sx={{
-                          "& .MuiInputLabel-root": { color: "#ffffff" },
-                          "& .MuiOutlinedInput-root": {
-                            color: "#ffffff",
-                            backgroundColor: "rgba(255, 255, 255, 0.1)",
-                          },
-                        }}
-                      />
-                    </Grid>
+                      fullWidth
+                      label="GST (18%)"
+                      value={newPolicy.gst}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">₹</InputAdornment>
+                        ),
+                        readOnly: true,
+                      }}
+                      sx={{
+                        "& .MuiInputLabel-root": { color: "#ffffff" },
+                        "& .MuiOutlinedInput-root": {
+                          color: "#ffffff",
+                          backgroundColor: "rgba(255, 255, 255, 0.1)",
+                        },
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Net Premium"
+                      value={newPolicy.netPremium || "0.00"}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">₹</InputAdornment>
+                        ),
+                        readOnly: true,
+                      }}
+                      sx={{
+                        "& .MuiInputLabel-root": { color: "#ffffff" },
+                        "& .MuiOutlinedInput-root": {
+                          color: "#ffffff",
+                          backgroundColor: "rgba(255, 255, 255, 0.1)",
+                        },
+                      }}
+                    />
+                  </Grid>
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
@@ -4486,19 +4777,24 @@ const PolicyStatus = ({ addCustomer }) => {
                               });
 
                               // Calculate commission amount based on net premium
-                              const netPremium = parseFloat(newPolicy.netPremium) || 0;
-                              const commissionAmount = (netPremium * (parseFloat(value) || 0)) / 100;
+                              const netPremium =
+                                parseFloat(newPolicy.netPremium) || 0;
+                              const commissionAmount =
+                                (netPremium * (parseFloat(value) || 0)) / 100;
 
                               setNewPolicy((prev) => ({
                                 ...prev,
                                 commissionAmount: commissionAmount.toFixed(2),
-                                totalCommissionAmount: commissionAmount.toFixed(2),
+                                totalCommissionAmount:
+                                  commissionAmount.toFixed(2),
                               }));
                             }}
                             type="number"
                             InputProps={{
                               endAdornment: (
-                                <InputAdornment position="end">%</InputAdornment>
+                                <InputAdornment position="end">
+                                  %
+                                </InputAdornment>
                               ),
                               inputProps: { min: 0, max: 100 },
                             }}
@@ -4513,7 +4809,9 @@ const PolicyStatus = ({ addCustomer }) => {
                             value={newPolicy.commissionAmount}
                             InputProps={{
                               startAdornment: (
-                                <InputAdornment position="start">₹</InputAdornment>
+                                <InputAdornment position="start">
+                                  ₹
+                                </InputAdornment>
                               ),
                               readOnly: true,
                             }}
@@ -4525,6 +4823,7 @@ const PolicyStatus = ({ addCustomer }) => {
                 </Grid>
               </Box>
             )}
+            <Documents />
             {isSubmitting && <LinearProgress sx={{ mt: 2 }} />}
             <Box
               sx={{
@@ -5426,28 +5725,33 @@ const PolicyStatus = ({ addCustomer }) => {
       <Modal
         open={openFamilyModal}
         onClose={() => {
-          if (familyMembers.length === parseInt(newPolicy.numberOfFamilyMembers)) {
+          if (
+            familyMembers.length === parseInt(newPolicy.numberOfFamilyMembers)
+          ) {
             setOpenFamilyModal(false);
           }
         }}
       >
-        <Box sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 600,
-          bgcolor: 'background.paper',
-          boxShadow: 24,
-          p: 4,
-          borderRadius: 2,
-          maxHeight: '90vh',
-          overflow: 'auto'
-        }}>
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 600,
+            bgcolor: "background.paper",
+            boxShadow: 24,
+            p: 4,
+            borderRadius: 2,
+            maxHeight: "90vh",
+            overflow: "auto",
+          }}
+        >
           <Typography variant="h6" gutterBottom>
-            Add Family Member Details ({familyMembers.length + 1} of {newPolicy.numberOfFamilyMembers})
+            Add Family Member Details ({familyMembers.length + 1} of{" "}
+            {newPolicy.numberOfFamilyMembers})
           </Typography>
-          
+
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <TextField
@@ -5466,9 +5770,13 @@ const PolicyStatus = ({ addCustomer }) => {
                   onChange={handleFamilyMemberChange("relation")}
                   label="Relation"
                 >
-                  {["Spouse", "Child", "Parent", "Sibling", "Other"].map((relation) => (
-                    <MenuItem key={relation} value={relation}>{relation}</MenuItem>
-                  ))}
+                  {["Spouse", "Child", "Parent", "Sibling", "Other"].map(
+                    (relation) => (
+                      <MenuItem key={relation} value={relation}>
+                        {relation}
+                      </MenuItem>
+                    )
+                  )}
                 </Select>
               </FormControl>
             </Grid>
@@ -5511,9 +5819,13 @@ const PolicyStatus = ({ addCustomer }) => {
                   onChange={handleFamilyMemberChange("bloodGroup")}
                   label="Blood Group"
                 >
-                  {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map((group) => (
-                    <MenuItem key={group} value={group}>{group}</MenuItem>
-                  ))}
+                  {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map(
+                    (group) => (
+                      <MenuItem key={group} value={group}>
+                        {group}
+                      </MenuItem>
+                    )
+                  )}
                 </Select>
               </FormControl>
             </Grid>
@@ -5529,7 +5841,14 @@ const PolicyStatus = ({ addCustomer }) => {
             </Grid>
           </Grid>
 
-          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box
+            sx={{
+              mt: 3,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
             <Button
               variant="outlined"
               onClick={() => setOpenFamilyModal(false)}
@@ -5539,7 +5858,11 @@ const PolicyStatus = ({ addCustomer }) => {
             <Button
               variant="contained"
               onClick={handleAddFamilyMember}
-              disabled={!currentFamilyMember.name || !currentFamilyMember.relation || !currentFamilyMember.dateOfBirth}
+              disabled={
+                !currentFamilyMember.name ||
+                !currentFamilyMember.relation ||
+                !currentFamilyMember.dateOfBirth
+              }
             >
               Add Member
             </Button>
@@ -5547,11 +5870,22 @@ const PolicyStatus = ({ addCustomer }) => {
 
           {familyMembers.length > 0 && (
             <Box sx={{ mt: 3 }}>
-              <Typography variant="subtitle1" gutterBottom>Added Family Members:</Typography>
+              <Typography variant="subtitle1" gutterBottom>
+                Added Family Members:
+              </Typography>
               {familyMembers.map((member, index) => (
-                <Box key={index} sx={{ mb: 1, p: 1, bgcolor: 'rgba(0,0,0,0.05)', borderRadius: 1 }}>
+                <Box
+                  key={index}
+                  sx={{
+                    mb: 1,
+                    p: 1,
+                    bgcolor: "rgba(0,0,0,0.05)",
+                    borderRadius: 1,
+                  }}
+                >
                   <Typography variant="body2">
-                    {member.name} ({member.relation}) - DOB: {member.dateOfBirth}
+                    {member.name} ({member.relation}) - DOB:{" "}
+                    {member.dateOfBirth}
                   </Typography>
                 </Box>
               ))}
