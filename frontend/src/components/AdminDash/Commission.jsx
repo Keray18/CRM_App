@@ -644,7 +644,7 @@ function Commission() {
               <Card
                 sx={{
                   background: "linear-gradient(135deg, #fff 0%, #e3e3e3 100%)",
-                  borderRadius: 4,
+                  borderRadius: 5,
                   boxShadow: 6,
                   display: "flex",
                   alignItems: "center",
