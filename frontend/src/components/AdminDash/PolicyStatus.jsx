@@ -3718,72 +3718,21 @@ const PolicyStatus = ({ addCustomer }) => {
                       </FormControl>
                     </Grid>
                     <Grid item xs={12}>
-                      <FormControl fullWidth error={!!errors.preExisting}>
-                        <InputLabel>Pre-existing Conditions</InputLabel>
-                        <Select
-                          multiple
-                          value={
-                            Array.isArray(newPolicy.preExisting)
-                              ? newPolicy.preExisting
-                              : newPolicy.preExisting
-                              ? [newPolicy.preExisting]
-                              : []
-                          }
-                          onChange={(e) => {
-                            setNewPolicy((prev) => ({
-                              ...prev,
-                              preExisting: e.target.value,
-                            }));
-                            if (errors.preExisting) {
-                              setErrors((prev) => ({
-                                ...prev,
-                                preExisting: undefined,
-                              }));
-                            }
-                          }}
-                          label="Pre-existing Conditions"
-                          renderValue={(selected) => (
-                            <Box
-                              sx={{
-                                display: "flex",
-                                flexWrap: "wrap",
-                                gap: 0.5,
-                              }}
-                            >
-                              {selected.map((value) => (
-                                <Chip key={value} label={value} size="small" />
-                              ))}
-                            </Box>
-                          )}
-                          MenuProps={{
-                            PaperProps: {
-                              style: {
-                                maxHeight: 200,
-                                width: 220,
-                              },
-                            },
-                          }}
-                          sx={{ minWidth: 120, maxWidth: 220 }}
-                        >
-                          {preExistingOptions.map((option) => (
-                            <MenuItem key={option} value={option}>
-                              <Checkbox
-                                checked={
-                                  Array.isArray(newPolicy.preExisting)
-                                    ? newPolicy.preExisting.indexOf(option) > -1
-                                    : false
-                                }
-                              />
-                              <ListItemText primary={option} />
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {errors.preExisting && (
-                          <FormHelperText error>
-                            {errors.preExisting}
-                          </FormHelperText>
-                        )}
-                      </FormControl>
+                      <TextField
+                        fullWidth
+                        label="Pre-existing Conditions"
+                        value={newPolicy.preExisting || ""}
+                        onChange={handleNewPolicyChange("preExisting")}
+                        multiline
+                        rows={2}
+                        placeholder="Enter pre-existing conditions separated by commas"
+                        error={!!errors.preExisting}
+                        helperText={errors.preExisting || "Enter conditions separated by commas"}
+                        sx={{
+                          "& .MuiInputLabel-root": { color: "#ffffff" },
+                          "& .MuiOutlinedInput-root": { color: "#ffffff" },
+                        }}
+                      />
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <TextField

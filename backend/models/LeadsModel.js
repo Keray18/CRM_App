@@ -39,6 +39,10 @@ const Leads = sequelize.define('Leads', {
     remarks: {
         type: DataTypes.TEXT,
         allowNull: true,
+    },
+    address: {
+        type: DataTypes.TEXT,
+        allowNull: true,
     }
 }, {
     timestamps: true,

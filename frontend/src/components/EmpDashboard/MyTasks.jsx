@@ -42,23 +42,32 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
   });
   const [statusLoadingId, setStatusLoadingId] = useState(null); // Track which task is updating
   const [deletingTaskId, setDeletingTaskId] = useState(null); // Track which task is being deleted
+  const [creating, setCreating] = useState(false);
+  const TASKS_PAGE_SIZE = 10;
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
-    fetchTasks();
+    setTasks([]);
+    setPage(1);
+    setHasMore(true);
+    fetchTasks(1, true);
   }, [employeeId]);
 
-  const fetchTasks = async () => {
+  const fetchTasks = async (pageToLoad = page, reset = false) => {
     try {
       setLoading(true);
-      console.log('Fetching tasks for employeeId:', employeeId);
-      const response = await axios.get(`${API_URL}/tasks/employee/${employeeId}`, {
+      console.log('Fetching tasks for employeeId:', employeeId, 'page:', pageToLoad);
+      const response = await axios.get(`${API_URL}/tasks/employee/${employeeId}?page=${pageToLoad}&limit=${TASKS_PAGE_SIZE}`, {
         headers: authHeader()
       });
       console.log('Fetched tasks response:', response.data);
       if (response.data && Array.isArray(response.data.tasks)) {
-        setTasks(response.data.tasks);
+        setTasks(prev => reset ? response.data.tasks : [...prev, ...response.data.tasks]);
+        setHasMore(response.data.tasks.length === TASKS_PAGE_SIZE);
       } else {
         setTasks([]);
+        setHasMore(false);
       }
     } catch (error) {
       console.error('Error fetching tasks:', error);
@@ -68,10 +77,33 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
         severity: 'error'
       });
       setTasks([]);
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleLoadMore = () => {
+    if (!loading && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchTasks(nextPage);
+    }
+  };
+
+  // Listen for scroll to bottom of table container
+  const tableContainerRef = React.useRef();
+  useEffect(() => {
+    const handleScroll = () => {
+      const el = tableContainerRef.current;
+      if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 50 && hasMore && !loading) {
+        handleLoadMore();
+      }
+    };
+    const el = tableContainerRef.current;
+    if (el) el.addEventListener('scroll', handleScroll);
+    return () => { if (el) el.removeEventListener('scroll', handleScroll); };
+  }, [hasMore, loading, page]);
 
   const handleDelete = async (taskId) => {
     setDeletingTaskId(taskId);
@@ -150,6 +182,7 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
     setNewTask(prev => ({ ...prev, [name]: value }));
   };
   const handleCreateTask = async () => {
+    setCreating(true);
     try {
       console.log('Creating task for employeeId:', employeeId, 'with data:', newTask);
       await axios.post(`${API_URL}/tasks/create`, {
@@ -174,6 +207,8 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
         message: 'Error creating task',
         severity: 'error'
       });
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -187,19 +222,18 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
       </Button>
       
       {/* Loading overlay for the whole table */}
-      <Backdrop open={loading} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <CircularProgress color="inherit" />
-          <Typography variant="h6" sx={{ mt: 2 }}>
-            Loading tasks...
-          </Typography>
-        </Box>
+      <Backdrop open={loading || creating} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 2 }}>
+        <CircularProgress color="inherit" />
+        <Typography variant="h6" sx={{ mt: 2, ml: 2 }}>
+          {creating ? 'Creating task...' : 'Loading tasks...'}
+        </Typography>
       </Backdrop>
 
-      <TableContainer component={Paper} sx={{ 
+      <TableContainer component={Paper} ref={tableContainerRef} sx={{ 
         borderRadius: 3,
         boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.1)',
-        overflow: 'hidden'
+        overflow: 'auto',
+        maxHeight: 500
       }}>
         <Table>
           <TableHead>
@@ -297,6 +331,15 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
                 </TableRow>
               ))
             )}
+            {/* Lazy loading spinner row */}
+            {hasMore && !loading && tasks.length > 0 && (
+              <TableRow>
+                <TableCell colSpan={6} align="center">
+                  <CircularProgress size={28} color="primary" />
+                  <Typography variant="body2" sx={{ ml: 1, display: 'inline-block' }}>Loading more tasks...</Typography>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>
@@ -336,7 +379,9 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleCreateTask} variant="contained" color="primary">Create</Button>
+          <Button onClick={handleCreateTask} variant="contained" color="primary" disabled={creating} startIcon={creating ? <CircularProgress size={18} color="inherit" /> : null}>
+            {creating ? 'Creating...' : 'Create'}
+          </Button>
         </DialogActions>
       </Dialog>
 

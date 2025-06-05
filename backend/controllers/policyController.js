@@ -74,6 +74,17 @@ exports.createPolicy = async (req, res) => {
       return res.status(400).json({ message: 'Policy number already exists' });
     }
 
+    // Process pre-existing conditions if present
+    if (policyData.preExistingConditions) {
+      // If it's a string, split by comma and trim each condition
+      if (typeof policyData.preExistingConditions === 'string') {
+        policyData.preExistingConditions = policyData.preExistingConditions
+          .split(',')
+          .map(condition => condition.trim())
+          .filter(Boolean);
+      }
+    }
+
     // --- PHYSICAL POLICY NUMBER LOGIC ---
     // Use startDate for month/year, fallback to today if not provided
     const startDate = policyData.startDate ? new Date(policyData.startDate) : new Date();
@@ -148,8 +159,21 @@ exports.createPolicy = async (req, res) => {
 // Update a policy
 exports.updatePolicy = async (req, res) => {
   try {
+    const policyData = { ...req.body };
+
+    // Process pre-existing conditions if present
+    if (policyData.preExistingConditions) {
+      // If it's a string, split by comma and trim each condition
+      if (typeof policyData.preExistingConditions === 'string') {
+        policyData.preExistingConditions = policyData.preExistingConditions
+          .split(',')
+          .map(condition => condition.trim())
+          .filter(Boolean);
+      }
+    }
+
     const [updatedRows] = await Policy.update(
-      { ...req.body },
+      policyData,
       {
         where: { id: req.params.id },
         individualHooks: true

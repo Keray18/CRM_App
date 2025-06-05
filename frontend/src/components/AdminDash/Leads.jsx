@@ -58,6 +58,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
     leadCreateDate: dayjs().format("YYYY-MM-DD"),
     remarks: "",
     document: null,
+    address: "",
   });
 
   const [snackbar, setSnackbar] = useState({
@@ -402,6 +403,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
           leadCreateDate: dayjs().format("YYYY-MM-DD"),
           remarks: "",
           document: null,
+          address: "",
         });
 
         setSnackbar({
@@ -558,6 +560,18 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
                 ))}
               </Select>
             </FormControl>
+          </Grid>
+          <Grid item xs={12}>
+            <TextField
+              name="address"
+              label="Address"
+              multiline
+              rows={2}
+              value={leadData.address}
+              onChange={handleLeadChange}
+              fullWidth
+              placeholder="Enter lead's address"
+            />
           </Grid>
           <Grid item xs={12}>
             <TextField
@@ -755,6 +769,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
                     {sortField === "leadEmail" &&
                       (sortDirection === "asc" ? "↑" : "↓")}
                   </TableCell>
+                  <TableCell>Address</TableCell>
                   <TableCell>Policy Type</TableCell>
                   <TableCell
                     onClick={() => handleSort("leadCreateDate")}
@@ -783,6 +798,7 @@ const Leads = ({ leads, setLeads, addCustomer }) => {
                       <TableCell>{lead?.leadName || "-"}</TableCell>
                       <TableCell>{lead?.leadPhone || "-"}</TableCell>
                       <TableCell>{lead?.leadEmail || "-"}</TableCell>
+                      <TableCell>{lead?.address || "-"}</TableCell>
                       <TableCell>
                         <Chip
                           label={lead?.leadPolicyType || "Unknown"}

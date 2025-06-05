@@ -65,6 +65,7 @@ const AssignTask = ({
   const [localEmployees, setLocalEmployees] = useState([]);
   const [localPolicies, setLocalPolicies] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [assigning, setAssigning] = useState(false);
 
   // Fetch tasks on component mount
   useEffect(() => {
@@ -148,6 +149,7 @@ const AssignTask = ({
 
   const handleTaskSubmit = async () => {
     try {
+      setAssigning(true);
       // Validate required fields
       if (!taskForm.employeeId || !taskForm.taskType || !taskForm.description || !taskForm.dueDate) {
         setSnackbar({
@@ -203,6 +205,8 @@ const AssignTask = ({
         message: error.response?.data?.message || "Error creating task. Please try again.",
         severity: "error"
       });
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -260,8 +264,11 @@ const AssignTask = ({
   return (
     <Box sx={{ p: 3 }}>
       {/* Loading Spinner Overlay */}
-      <Backdrop open={loading} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 2 }}>
+      <Backdrop open={loading || assigning} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 2 }}>
         <CircularProgress color="inherit" />
+        <Typography variant="h6" sx={{ mt: 2, ml: 2 }}>
+          {assigning ? 'Assigning task...' : 'Loading...'}
+        </Typography>
       </Backdrop>
 
       <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ mb: 3 }} color="#0C47A0">
@@ -469,9 +476,10 @@ const AssignTask = ({
                 <Button
                   variant="contained"
                   onClick={handleTaskSubmit}
-                  disabled={!taskForm.taskType || !taskForm.description || !taskForm.dueDate}
+                  disabled={!taskForm.taskType || !taskForm.description || !taskForm.dueDate || assigning}
+                  startIcon={assigning ? <CircularProgress size={18} color="inherit" /> : null}
                 >
-                  Assign Task
+                  {assigning ? 'Assigning...' : 'Assign Task'}
                 </Button>
               </Box>
             </Grid>
