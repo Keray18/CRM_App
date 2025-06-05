@@ -90,6 +90,8 @@ import { API_URL } from "../../config/config";
 import { createCustomer } from "../../services/customerService";
 import authHeader from "../../services/authHeader";
 import Documents from "./Documents";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
+import { saveAs } from "file-saver";
 
 const VisuallyHiddenInput = styled("input")({
   clip: "rect(0 0 0 0)",
@@ -142,6 +144,9 @@ const PolicyStatus = ({ addCustomer }) => {
   const [localLeads, setLocalLeads] = useState([]);
   const [allLeadsForSearch, setAllLeadsForSearch] = useState([]); // State to hold all leads for search
   const [insuranceCompanies, setInsuranceCompanies] = useState([]);
+  // Add new filter states here
+  const [physicalPolicyNo, setPhysicalPolicyNo] = useState("");
+  const [endDateFilter, setEndDateFilter] = useState("");
 
   // ...existing imports...
   // ...existing code...
@@ -782,14 +787,14 @@ const PolicyStatus = ({ addCustomer }) => {
     }
 
     // Document validation for all types
-    if (!uploadedFiles || uploadedFiles.length === 0) {
-      newErrors.documents = "At least one document is required";
-      setSnackbar({
-        open: true,
-        message: "Please upload required documents",
-        severity: "error",
-      });
-    }
+    // if (!uploadedFiles || uploadedFiles.length === 0) {
+    //   newErrors.documents = "At least one document is required";
+    //   setSnackbar({
+    //     open: true,
+    //     message: "Please upload required documents",
+    //     severity: "error",
+    //   });
+    // }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -853,6 +858,7 @@ const PolicyStatus = ({ addCustomer }) => {
         commissionAmount: Number(newPolicy.commissionAmount) || 0,
         totalCommissionAmount: Number(newPolicy.totalCommissionAmount) || 0,
         effectiveCommissionPercentage: Number(newPolicy.effectiveCommissionPercentage) || 0,
+        sumInsured: newPolicy.sumInsured ? Number(newPolicy.sumInsured) : null,
       };
 
       // Add health-specific fields if needed
@@ -1039,12 +1045,23 @@ const PolicyStatus = ({ addCustomer }) => {
           policy.business,
           policy.status,
         ];
-
-        return searchFields.some((field) =>
+        if (!searchFields.some((field) =>
           field?.toString().toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        )) {
+          return false;
+        }
       }
-
+      // Apply physical policy number filter
+      if (physicalPolicyNo && (!policy.physical_policy_number || !policy.physical_policy_number.toLowerCase().includes(physicalPolicyNo.toLowerCase()))) {
+        return false;
+      }
+      // Apply end date (month/year) filter
+      if (endDateFilter) {
+        // endDateFilter is in format 'YYYY-MM', policy.endDate may be 'YYYY-MM-DD'
+        if (!policy.endDate || !policy.endDate.startsWith(endDateFilter)) {
+          return false;
+        }
+      }
       return true;
     });
   };
@@ -1315,6 +1332,101 @@ const PolicyStatus = ({ addCustomer }) => {
     }
   };
 
+  // Add this function inside PolicyStatus component:
+  const handleDownloadPolicyDocx = (policy) => {
+    if (!policy) return;
+    const doc = new Document({
+      sections: [
+        {
+          properties: {},
+          children: [
+            new Paragraph({
+              text: "Policy Details",
+              heading: HeadingLevel.TITLE,
+              spacing: { after: 300 },
+            }),
+            new Paragraph({
+              text: `Policy Number: ${policy.policyNumber || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Physical Policy Number: ${policy.physical_policy_number || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Insured Name: ${policy.insuredName || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Mobile: ${policy.mobile || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Email: ${policy.email || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Company: ${policy.company || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Business: ${policy.business || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Type: ${policy.type || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Start Date: ${policy.startDate || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `End Date: ${policy.endDate || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Premium: ${policy.premium || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Commission Percentage: ${policy.commissionPercentage || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Status: ${policy.status || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Policy Category: ${policy.policyCategory || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Sum Insured: ${policy.sumInsured || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Other Details: ${JSON.stringify(policy, null, 2)}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: "---",
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: "Generated by CRM App",
+              spacing: { before: 300 },
+              alignment: "right",
+            }),
+          ],
+        },
+      ],
+    });
+    Packer.toBlob(doc).then((blob) => {
+      saveAs(blob, `Policy_${policy.policyNumber || "Details"}.docx`);
+    });
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography
@@ -1371,7 +1483,7 @@ const PolicyStatus = ({ addCustomer }) => {
           />
         </Tabs>
       </Box>
-      <Typography>abshdbaj</Typography>
+    
 
       {/* Search and Filter Section */}
       <Box
@@ -1404,8 +1516,61 @@ const PolicyStatus = ({ addCustomer }) => {
               <MenuItem value="January">January</MenuItem>
               <MenuItem value="February">February</MenuItem>
               <MenuItem value="March">March</MenuItem>
+              <MenuItem value="April">April</MenuItem>
+              <MenuItem value="May">May</MenuItem>
+              <MenuItem value="June">June</MenuItem>
+              <MenuItem value="July">July</MenuItem>
+              <MenuItem value="August">August</MenuItem>
+              <MenuItem value="September">September</MenuItem>
+              <MenuItem value="October">October</MenuItem>
+              <MenuItem value="November">November</MenuItem>
+              <MenuItem value="December">December</MenuItem>
             </Select>
           </FormControl>
+
+          {/* New: Physical Policy Number Filter */}
+          <TextField
+            placeholder="Physical Policy No."
+            variant="outlined"
+            size="small"
+            value={physicalPolicyNo || ''}
+            onChange={e => setPhysicalPolicyNo(e.target.value)}
+            sx={{
+              backgroundColor: "white",
+              borderRadius: 1,
+              minWidth: 180,
+              "& .MuiOutlinedInput-root": {
+                height: "40px",
+                color: "#000000",
+              },
+            }}
+          />
+
+          {/* New: End Date (Month/Year) Filter */}
+          <TextField
+            label="End Date"
+            type="month"
+            size="small"
+            value={endDateFilter || ''}
+            onChange={e => setEndDateFilter(e.target.value)}
+            sx={{
+              backgroundColor: "white",
+              borderRadius: 1,
+              minWidth: 180,
+              "& .MuiOutlinedInput-root": {
+                height: "40px",
+                color: "#000000",
+              },
+              "& .MuiInputLabel-root": {
+                color: "#1976d2",
+                fontWeight: 500,
+                zIndex: 2,
+                background: "white",
+                px: 0.5,
+              },
+            }}
+            InputLabelProps={{ shrink: true }}
+          />
 
           <TextField
             placeholder="Search Policy..."
@@ -1627,6 +1792,20 @@ const PolicyStatus = ({ addCustomer }) => {
                         </IconButton>
                       </Tooltip>
                     )}
+                    <Tooltip title="Download Policy">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDownloadPolicyDocx(policy)}
+                        sx={{
+                          color: "#1976d2",
+                          "&:hover": {
+                            backgroundColor: "rgba(25, 118, 210, 0.08)",
+                          },
+                        }}
+                      >
+                        <DownloadIcon />
+                      </IconButton>
+                    </Tooltip>
                   </Box>
                 </TableCell>
               </TableRow>
@@ -1923,7 +2102,7 @@ const PolicyStatus = ({ addCustomer }) => {
                   </Typography>
 
                   {/* Document Upload Section */}
-                  <Box
+                  {/* <Box
                     sx={{
                       p: 1.5,
                       border: "1px solid #e0e0e0",
@@ -2072,7 +2251,7 @@ const PolicyStatus = ({ addCustomer }) => {
                         </Button>
 
                         {/* Display Uploaded Files */}
-                        <Box
+                        {/* <Box
                           sx={{
                             display: "flex",
                             alignItems: "center",
@@ -2134,7 +2313,7 @@ const PolicyStatus = ({ addCustomer }) => {
                         {errors.documents}
                       </Typography>
                     )}
-                  </Box>
+                  // </Box> */} 
 
                   <Grid container spacing={3}>
                     {/* Basic Information Fields */}
@@ -3003,7 +3182,7 @@ const PolicyStatus = ({ addCustomer }) => {
                       justifyContent: "space-between",
                     }}
                   >
-                    <Box
+                  <Box
                       sx={{
                         display: "flex",
                         alignItems: "center",
@@ -3595,22 +3774,7 @@ const PolicyStatus = ({ addCustomer }) => {
                         )}
                       </>
                     )}
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Sum Insured"
-                        value={newPolicy.sumInsured}
-                        onChange={handleNewPolicyChange("sumInsured")}
-                        type="number"
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">₹</InputAdornment>
-                          ),
-                        }}
-                        error={!!errors.sumInsured}
-                        helperText={errors.sumInsured}
-                      />
-                    </Grid>
+                    
                     <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
@@ -5286,6 +5450,7 @@ const PolicyStatus = ({ addCustomer }) => {
                           >
                             Sum Insured
                           </Typography>
+                          {console.log("[DEBUG] Raw sumInsured value:", selectedPolicy.sumInsured)}
                           <Typography variant="body1" sx={{ mt: 0.5 }}>
                             {selectedPolicy.sumInsured
                               ? `₹${selectedPolicy.sumInsured}`
