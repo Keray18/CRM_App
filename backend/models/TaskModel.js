@@ -1,5 +1,7 @@
 const { sequelize } = require('../config/dbConn.js');
 const { DataTypes } = require('sequelize');
+const Policy = require('./Policy');
+const Leads = require('./LeadsModel');
 
 const Task = sequelize.define('Task', {
     id: {
@@ -53,5 +55,8 @@ const Task = sequelize.define('Task', {
     tableName: 'tasks',
     modelName: 'Task'
 });
+
+Task.belongsTo(Policy, { foreignKey: 'policyId', as: 'policy' });
+Task.belongsTo(Leads, { foreignKey: 'leadId', as: 'lead' });
 
 module.exports = Task; 

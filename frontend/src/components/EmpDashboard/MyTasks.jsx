@@ -18,7 +18,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField
+  TextField,
+  CircularProgress,
+  Backdrop
 } from '@mui/material';
 import { API_URL } from '../../config/config';
 import axios from 'axios';
@@ -38,6 +40,8 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
     description: '',
     dueDate: '',
   });
+  const [statusLoadingId, setStatusLoadingId] = useState(null); // Track which task is updating
+  const [deletingTaskId, setDeletingTaskId] = useState(null); // Track which task is being deleted
 
   useEffect(() => {
     fetchTasks();
@@ -46,10 +50,11 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
   const fetchTasks = async () => {
     try {
       setLoading(true);
+      console.log('Fetching tasks for employeeId:', employeeId);
       const response = await axios.get(`${API_URL}/tasks/employee/${employeeId}`, {
         headers: authHeader()
       });
-
+      console.log('Fetched tasks response:', response.data);
       if (response.data && Array.isArray(response.data.tasks)) {
         setTasks(response.data.tasks);
       } else {
@@ -69,47 +74,44 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
   };
 
   const handleDelete = async (taskId) => {
+    setDeletingTaskId(taskId);
     try {
       await axios.delete(`${API_URL}/tasks/${taskId}`, {
         headers: authHeader()
       });
       setTasks(tasks.filter(task => task.id !== taskId));
-      // Notify parent component to update task count
-      if (onTaskUpdate) {
-        onTaskUpdate();
-      }
+      if (statusLoadingId === taskId) setStatusLoadingId(null); // Clear status loading if deleted
+      if (onTaskUpdate) onTaskUpdate();
       setSnackbar({
         open: true,
         message: 'Task deleted successfully',
         severity: 'success'
       });
     } catch (error) {
-      console.error('Error deleting task:', error);
       setSnackbar({
         open: true,
         message: 'Error deleting task',
         severity: 'error'
       });
+    } finally {
+      setDeletingTaskId(null);
     }
   };
 
   const handleStatusChange = async (taskId, newStatus) => {
+    setStatusLoadingId(taskId);
     try {
-      await axios.put(`${API_URL}/tasks/${taskId}`, {
+      await axios.patch(`${API_URL}/tasks/${taskId}/status`, {
         status: newStatus
       }, {
         headers: authHeader()
       });
-      
       setTasks(tasks.map(task => 
         task.id === taskId ? { ...task, status: newStatus } : task
       ));
-      
-      // Notify parent component to update task count
       if (onTaskUpdate) {
         onTaskUpdate();
       }
-      
       setSnackbar({
         open: true,
         message: 'Task status updated successfully',
@@ -122,6 +124,8 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
         message: 'Error updating task status',
         severity: 'error'
       });
+    } finally {
+      setStatusLoadingId(null);
     }
   };
 
@@ -130,7 +134,7 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
     switch (status?.toLowerCase()) {
       case 'completed':
         return '#4caf50'; // Green
-      case 'in progress':
+      case 'live':
         return '#2196f3'; // Blue
       case 'pending':
         return '#ff9800'; // Orange
@@ -147,6 +151,7 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
   };
   const handleCreateTask = async () => {
     try {
+      console.log('Creating task for employeeId:', employeeId, 'with data:', newTask);
       await axios.post(`${API_URL}/tasks/create`, {
         employeeId,
         employeeName,
@@ -161,7 +166,7 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
       });
       setOpenDialog(false);
       setNewTask({ taskType: '', description: '', dueDate: '' });
-      fetchTasks();
+      await fetchTasks(); // Await to ensure tasks are refreshed before UI update
       if (onTaskUpdate) onTaskUpdate();
     } catch (error) {
       setSnackbar({
@@ -181,6 +186,16 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
         Create Task
       </Button>
       
+      {/* Loading overlay for the whole table */}
+      <Backdrop open={loading} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <CircularProgress color="inherit" />
+          <Typography variant="h6" sx={{ mt: 2 }}>
+            Loading tasks...
+          </Typography>
+        </Box>
+      </Backdrop>
+
       <TableContainer component={Paper} sx={{ 
         borderRadius: 3,
         boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.1)',
@@ -198,11 +213,7 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center">Loading tasks...</TableCell>
-              </TableRow>
-            ) : tasks.length === 0 ? (
+            {(!loading && tasks.length === 0) ? (
               <TableRow>
                 <TableCell colSpan={6} align="center">No tasks assigned</TableCell>
               </TableRow>
@@ -212,19 +223,27 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
                   <TableCell>{task.taskType}</TableCell>
                   <TableCell>{task.description}</TableCell>
                   <TableCell>
-                    {task.leadId && (
-                      <Box sx={{ 
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        bgcolor: '#f5f5f5',
-                        px: 1,
-                        py: 0.5,
-                        borderRadius: 1
-                      }}>
-                        <Typography variant="body2">
-                          Lead: {task.leadName || 'N/A'}
+                    {/* Show Policy info if present */}
+                    {task.policy && (
+                      <Box>
+                        <Typography variant="body2" color="primary">
+                          Policy: {task.policy.policyNumber}
                         </Typography>
                       </Box>
+                    )}
+                    {/* Show Lead info if present */}
+                    {task.lead && (
+                      <Box>
+                        <Typography variant="body2" color="secondary">
+                          Lead: {task.lead.leadName}
+                        </Typography>
+                      </Box>
+                    )}
+                    {/* Fallback if neither is present */}
+                    {(!task.policy && !task.lead) && (
+                      <Typography variant="body2" color="text.secondary">
+                        N/A
+                      </Typography>
                     )}
                   </TableCell>
                   <TableCell>{new Date(task.dueDate).toLocaleDateString()}</TableCell>
@@ -249,8 +268,10 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
                         onClick={() => handleStatusChange(task.id, 'In Progress')}
                         size="small"
                         sx={{ mr: 1 }}
+                        disabled={statusLoadingId === task.id || deletingTaskId === task.id}
+                        startIcon={statusLoadingId === task.id ? <CircularProgress size={16} color="inherit" /> : null}
                       >
-                        Start
+                        {statusLoadingId === task.id ? 'Starting...' : 'Start'}
                       </Button>
                     )}
                     {task.status === 'In Progress' && (
@@ -259,14 +280,18 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
                         onClick={() => handleStatusChange(task.id, 'Completed')}
                         size="small"
                         sx={{ mr: 1 }}
+                        disabled={statusLoadingId === task.id || deletingTaskId === task.id}
+                        startIcon={statusLoadingId === task.id ? <CircularProgress size={16} color="inherit" /> : null}
                       >
-                        Complete
+                        {statusLoadingId === task.id ? 'Completing...' : 'Complete'}
                       </Button>
                     )}
                     <Button
                       color="error"
                       onClick={() => handleDelete(task.id)}
                       size="small"
+                      disabled={statusLoadingId === task.id || deletingTaskId === task.id}
+                      startIcon={deletingTaskId === task.id ? <CircularProgress size={16} color="inherit" /> : null}
                     >
                       Delete
                     </Button>

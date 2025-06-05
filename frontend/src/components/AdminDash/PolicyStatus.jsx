@@ -774,7 +774,7 @@ const PolicyStatus = ({ addCustomer }) => {
     // Others-specific validations
     if (insuranceType === "others") {
       if (!newPolicy.type?.trim()) newErrors.type = "Policy Type is required";
-      if (!newPolicy.policyCategory?.trim()) newErrors.policyCategory = "Policy Category is required";
+      // if (!newPolicy.policyCategory?.trim()) newErrors.policyCategory = "Policy Category is required";
       if (!newPolicy.sumInsured || isNaN(Number(newPolicy.sumInsured)) || Number(newPolicy.sumInsured) <= 0)
         newErrors.sumInsured = "Sum Insured is required and must be greater than 0";
       if (!newPolicy.commissionPercentage || isNaN(Number(newPolicy.commissionPercentage)) || Number(newPolicy.commissionPercentage) <= 0)
@@ -4845,6 +4845,9 @@ const PolicyStatus = ({ addCustomer }) => {
                 </Grid>
               </Box>
             )}
+            <Typography variant="body2">
+              * Please create a lead first before creating a policy.So that document can be uploaded.
+            </Typography>
             <Documents />
             {isSubmitting && <LinearProgress sx={{ mt: 2 }} />}
             <Box
