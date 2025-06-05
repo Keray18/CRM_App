@@ -64,6 +64,13 @@ const Policy = sequelize.define(
       defaultValue: "Live Policy",
     },
 
+    // Physical Policy Number
+    physical_policy_number: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'Physical policy number in the format number_month_year',
+    },
+
     // Vehicle Specific Fields
     vehicleType: DataTypes.STRING,
     vehicleNumber: DataTypes.STRING,

@@ -549,37 +549,45 @@ const PolicyStatus = ({ addCustomer }) => {
           "fuelType",
         ].includes(field)
       ) {
-        const basicPremium =
-          parseFloat(field === "basicPremium" ? value : updated.basicPremium) ||
-          0;
-        const tpPremium =
-          parseFloat(field === "tpPremium" ? value : updated.tpPremium) || 0;
-        const addonPremium =
-          parseFloat(field === "addonPremium" ? value : updated.addonPremium) ||
-          0;
-        const cngAmount =
-          parseFloat(field === "cngAmount" ? value : updated.cngAmount) || 0;
-        const ncbDiscount =
-          parseFloat(field === "ncbDiscount" ? value : updated.ncbDiscount) ||
-          0;
+        const basicPremium = parseFloat(field === "basicPremium" ? value : updated.basicPremium) || 0;
+        const tpPremium = parseFloat(field === "tpPremium" ? value : updated.tpPremium) || 0;
+        const addonPremium = parseFloat(field === "addonPremium" ? value : updated.addonPremium) || 0;
+        const ncbDiscount = parseFloat(field === "ncbDiscount" ? value : updated.ncbDiscount) || 0;
+        const cngAmount = parseFloat(field === "cngAmount" ? value : updated.cngAmount) || 0;
+        let odPremium = parseFloat(updated.odPremium) || 0;
 
-        // OD Premium calculation for CNG/Petrol
-        let odPremium =
-          parseFloat(field === "odPremium" ? value : updated.odPremium) || 0;
-        if (updated.fuelType === "CNG" || updated.fuelType === "Petrol") {
+        // OD Premium calculation for CNG/LPG vehicles
+        if (updated.fuelType === "CNG" || updated.fuelType === "LPG") {
           odPremium = basicPremium + cngAmount - ncbDiscount;
         }
 
-        // Net premium is sum of all premiums
-        const netPremium = basicPremium + odPremium + tpPremium + addonPremium;
+        // Net premium = basic (minus ncb) + tp + addon
+        const netPremium = basicPremium - ncbDiscount + tpPremium + addonPremium;
         // GST is 18% of net premium
         const gstAmount = netPremium * 0.18;
-        // Total premium is net premium + GST
+        // Total premium = net premium + GST
         const totalPremium = netPremium + gstAmount;
 
         return {
           ...updated,
           odPremium: odPremium.toFixed(2),
+          netPremium: netPremium.toFixed(2),
+          gst: gstAmount.toFixed(2),
+          totalPremium: totalPremium.toFixed(2),
+        };
+      }
+
+      // Health, travel, and others GST and premium calculation
+      if (
+        (insuranceType === "health" || insuranceType === "travel" || insuranceType === "others") &&
+        field === "sumInsured"
+      ) {
+        const sumInsured = parseFloat(value) || 0;
+        const gstAmount = sumInsured * 0.18;
+        const netPremium = sumInsured + gstAmount;
+        const totalPremium = netPremium; // or netPremium if that's the final amount
+        return {
+          ...updated,
           netPremium: netPremium.toFixed(2),
           gst: gstAmount.toFixed(2),
           totalPremium: totalPremium.toFixed(2),
@@ -680,79 +688,97 @@ const PolicyStatus = ({ addCustomer }) => {
     if (!newPolicy.email?.trim()) newErrors.email = "Email is required";
     if (!newPolicy.company?.trim())
       newErrors.company = "Insurance Company is required";
-    // if (!newPolicy.startDate)
-    //   newErrors.startDate = "Start Date is required";
+    if (!newPolicy.startDate) newErrors.startDate = "Start Date is required";
     if (!newPolicy.endDate) newErrors.endDate = "End Date is required";
 
-    // Health specific validations
+    // Vehicle-specific validations
+    if (insuranceType === "vehicle") {
+      if (!newPolicy.vehicleType?.trim())
+        newErrors.vehicleType = "Vehicle Type is required";
+      if (!newPolicy.vehicleNumber?.trim())
+        newErrors.vehicleNumber = "Vehicle Number is required";
+      if (!newPolicy.make?.trim())
+        newErrors.make = "Make is required";
+      if (!newPolicy.model?.trim())
+        newErrors.model = "Model is required";
+      if (!newPolicy.year?.trim())
+        newErrors.year = "Manufacturing Year is required";
+      if (!newPolicy.basicPremium || isNaN(Number(newPolicy.basicPremium)) || Number(newPolicy.basicPremium) <= 0)
+        newErrors.basicPremium = "Basic Premium is required and must be greater than 0";
+      if (!newPolicy.odPremium || isNaN(Number(newPolicy.odPremium)) || Number(newPolicy.odPremium) < 0)
+        newErrors.odPremium = "OD Premium is required (0 or more)";
+      if (!newPolicy.tpPremium || isNaN(Number(newPolicy.tpPremium)) || Number(newPolicy.tpPremium) < 0)
+        newErrors.tpPremium = "TP Premium is required (0 or more)";
+      if (newPolicy.ncbDiscount === undefined || isNaN(Number(newPolicy.ncbDiscount)) || Number(newPolicy.ncbDiscount) < 0)
+        newErrors.ncbDiscount = "NCB Discount is required (0 or more)";
+      if (newPolicy.addonPremium === undefined || isNaN(Number(newPolicy.addonPremium)) || Number(newPolicy.addonPremium) < 0)
+        newErrors.addonPremium = "Add-on Premium is required (0 or more)";
+      if (newPolicy.gst === undefined || isNaN(Number(newPolicy.gst)) || Number(newPolicy.gst) < 0)
+        newErrors.gst = "GST is required (0 or more)";
+      if (newPolicy.totalPremium === undefined || isNaN(Number(newPolicy.totalPremium)) || Number(newPolicy.totalPremium) <= 0)
+        newErrors.totalPremium = "Total Premium is required and must be greater than 0";
+      if (newPolicy.netPremium === undefined || isNaN(Number(newPolicy.netPremium)) || Number(newPolicy.netPremium) <= 0)
+        newErrors.netPremium = "Net Premium is required and must be greater than 0";
+      if (!newPolicy.paymentMode?.trim())
+        newErrors.paymentMode = "Payment Mode is required";
+      if (!newPolicy.commissionType?.trim())
+        newErrors.commissionType = "Commission Type is required";
+      if (newPolicy.odCommissionPercentage === undefined || isNaN(Number(newPolicy.odCommissionPercentage)) || Number(newPolicy.odCommissionPercentage) < 0)
+        newErrors.odCommissionPercentage = "OD Commission % is required (0 or more)";
+      if (newPolicy.tpCommissionPercentage === undefined || isNaN(Number(newPolicy.tpCommissionPercentage)) || Number(newPolicy.tpCommissionPercentage) < 0)
+        newErrors.tpCommissionPercentage = "TP Commission % is required (0 or more)";
+      if (newPolicy.addonCommissionPercentage === undefined || isNaN(Number(newPolicy.addonCommissionPercentage)) || Number(newPolicy.addonCommissionPercentage) < 0)
+        newErrors.addonCommissionPercentage = "Add-on Commission % is required (0 or more)";
+    }
+
+    // Health-specific validations
     if (insuranceType === "health") {
       if (!newPolicy.healthPlan?.trim())
         newErrors.healthPlan = "Health Plan is required";
-      if (
-        !newPolicy.sumInsured ||
-        isNaN(Number(newPolicy.sumInsured)) ||
-        Number(newPolicy.sumInsured) <= 0
-      )
-        newErrors.sumInsured =
-          "Sum Insured is required and must be greater than 0";
-      if (
-        !newPolicy.commissionPercentage ||
-        isNaN(Number(newPolicy.commissionPercentage)) ||
-        Number(newPolicy.commissionPercentage) <= 0
-      )
-        newErrors.commissionPercentage =
-          "Commission Percentage is required and must be greater than 0";
+      if (!newPolicy.sumInsured || isNaN(Number(newPolicy.sumInsured)) || Number(newPolicy.sumInsured) <= 0)
+        newErrors.sumInsured = "Sum Insured is required and must be greater than 0";
+      if (!newPolicy.commissionPercentage || isNaN(Number(newPolicy.commissionPercentage)) || Number(newPolicy.commissionPercentage) <= 0)
+        newErrors.commissionPercentage = "Commission Percentage is required and must be greater than 0";
       if (!newPolicy.dateOfBirth?.trim())
         newErrors.dateOfBirth = "Date of Birth is required";
-      if (
-        !newPolicy.height ||
-        isNaN(Number(newPolicy.height)) ||
-        Number(newPolicy.height) <= 0
-      )
+      if (!newPolicy.height || isNaN(Number(newPolicy.height)) || Number(newPolicy.height) <= 0)
         newErrors.height = "Height is required and must be greater than 0";
-      if (
-        !newPolicy.weight ||
-        isNaN(Number(newPolicy.weight)) ||
-        Number(newPolicy.weight) <= 0
-      )
+      if (!newPolicy.weight || isNaN(Number(newPolicy.weight)) || Number(newPolicy.weight) <= 0)
         newErrors.weight = "Weight is required and must be greater than 0";
       if (!newPolicy.bloodGroup?.trim())
         newErrors.bloodGroup = "Blood Group is required";
-
-      // Only validate family members if it's a family plan
       if (newPolicy.healthPlan?.includes("Family")) {
-        if (
-          !newPolicy.numberOfFamilyMembers ||
-          Number(newPolicy.numberOfFamilyMembers) <= 0
-        )
-          newErrors.numberOfFamilyMembers =
-            "Number of family members is required";
+        if (!newPolicy.numberOfFamilyMembers || Number(newPolicy.numberOfFamilyMembers) <= 0)
+          newErrors.numberOfFamilyMembers = "Number of family members is required";
         if (familyMembers.length < Number(newPolicy.numberOfFamilyMembers))
           newErrors.familyMembers = "Please add all family members";
       }
     }
 
-    // Others specific validations
+    // Travel-specific validations
+    if (insuranceType === "travel") {
+      if (!newPolicy.travelType?.trim())
+        newErrors.travelType = "Travel Type is required";
+      if (!newPolicy.sumInsured || isNaN(Number(newPolicy.sumInsured)) || Number(newPolicy.sumInsured) <= 0)
+        newErrors.sumInsured = "Sum Insured is required and must be greater than 0";
+      if (!newPolicy.destination?.trim())
+        newErrors.destination = "Destination is required";
+      if (!newPolicy.tripDuration || isNaN(Number(newPolicy.tripDuration)) || Number(newPolicy.tripDuration) <= 0)
+        newErrors.tripDuration = "Trip Duration is required and must be greater than 0";
+      if (!newPolicy.passportNumber?.trim())
+        newErrors.passportNumber = "Passport Number is required";
+      if (!newPolicy.commissionPercentage || isNaN(Number(newPolicy.commissionPercentage)) || Number(newPolicy.commissionPercentage) <= 0)
+        newErrors.commissionPercentage = "Commission Percentage is required and must be greater than 0";
+    }
+
+    // Others-specific validations
     if (insuranceType === "others") {
       if (!newPolicy.type?.trim()) newErrors.type = "Policy Type is required";
-      // if (!newPolicy.policyCategory?.trim())
-      //   newErrors.policyCategory = "Policy Category is required";
-      if (
-        !newPolicy.sumInsured ||
-        isNaN(Number(newPolicy.sumInsured)) ||
-        Number(newPolicy.sumInsured) <= 0
-      )
-        newErrors.sumInsured =
-          "Sum Insured is required and must be greater than 0";
-      // if (!newPolicy.premium || isNaN(Number(newPolicy.premium)) || Number(newPolicy.premium) <= 0)
-      //   newErrors.premium = "Premium is required and must be greater than 0";
-      if (
-        !newPolicy.commissionPercentage ||
-        isNaN(Number(newPolicy.commissionPercentage)) ||
-        Number(newPolicy.commissionPercentage) <= 0
-      )
-        newErrors.commissionPercentage =
-          "Commission Percentage is required and must be greater than 0";
+      if (!newPolicy.policyCategory?.trim()) newErrors.policyCategory = "Policy Category is required";
+      if (!newPolicy.sumInsured || isNaN(Number(newPolicy.sumInsured)) || Number(newPolicy.sumInsured) <= 0)
+        newErrors.sumInsured = "Sum Insured is required and must be greater than 0";
+      if (!newPolicy.commissionPercentage || isNaN(Number(newPolicy.commissionPercentage)) || Number(newPolicy.commissionPercentage) <= 0)
+        newErrors.commissionPercentage = "Commission Percentage is required and must be greater than 0";
     }
 
     // Document validation for all types
@@ -785,6 +811,7 @@ const PolicyStatus = ({ addCustomer }) => {
       console.log("Insurance type:", insuranceType);
       console.log("Base type:", baseType);
 
+      // Build the policyToAdd object with all relevant fields for vehicle policies
       const policyToAdd = {
         policyNumber: newPolicy.policyNumber,
         insuredName: newPolicy.insuredName,
@@ -801,16 +828,34 @@ const PolicyStatus = ({ addCustomer }) => {
           type: file.type,
           uploadDate: new Date(),
         })),
-        // Basic fields for all types
-        sumInsured: Number(newPolicy.sumInsured) || 0,
-        premium: Number(newPolicy.premium) || 0,
+        // Vehicle details
+        vehicleType: newPolicy.vehicleType || "",
+        vehicleNumber: newPolicy.vehicleNumber || "",
+        make: newPolicy.make || "",
+        model: newPolicy.model || "",
+        year: newPolicy.year || "",
+        // Premium and commission fields
+        basicPremium: Number(newPolicy.basicPremium) || 0,
+        odPremium: Number(newPolicy.odPremium) || 0,
+        tpPremium: Number(newPolicy.tpPremium) || 0,
+        ncbDiscount: Number(newPolicy.ncbDiscount) || 0,
+        addonPremium: Number(newPolicy.addonPremium) || 0,
+        gst: Number(newPolicy.gst) || 0,
+        totalPremium: Number(newPolicy.totalPremium) || 0,
+        netPremium: Number(newPolicy.netPremium) || 0,
+        paymentMode: newPolicy.paymentMode || "",
+        paymentReference: newPolicy.paymentReference || "",
+        commissionType: newPolicy.commissionType || "",
+        odCommissionPercentage: Number(newPolicy.odCommissionPercentage) || 0,
+        tpCommissionPercentage: Number(newPolicy.tpCommissionPercentage) || 0,
+        addonCommissionPercentage: Number(newPolicy.addonCommissionPercentage) || 0,
         commissionPercentage: Number(newPolicy.commissionPercentage) || 0,
-        commissionAmount:
-          (Number(newPolicy.premium) * Number(newPolicy.commissionPercentage)) /
-          100,
+        commissionAmount: Number(newPolicy.commissionAmount) || 0,
+        totalCommissionAmount: Number(newPolicy.totalCommissionAmount) || 0,
+        effectiveCommissionPercentage: Number(newPolicy.effectiveCommissionPercentage) || 0,
       };
 
-      // Add health specific fields
+      // Add health-specific fields if needed
       if (insuranceType === "health") {
         Object.assign(policyToAdd, {
           healthPlan: newPolicy.healthPlan,
@@ -825,7 +870,17 @@ const PolicyStatus = ({ addCustomer }) => {
         });
       }
 
-      // Add others specific fields
+      // Add travel-specific fields if needed
+      if (insuranceType === "travel") {
+        Object.assign(policyToAdd, {
+          travelType: newPolicy.travelType,
+          destination: newPolicy.destination,
+          tripDuration: Number(newPolicy.tripDuration) || 0,
+          passportNumber: newPolicy.passportNumber,
+        });
+      }
+
+      // Add others-specific fields if needed
       if (insuranceType === "others") {
         Object.assign(policyToAdd, {
           policyCategory: newPolicy.policyCategory,
@@ -1416,6 +1471,9 @@ const PolicyStatus = ({ addCustomer }) => {
                 Policy Number
               </TableCell>
               <TableCell sx={{ color: "#000000", fontWeight: "bold" }}>
+                Physical Policy Number
+              </TableCell>
+              <TableCell sx={{ color: "#000000", fontWeight: "bold" }}>
                 Insured Name
               </TableCell>
               <TableCell sx={{ color: "#000000", fontWeight: "bold" }}>
@@ -1444,6 +1502,9 @@ const PolicyStatus = ({ addCustomer }) => {
               >
                 <TableCell sx={{ color: "#000000" }}>
                   {policy.policyNumber}
+                </TableCell>
+                <TableCell sx={{ color: "#000000" }}>
+                  {policy.physical_policy_number || "N/A"}
                 </TableCell>
                 <TableCell sx={{ color: "#000000" }}>
                   {policy.insuredName}
@@ -3724,6 +3785,26 @@ const PolicyStatus = ({ addCustomer }) => {
                         )}
                       </FormControl>
                     </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Net Premium"
+                        value={newPolicy.netPremium || "0.00"}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">₹</InputAdornment>
+                          ),
+                          readOnly: true,
+                        }}
+                        sx={{
+                          "& .MuiInputLabel-root": { color: "#ffffff" },
+                          "& .MuiOutlinedInput-root": {
+                            color: "#ffffff",
+                            backgroundColor: "rgba(255, 255, 255, 0.1)",
+                          },
+                        }}
+                      />
+                    </Grid>
                   </Grid>
                 </Box>
 
@@ -4859,6 +4940,14 @@ const PolicyStatus = ({ addCustomer }) => {
                         </Typography>
                         <Typography variant="body1" sx={{ mt: 0.5 }}>
                           {selectedPolicy.policyNumber}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Physical Policy Number
+                        </Typography>
+                        <Typography variant="body1" sx={{ mt: 0.5 }}>
+                          {selectedPolicy.physical_policy_number || "N/A"}
                         </Typography>
                       </Box>
                       <Box sx={{ mb: 2 }}>

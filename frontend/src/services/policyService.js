@@ -138,7 +138,7 @@ export const updatePolicyStatus = async (id, status) => {
 export const sendRenewalReminder = async (id) => {
   try {
     console.log('Making API request to send renewal reminder for policy:', id);
-    const response = await axios.post(`${API_URL}/policies/${id}/send-reminder`, {}, {
+    const response = await axios.post(`${API_URL}/policies/${id}/renewal-reminder`, {}, {
       headers: {
         ...authHeader(),
         'Content-Type': 'application/json'
