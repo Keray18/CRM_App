@@ -223,28 +223,26 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
                   <TableCell>{task.taskType}</TableCell>
                   <TableCell>{task.description}</TableCell>
                   <TableCell>
-                    {/* Show Policy info if present */}
-                    {task.policy && (
-                      <Box>
-                        <Typography variant="body2" color="primary">
-                          Policy: {task.policy.policyNumber}
-                        </Typography>
-                      </Box>
-                    )}
-                    {/* Show Lead info if present */}
-                    {task.lead && (
-                      <Box>
-                        <Typography variant="body2" color="secondary">
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      {/* Show Lead info if present */}
+                      {task.lead && (
+                        <Typography variant="body2" sx={{ color: '#1976d2', fontWeight: 600, letterSpacing: 0.2 }}>
                           Lead: {task.lead.leadName}
                         </Typography>
-                      </Box>
-                    )}
-                    {/* Fallback if neither is present */}
-                    {(!task.policy && !task.lead) && (
-                      <Typography variant="body2" color="text.secondary">
-                        N/A
-                      </Typography>
-                    )}
+                      )}
+                      {/* Show Policy info if present */}
+                      {task.policy && (
+                        <Typography variant="body2" sx={{ color: '#0C47A0', fontWeight: 600, letterSpacing: 0.2 }}>
+                          Policy: {task.policy.policyNumber}
+                        </Typography>
+                      )}
+                      {/* Fallback if neither is present */}
+                      {(!task.lead && !task.policy) && (
+                        <Typography variant="body2" color="text.secondary">
+                          N/A
+                        </Typography>
+                      )}
+                    </Box>
                   </TableCell>
                   <TableCell>{new Date(task.dueDate).toLocaleDateString()}</TableCell>
                   <TableCell>

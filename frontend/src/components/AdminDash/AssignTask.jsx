@@ -63,12 +63,13 @@ const AssignTask = ({
   });
   const [localLeads, setLocalLeads] = useState([]);
   const [localEmployees, setLocalEmployees] = useState([]);
+  const [localPolicies, setLocalPolicies] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Fetch tasks on component mount
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchTasks(), fetchLeads(), fetchEmployees()]).finally(() => setLoading(false));
+    Promise.all([fetchTasks(), fetchLeads(), fetchEmployees(), fetchPolicies()]).finally(() => setLoading(false));
   }, []);
 
   const fetchTasks = async () => {
@@ -107,6 +108,19 @@ const AssignTask = ({
       setSnackbar({
         open: true,
         message: "Error fetching employees",
+        severity: "error"
+      });
+    }
+  };
+
+  const fetchPolicies = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/policies`, { headers: authHeader() });
+      setLocalPolicies(response.data || []);
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: "Error fetching policies",
         severity: "error"
       });
     }
@@ -159,7 +173,6 @@ const AssignTask = ({
       const response = await axios.post(`${API_URL}/tasks/create`, taskData, { headers: authHeader() });
       
       if (response.data && response.data.task) {
-        setTasks([response.data.task, ...tasks]);
         setOpenTaskModal(false);
         // Reset form
         setTaskForm({
@@ -173,7 +186,8 @@ const AssignTask = ({
           policyId: ""
         });
         setSelectedEmployee(null);
-        
+        // Refetch all tasks to get populated lead/policy info
+        await fetchTasks();
         setSnackbar({
           open: true,
           message: "Task assigned successfully",
@@ -427,7 +441,7 @@ const AssignTask = ({
                   label="Related Policy"
                 >
                   <MenuItem value="">None</MenuItem>
-                  {policies.map((policy) => (
+                  {localPolicies.map((policy) => (
                     <MenuItem key={policy.id} value={policy.id}>
                       {policy.policyNumber} - {policy.insuredName}
                     </MenuItem>
@@ -505,20 +519,28 @@ const AssignTask = ({
                   <TableCell>{task.taskType}</TableCell>
                   <TableCell>{task.description}</TableCell>
                   <TableCell>
-                    {task.leadId && (
+                    {/* Show Lead info if present */}
+                    {task.lead && (
                       <Chip
                         icon={<LeadIcon />}
-                        label={`Lead: ${localLeads.find(l => l.id === task.leadId)?.leadName || 'N/A'}`}
+                        label={`Lead: ${task.lead.leadName}`}
                         size="small"
                         sx={{ mr: 1 }}
                       />
                     )}
-                    {task.policyId && (
+                    {/* Show Policy info if present */}
+                    {task.policy && (
                       <Chip
                         icon={<PolicyIcon />}
-                        label={`Policy: ${policies.find(p => p.id === task.policyId)?.policyNumber || 'N/A'}`}
+                        label={`Policy: ${task.policy.policyNumber}`}
                         size="small"
                       />
+                    )}
+                    {/* Fallback if neither is present */}
+                    {(!task.lead && !task.policy) && (
+                      <Typography variant="body2" color="text.secondary">
+                        N/A
+                      </Typography>
                     )}
                   </TableCell>
                   <TableCell>{new Date(task.dueDate).toLocaleDateString()}</TableCell>
