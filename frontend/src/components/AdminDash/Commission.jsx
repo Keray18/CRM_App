@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -30,9 +30,9 @@ import {
   InputAdornment,
   TablePagination,
   Divider,
-} from '@mui/material';
-import { 
-  Payment as PaymentIcon, 
+} from "@mui/material";
+import {
+  Payment as PaymentIcon,
   Receipt as ReceiptIcon,
   AttachMoney as MoneyIcon,
   FilterList as FilterIcon,
@@ -40,12 +40,12 @@ import {
   Visibility as VisibilityIcon,
   MonetizationOn as MonetizationOnIcon,
   Description as PolicyIcon,
-  BarChart as BarChartIcon
-} from '@mui/icons-material';
-import { API_URL } from '../../config/config';
-import axios from 'axios';
-import { getAllPolicies } from '../../services/policyService';
-import { Bar } from 'react-chartjs-2';
+  BarChart as BarChartIcon,
+} from "@mui/icons-material";
+import { API_URL } from "../../config/config";
+import axios from "axios";
+import { getAllPolicies } from "../../services/policyService";
+import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -53,11 +53,20 @@ import {
   BarElement,
   Title,
   Tooltip as ChartTooltip,
+  Legend,
+} from "chart.js";
+import PaymentManagement from "./PaymentManagement";
+import authHeader from "../../services/authHeader";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
+import { saveAs } from "file-saver";
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  ChartTooltip,
   Legend
-} from 'chart.js';
-import PaymentManagement from './PaymentManagement';
-import authHeader from '../../services/authHeader';
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend);
+);
 
 function Commission() {
   const [activeTab, setActiveTab] = useState(0);
@@ -69,45 +78,45 @@ function Commission() {
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    company: '',
-    policyType: '',
-    tpCommission: '',
-    odCommission: '',
-    addonCommission: '',
-    effectiveCommission: '',
-    notes: '',
+    company: "",
+    policyType: "",
+    tpCommission: "",
+    odCommission: "",
+    addonCommission: "",
+    effectiveCommission: "",
+    notes: "",
     isActive: true,
   });
   const [paymentForm, setPaymentForm] = useState({
-    companyName: '',
-    amount: '',
-    paymentDate: '',
-    paymentMethod: '',
-    referenceNumber: '',
-    status: 'Pending',
+    companyName: "",
+    amount: "",
+    paymentDate: "",
+    paymentMethod: "",
+    referenceNumber: "",
+    status: "Pending",
   });
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterCompany, setFilterCompany] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterCompany, setFilterCompany] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
   const [companies, setCompanies] = useState([]);
   const [breakdownDialogOpen, setBreakdownDialogOpen] = useState(false);
   const [breakdownData, setBreakdownData] = useState([]);
-  const [breakdownCompany, setBreakdownCompany] = useState('');
+  const [breakdownCompany, setBreakdownCompany] = useState("");
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
   const [policies, setPolicies] = useState([]);
-  const [policySearch, setPolicySearch] = useState('');
+  const [policySearch, setPolicySearch] = useState("");
   const [policyPage, setPolicyPage] = useState(0);
   const [policyRowsPerPage, setPolicyRowsPerPage] = useState(10);
-  const [reportCompany, setReportCompany] = useState('');
-  const [reportStart, setReportStart] = useState('');
-  const [reportEnd, setReportEnd] = useState('');
+  const [reportCompany, setReportCompany] = useState("");
+  const [reportStart, setReportStart] = useState("");
+  const [reportEnd, setReportEnd] = useState("");
   const [reportStats, setReportStats] = useState(null);
-  const [partPaymentAmount, setPartPaymentAmount] = useState('');
-  const [partPaymentDate, setPartPaymentDate] = useState('');
-  const [partPaymentMethod, setPartPaymentMethod] = useState('');
-  const [partPaymentReference, setPartPaymentReference] = useState('');
-  const [partPaymentNotes, setPartPaymentNotes] = useState('');
+  const [partPaymentAmount, setPartPaymentAmount] = useState("");
+  const [partPaymentDate, setPartPaymentDate] = useState("");
+  const [partPaymentMethod, setPartPaymentMethod] = useState("");
+  const [partPaymentReference, setPartPaymentReference] = useState("");
+  const [partPaymentNotes, setPartPaymentNotes] = useState("");
   const [selectedPaymentId, setSelectedPaymentId] = useState(null);
 
   // Fetch commissions from backend
@@ -115,7 +124,9 @@ function Commission() {
     const fetchCommissions = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${API_URL}/commissions`, { headers: authHeader() });
+        const response = await axios.get(`${API_URL}/commissions`, {
+          headers: authHeader(),
+        });
         setCommissions(response.data);
       } catch (error) {
         setCommissions([]);
@@ -127,17 +138,26 @@ function Commission() {
   }, []);
 
   useEffect(() => {
-    axios.get(`${API_URL}/masterdata/type/Insurance Company`, { headers: authHeader() })
-      .then(res => setCompanies(res.data.filter(item => item.isActive).map(item => item.name)));
+    axios
+      .get(`${API_URL}/masterdata/type/Insurance Company`, {
+        headers: authHeader(),
+      })
+      .then((res) =>
+        setCompanies(
+          res.data.filter((item) => item.isActive).map((item) => item.name)
+        )
+      );
   }, []);
   const fetchPayments = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/payments`, { headers: authHeader() });
-        setPayments(response.data);
-      } catch (error) {
-        setPayments([]);
-      }
-    };
+    try {
+      const response = await axios.get(`${API_URL}/payments`, {
+        headers: authHeader(),
+      });
+      setPayments(response.data);
+    } catch (error) {
+      setPayments([]);
+    }
+  };
 
   // Fetch payments from backend
   useEffect(() => {
@@ -166,23 +186,23 @@ function Commission() {
       setFormData({
         company: commission.company,
         policyType: commission.policyType,
-        tpCommission: commission.tpCommission || '',
-        odCommission: commission.odCommission || '',
-        addonCommission: commission.addonCommission || '',
-        effectiveCommission: commission.effectiveCommission || '',
-        notes: commission.notes || '',
+        tpCommission: commission.tpCommission || "",
+        odCommission: commission.odCommission || "",
+        addonCommission: commission.addonCommission || "",
+        effectiveCommission: commission.effectiveCommission || "",
+        notes: commission.notes || "",
         isActive: commission.isActive,
       });
     } else {
       setSelectedCommission(null);
       setFormData({
-        company: '',
-        policyType: '',
-        tpCommission: '',
-        odCommission: '',
-        addonCommission: '',
-        effectiveCommission: '',
-        notes: '',
+        company: "",
+        policyType: "",
+        tpCommission: "",
+        odCommission: "",
+        addonCommission: "",
+        effectiveCommission: "",
+        notes: "",
         isActive: true,
       });
     }
@@ -196,12 +216,12 @@ function Commission() {
     } else {
       setSelectedPayment(null);
       setPaymentForm({
-        companyName: '',
-        amount: '',
-        paymentDate: '',
-        paymentMethod: '',
-        referenceNumber: '',
-        status: 'Pending',
+        companyName: "",
+        amount: "",
+        paymentDate: "",
+        paymentMethod: "",
+        referenceNumber: "",
+        status: "Pending",
       });
     }
     setOpenPaymentDialog(true);
@@ -219,16 +239,26 @@ function Commission() {
 
   const handleSubmit = async () => {
     try {
-    if (selectedCommission) {
+      if (selectedCommission) {
         // Update
-        const response = await axios.put(`${API_URL}/commissions/${selectedCommission.id}`, formData, { headers: authHeader() });
-        setCommissions(commissions.map(comm => comm.id === selectedCommission.id ? response.data : comm));
-    } else {
+        const response = await axios.put(
+          `${API_URL}/commissions/${selectedCommission.id}`,
+          formData,
+          { headers: authHeader() }
+        );
+        setCommissions(
+          commissions.map((comm) =>
+            comm.id === selectedCommission.id ? response.data : comm
+          )
+        );
+      } else {
         // Create
-        const response = await axios.post(`${API_URL}/commissions`, formData, { headers: authHeader() });
+        const response = await axios.post(`${API_URL}/commissions`, formData, {
+          headers: authHeader(),
+        });
         setCommissions([...commissions, response.data]);
-    }
-    handleCloseDialog();
+      }
+      handleCloseDialog();
     } catch (error) {
       // Optionally show error
     }
@@ -236,13 +266,23 @@ function Commission() {
 
   const handlePaymentSubmit = async () => {
     try {
-    if (selectedPayment) {
+      if (selectedPayment) {
         // Update
-        const response = await axios.put(`${API_URL}/payments/${selectedPayment.id}`, paymentForm, { headers: authHeader() });
-        setPayments(payments.map(pay => pay.id === selectedPayment.id ? response.data : pay));
-    } else {
+        const response = await axios.put(
+          `${API_URL}/payments/${selectedPayment.id}`,
+          paymentForm,
+          { headers: authHeader() }
+        );
+        setPayments(
+          payments.map((pay) =>
+            pay.id === selectedPayment.id ? response.data : pay
+          )
+        );
+      } else {
         // Create
-        const response = await axios.post(`${API_URL}/payments`, paymentForm, { headers: authHeader() });
+        const response = await axios.post(`${API_URL}/payments`, paymentForm, {
+          headers: authHeader(),
+        });
         setPayments([...payments, response.data]);
       }
       handleClosePaymentDialog();
@@ -253,7 +293,7 @@ function Commission() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -261,7 +301,7 @@ function Commission() {
 
   const handlePaymentInputChange = (e) => {
     const { name, value } = e.target;
-    setPaymentForm(prev => ({
+    setPaymentForm((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -269,43 +309,54 @@ function Commission() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Completed':
-        return 'success';
-      case 'Pending':
-        return 'warning';
-      case 'Failed':
-        return 'error';
+      case "Completed":
+        return "success";
+      case "Pending":
+        return "warning";
+      case "Failed":
+        return "error";
       default:
-        return 'default';
+        return "default";
     }
   };
 
-  const filteredCommissions = commissions.filter(commission => {
-    const matchesSearch = (commission.companyName?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-    const matchesFilter = !filterCompany || commission.companyName === filterCompany;
+  const filteredCommissions = commissions.filter((commission) => {
+    const matchesSearch = (
+      commission.companyName?.toLowerCase() || ""
+    ).includes(searchTerm.toLowerCase());
+    const matchesFilter =
+      !filterCompany || commission.companyName === filterCompany;
     return matchesSearch && matchesFilter;
   });
 
-  const filteredPayments = payments.filter(payment => {
-    const matchesSearch = (payment.companyName?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-    const matchesCompany = !filterCompany || payment.companyName === filterCompany;
+  const filteredPayments = payments.filter((payment) => {
+    const matchesSearch = (payment.companyName?.toLowerCase() || "").includes(
+      searchTerm.toLowerCase()
+    );
+    const matchesCompany =
+      !filterCompany || payment.companyName === filterCompany;
     const matchesStatus = !filterStatus || payment.status === filterStatus;
     return matchesSearch && matchesCompany && matchesStatus;
   });
 
   const filteredCompanyPolicies = policies.filter(
-    policy => policy.company === selectedCompany &&
-      (
-        (policy.policyNumber?.toLowerCase() || '').includes(policySearch.toLowerCase()) ||
-        (policy.insuredName?.toLowerCase() || '').includes(policySearch.toLowerCase())
-      )
+    (policy) =>
+      policy.company === selectedCompany &&
+      ((policy.policyNumber?.toLowerCase() || "").includes(
+        policySearch.toLowerCase()
+      ) ||
+        (policy.insuredName?.toLowerCase() || "").includes(
+          policySearch.toLowerCase()
+        ))
   );
 
   // Add delete logic
   const handleDeleteCommission = async (id) => {
     try {
-      await axios.delete(`${API_URL}/commissions/${id}`, { headers: authHeader() });
-      setCommissions(commissions.filter(comm => comm.id !== id));
+      await axios.delete(`${API_URL}/commissions/${id}`, {
+        headers: authHeader(),
+      });
+      setCommissions(commissions.filter((comm) => comm.id !== id));
     } catch (error) {
       // Optionally show error
     }
@@ -313,8 +364,10 @@ function Commission() {
 
   const handleDeletePayment = async (id) => {
     try {
-      await axios.delete(`${API_URL}/payments/${id}`, { headers: authHeader() });
-      setPayments(payments.filter(pay => pay.id !== id));
+      await axios.delete(`${API_URL}/payments/${id}`, {
+        headers: authHeader(),
+      });
+      setPayments(payments.filter((pay) => pay.id !== id));
     } catch (error) {
       // Optionally show error
     }
@@ -325,7 +378,10 @@ function Commission() {
     setBreakdownDialogOpen(true);
     setBreakdownData([]);
     try {
-      const res = await axios.get(`${API_URL}/commissions/breakdown/${encodeURIComponent(company)}`, { headers: authHeader() });
+      const res = await axios.get(
+        `${API_URL}/commissions/breakdown/${encodeURIComponent(company)}`,
+        { headers: authHeader() }
+      );
       setBreakdownData(res.data);
     } catch {
       setBreakdownData([]);
@@ -335,7 +391,7 @@ function Commission() {
   const handleCloseBreakdown = () => {
     setBreakdownDialogOpen(false);
     setBreakdownData([]);
-    setBreakdownCompany('');
+    setBreakdownCompany("");
   };
 
   const handleCompanyCardClick = (company) => {
@@ -348,25 +404,36 @@ function Commission() {
     setCompanyDialogOpen(false);
   };
 
-  const paginatedPolicies = filteredCompanyPolicies.slice(policyPage * policyRowsPerPage, policyPage * policyRowsPerPage + policyRowsPerPage);
+  const paginatedPolicies = filteredCompanyPolicies.slice(
+    policyPage * policyRowsPerPage,
+    policyPage * policyRowsPerPage + policyRowsPerPage
+  );
 
   // Calculate company stats
-  const companyStats = companies.map(company => {
-    const companyPolicies = policies.filter(p => p.company === company);
+  const companyStats = companies.map((company) => {
+    const companyPolicies = policies.filter((p) => p.company === company);
     const numPolicies = companyPolicies.length;
-    const totalCommission = companyPolicies.reduce((sum, p) => sum + (Number(p.totalCommissionAmount) || Number(p.commissionAmount) || 0), 0);
-    const totalPremium = companyPolicies.reduce((sum, p) => sum + (Number(p.totalPremium) || Number(p.premium) || 0), 0);
+    const totalCommission = companyPolicies.reduce(
+      (sum, p) =>
+        sum +
+        (Number(p.totalCommissionAmount) || Number(p.commissionAmount) || 0),
+      0
+    );
+    const totalPremium = companyPolicies.reduce(
+      (sum, p) => sum + (Number(p.totalPremium) || Number(p.premium) || 0),
+      0
+    );
     return { company, numPolicies, totalCommission, totalPremium };
   });
 
   // Bar chart data
   const barChartData = {
-    labels: companyStats.map(stat => stat.company),
+    labels: companyStats.map((stat) => stat.company),
     datasets: [
       {
-        label: 'Total Commission',
-        data: companyStats.map(stat => stat.totalCommission),
-        backgroundColor: 'rgba(25, 118, 210, 0.7)',
+        label: "Total Commission",
+        data: companyStats.map((stat) => stat.totalCommission),
+        backgroundColor: "rgba(25, 118, 210, 0.7)",
         borderRadius: 6,
       },
     ],
@@ -376,36 +443,53 @@ function Commission() {
     responsive: true,
     plugins: {
       legend: { display: false },
-      title: { display: true, text: 'Total Commission by Company', color: '#1976d2', font: { size: 18 } },
+      title: {
+        display: true,
+        text: "Total Commission by Company",
+        color: "#1976d2",
+        font: { size: 18 },
+      },
     },
     scales: {
-      x: { ticks: { color: '#1976d2', font: { weight: 'bold' } } },
-      y: { ticks: { color: '#1976d2' } },
+      x: { ticks: { color: "#1976d2", font: { weight: "bold" } } },
+      y: { ticks: { color: "#1976d2" } },
     },
   };
 
   const handleShowReport = () => {
     if (!reportCompany) return;
-    const filtered = policies.filter(p =>
-      p.company === reportCompany &&
-      (!reportStart || new Date(p.startDate) >= new Date(reportStart)) &&
-      (!reportEnd || new Date(p.endDate) <= new Date(reportEnd))
+    const filtered = policies.filter(
+      (p) =>
+        p.company === reportCompany &&
+        (!reportStart || new Date(p.startDate) >= new Date(reportStart)) &&
+        (!reportEnd || new Date(p.endDate) <= new Date(reportEnd))
     );
-    const totalCommission = filtered.reduce((sum, p) => sum + (Number(p.totalCommissionAmount) || Number(p.commissionAmount) || 0), 0);
-    const totalPremium = filtered.reduce((sum, p) => sum + (Number(p.totalPremium) || Number(p.premium) || 0), 0);
+    const totalCommission = filtered.reduce(
+      (sum, p) =>
+        sum +
+        (Number(p.totalCommissionAmount) || Number(p.commissionAmount) || 0),
+      0
+    );
+    const totalPremium = filtered.reduce(
+      (sum, p) => sum + (Number(p.totalPremium) || Number(p.premium) || 0),
+      0
+    );
     setReportStats({
       numPolicies: filtered.length,
       totalCommission,
-      totalPremium
+      totalPremium,
     });
   };
 
   // Calculate payment stats
   const totalPayments = payments.length;
-  const totalPaid = payments.filter(p => p.status === 'Completed').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-  const totalPending = payments.filter(p => p.status === 'Pending').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const totalPaid = payments
+    .filter((p) => p.status === "Completed")
+    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const totalPending = payments
+    .filter((p) => p.status === "Pending")
+    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-  
   function CommissionAgreementsTab() {
     return (
       <>
@@ -424,70 +508,255 @@ function Commission() {
 
   function ReportsTab() {
     return (
-      <Box sx={{ background: 'rgba(255,255,255,0.97)', borderRadius: 4, p: 4, boxShadow: 6, border: '2px solid #1976d2', mt: 2 }}>
+      <Box
+        sx={{
+          background: "rgba(255,255,255,0.97)",
+          borderRadius: 4,
+          p: 4,
+          boxShadow: 6,
+          border: "2px solid #1976d2",
+          mt: 2,
+        }}
+      >
         <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
           <Grid item xs={12}>
-            <Card sx={{ display: 'flex', alignItems: 'center', p: 2, mb: 3, background: 'linear-gradient(90deg, #e3e3e3 0%, #fff 100%)', boxShadow: 3 }}>
-              <BarChartIcon sx={{ fontSize: 48, color: '#1976d2', mr: 2 }} />
+            <Card
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                p: 2,
+                mb: 3,
+                background: "linear-gradient(90deg, #e3e3e3 0%, #fff 100%)",
+                boxShadow: 3,
+              }}
+            >
+              <BarChartIcon sx={{ fontSize: 48, color: "#1976d2", mr: 2 }} />
               <Box>
-                <Typography variant="h5" sx={{ color: '#111', fontWeight: 'bold', mb: 0.5 }}>Commission Reports</Typography>
-                <Typography variant="body1" sx={{ color: '#333' }}>Generate and analyze commission and premium reports for any company and date range. Use the filters below to customize your report.</Typography>
+                <Typography
+                  variant="h5"
+                  sx={{ color: "#111", fontWeight: "bold", mb: 0.5 }}
+                >
+                  Commission Reports
+                </Typography>
+                <Typography variant="body1" sx={{ color: "#333" }}>
+                  Generate and analyze commission and premium reports for any
+                  company and date range. Use the filters below to customize
+                  your report.
+                </Typography>
               </Box>
             </Card>
           </Grid>
-          <Divider sx={{ width: '100%', mb: 2, borderColor: '#1976d2', borderWidth: 2 }} />
+          <Divider
+            sx={{
+              width: "100%",
+              mb: 2,
+              borderColor: "#1976d2",
+              borderWidth: 2,
+            }}
+          />
           <Grid item xs={12} sm={4}>
             <FormControl fullWidth>
-              <InputLabel>Company</InputLabel>
+              <InputLabel sx={{ color: "#222" }}>Company</InputLabel>
               <Select
                 value={reportCompany}
-                onChange={e => setReportCompany(e.target.value)}
+                onChange={(e) => setReportCompany(e.target.value)}
                 label="Company"
-                sx={{ color: '#111' }}
+                sx={{
+                  color: "#222",
+                  backgroundColor: "#fff",
+                  ".MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#1976d2", // Blue border
+                    borderWidth: "2px", // Thicker border (optional)
+                  },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#1565c0", // Darker blue on focus (optional)
+                  },
+                  borderRadius: "8px", // Rounded corners (optional)
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      backgroundColor: "#fff",
+                      color: "#222",
+                    },
+                  },
+                }}
               >
-                {companies.map(company => (
-                  <MenuItem key={company} value={company}>{company}</MenuItem>
+                {companies.map((company) => (
+                  <MenuItem
+                    key={company}
+                    value={company}
+                    sx={{ color: "#222" }}
+                  >
+                    {company}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
           </Grid>
           <Grid item xs={12} sm={3}>
-            <Typography sx={{ color: '#111', mb: 0.5 }}>Start Date</Typography>
-            <input type="date" value={reportStart} onChange={e => setReportStart(e.target.value)} style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #bbb', color: '#111', background: '#fff' }} />
+            <Typography sx={{ color: "#111", mb: 0.5 }}>Start Date</Typography>
+            <input
+              type="date"
+              value={reportStart}
+              onChange={(e) => setReportStart(e.target.value)}
+              style={{
+                width: "100%",
+                padding: 8,
+                borderRadius: 4,
+                border: "1px solid #bbb",
+                color: "#111",
+                background: "#fff",
+              }}
+            />
           </Grid>
           <Grid item xs={12} sm={3}>
-            <Typography sx={{ color: '#111', mb: 0.5 }}>End Date</Typography>
-            <input type="date" value={reportEnd} onChange={e => setReportEnd(e.target.value)} style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #bbb', color: '#111', background: '#fff' }} />
+            <Typography sx={{ color: "#111", mb: 0.5 }}>End Date</Typography>
+            <input
+              type="date"
+              value={reportEnd}
+              onChange={(e) => setReportEnd(e.target.value)}
+              style={{
+                width: "100%",
+                padding: 8,
+                borderRadius: 4,
+                border: "1px solid #bbb",
+                color: "#111",
+                background: "#fff",
+              }}
+            />
           </Grid>
           <Grid item xs={12} sm={2}>
-            <Button variant="contained" color="primary" fullWidth sx={{ height: '100%' }} onClick={handleShowReport}>Show Report</Button>
+            <Button
+              variant="contained"
+              color="primary"
+              fullWidth
+              sx={{ height: "100%" }}
+              onClick={handleShowReport}
+            >
+              Show Report
+            </Button>
           </Grid>
         </Grid>
         {reportStats && (
           <Grid container spacing={3} sx={{ mt: 2 }}>
             <Grid item xs={12} sm={4}>
-              <Card sx={{ background: 'linear-gradient(135deg, #fff 0%, #e3e3e3 100%)', borderRadius: 4, boxShadow: 6 }}>
-                <CardContent>
-                  <Typography variant="h6" sx={{ color: '#111', fontWeight: 'bold' }}>Policies</Typography>
-                  <Typography variant="h4" sx={{ color: '#1976d2', fontWeight: 'bold' }}>{reportStats.numPolicies}</Typography>
-                </CardContent>
+              <Card
+                sx={{
+                  background: "linear-gradient(135deg, #fff 0%, #e3e3e3 100%)",
+                  borderRadius: 5,
+                  boxShadow: 6,
+                  display: "flex",
+                  alignItems: "center",
+                  p: 2,
+                }}
+              >
+                <PolicyIcon sx={{ fontSize: 40, color: "#1976d2", mr: 2 }} />
+                <Box>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ color: "#888", fontWeight: 500 }}
+                  >
+                    Policies
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      color: "#1976d2",
+                      fontWeight: "bold",
+                      letterSpacing: 1,
+                    }}
+                  >
+                    {reportStats.numPolicies}
+                  </Typography>
+                </Box>
               </Card>
             </Grid>
             <Grid item xs={12} sm={4}>
-              <Card sx={{ background: 'linear-gradient(135deg, #fff 0%, #e3e3e3 100%)', borderRadius: 4, boxShadow: 6 }}>
-                <CardContent>
-                  <Typography variant="h6" sx={{ color: '#111', fontWeight: 'bold' }}>Total Commission</Typography>
-                  <Typography variant="h4" sx={{ color: '#388e3c', fontWeight: 'bold' }}>₹{reportStats.totalCommission.toLocaleString('en-IN')}</Typography>
-                </CardContent>
+              <Card
+                sx={{
+                  background: "linear-gradient(135deg, #e8f5e9 0%, #fff 100%)",
+                  borderRadius: 4,
+                  boxShadow: 6,
+                  display: "flex",
+                  alignItems: "center",
+                  p: 2,
+                }}
+              >
+                <MonetizationOnIcon
+                  sx={{ fontSize: 40, color: "#388e3c", mr: 2 }}
+                />
+                <Box>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ color: "#888", fontWeight: 500 }}
+                  >
+                    Total Commission
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      color: "#388e3c",
+                      fontWeight: "bold",
+                      letterSpacing: 1,
+                    }}
+                  >
+                    ₹{reportStats.totalCommission.toLocaleString("en-IN")}
+                  </Typography>
+                </Box>
               </Card>
             </Grid>
             <Grid item xs={12} sm={4}>
-              <Card sx={{ background: 'linear-gradient(135deg, #fff 0%, #e3e3e3 100%)', borderRadius: 4, boxShadow: 6 }}>
-                <CardContent>
-                  <Typography variant="h6" sx={{ color: '#111', fontWeight: 'bold' }}>Total Premium</Typography>
-                  <Typography variant="h4" sx={{ color: '#fbc02d', fontWeight: 'bold' }}>₹{reportStats.totalPremium.toLocaleString('en-IN')}</Typography>
-                </CardContent>
+              <Card
+                sx={{
+                  background: "linear-gradient(135deg, #fffde7 0%, #fff 100%)",
+                  borderRadius: 4,
+                  boxShadow: 6,
+                  display: "flex",
+                  alignItems: "center",
+                  p: 2,
+                }}
+              >
+                <BarChartIcon sx={{ fontSize: 40, color: "#fbc02d", mr: 2 }} />
+                <Box>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ color: "#888", fontWeight: 500 }}
+                  >
+                    Total Premium
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      color: "#fbc02d",
+                      fontWeight: "bold",
+                      letterSpacing: 1,
+                    }}
+                  >
+                    ₹{reportStats.totalPremium.toLocaleString("en-IN")}
+                  </Typography>
+                </Box>
               </Card>
+            </Grid>
+            <Grid item xs={12} sx={{ textAlign: "right", mt: 2 }}>
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<DownloadIcon />}
+                sx={{ borderRadius: 3, fontWeight: 600, mr: 2 }}
+                onClick={() => window.print()}
+              >
+                Print Report
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<DownloadIcon />}
+                sx={{ borderRadius: 3, fontWeight: 600 }}
+                onClick={handleDownloadDocx}
+              >
+                Download DOCX
+              </Button>
             </Grid>
           </Grid>
         )}
@@ -495,21 +764,85 @@ function Commission() {
     );
   }
 
+  const handleDownloadDocx = () => {
+    if (!reportStats) return;
+    const doc = new Document({
+      sections: [
+        {
+          properties: {},
+          children: [
+            new Paragraph({
+              text: "Commission Report",
+              heading: HeadingLevel.TITLE,
+              spacing: { after: 300 },
+            }),
+            new Paragraph({
+              text: `Company: ${reportCompany}`,
+              heading: HeadingLevel.HEADING_2,
+              spacing: { after: 200 },
+            }),
+            new Paragraph({
+              text: `Date Range: ${reportStart || "All"} to ${
+                reportEnd || "All"
+              }`,
+              spacing: { after: 200 },
+            }),
+            new Paragraph({
+              text: `Number of Policies: ${reportStats.numPolicies}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Total Commission: ₹${reportStats.totalCommission.toLocaleString(
+                "en-IN"
+              )}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Total Premium: ₹${reportStats.totalPremium.toLocaleString(
+                "en-IN"
+              )}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: "---",
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: "Generated by CRM App",
+              spacing: { before: 300 },
+              alignment: "right",
+            }),
+          ],
+        },
+      ],
+    });
+    Packer.toBlob(doc).then((blob) => {
+      saveAs(
+        blob,
+        `Commission_Report_${reportCompany}_${reportStart || "All"}_${
+          reportEnd || "All"
+        }.docx`
+      );
+    });
+  };
+
   return (
-    <Box sx={{ 
-      padding: '20px',
-      minHeight: '100vh',
-      color: '#111',
-      background: 'linear-gradient(120deg, #f5faff 0%, #e3f2fd 100%)',
-    }}>
+    <Box
+      sx={{
+        padding: "20px",
+        minHeight: "100vh",
+        color: "#111",
+        background: "linear-gradient(120deg, #f5faff 0%, #e3f2fd 100%)",
+      }}
+    >
       <Typography
         variant="h4"
         gutterBottom
         sx={{
-          fontWeight: 'bold',
-          background: 'linear-gradient(90deg, #111 30%, #333 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
+          fontWeight: "bold",
+          background: "linear-gradient(90deg, #111 30%, #333 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
           mb: 2,
         }}
       >
@@ -520,10 +853,10 @@ function Commission() {
         onChange={handleTabChange}
         sx={{
           mb: 3,
-          '& .MuiTab-root': {
-            color: '#111',
-            '&.Mui-selected': {
-              color: '#1976d2',
+          "& .MuiTab-root": {
+            color: "#111",
+            "&.Mui-selected": {
+              color: "#1976d2",
             },
           },
         }}
@@ -539,28 +872,44 @@ function Commission() {
         <>
           {/* Company Stats Dashboard */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
-            {companyStats.map(stat => (
+            {companyStats.map((stat) => (
               <Grid item xs={12} sm={6} md={4} lg={3} key={stat.company}>
-                <Card sx={{
-                  background: 'linear-gradient(135deg, #fff 0%, #e3e3e3 100%)',
-                  borderRadius: 4,
-                  boxShadow: 6,
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  '&:hover': { transform: 'scale(1.04)', boxShadow: 12 },
-                }}>
+                <Card
+                  sx={{
+                    background:
+                      "linear-gradient(135deg, #fff 0%, #e3e3e3 100%)",
+                    borderRadius: 4,
+                    boxShadow: 6,
+                    transition: "transform 0.2s, box-shadow 0.2s",
+                    "&:hover": { transform: "scale(1.04)", boxShadow: 12 },
+                  }}
+                >
                   <CardContent>
-                    <Typography variant="h6" sx={{ color: '#111', fontWeight: 'bold', mb: 1 }}>{stat.company}</Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <PolicyIcon sx={{ color: '#1976d2', mr: 1 }} />
-                      <Typography variant="body1" sx={{ color: '#111' }}>Policies: <b>{stat.numPolicies}</b></Typography>
+                    <Typography
+                      variant="h6"
+                      sx={{ color: "#111", fontWeight: "bold", mb: 1 }}
+                    >
+                      {stat.company}
+                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                      <PolicyIcon sx={{ color: "#1976d2", mr: 1 }} />
+                      <Typography variant="body1" sx={{ color: "#111" }}>
+                        Policies: <b>{stat.numPolicies}</b>
+                      </Typography>
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <MonetizationOnIcon sx={{ color: '#388e3c', mr: 1 }} />
-                      <Typography variant="body1" sx={{ color: '#111' }}>Lifetime Commission: <b>₹{stat.totalCommission.toLocaleString('en-IN')}</b></Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                      <MonetizationOnIcon sx={{ color: "#388e3c", mr: 1 }} />
+                      <Typography variant="body1" sx={{ color: "#111" }}>
+                        Lifetime Commission:{" "}
+                        <b>₹{stat.totalCommission.toLocaleString("en-IN")}</b>
+                      </Typography>
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <BarChartIcon sx={{ color: '#fbc02d', mr: 1 }} />
-                      <Typography variant="body1" sx={{ color: '#111' }}>Total Premium: <b>₹{stat.totalPremium.toLocaleString('en-IN')}</b></Typography>
+                    <Box sx={{ display: "flex", alignItems: "center" }}>
+                      <BarChartIcon sx={{ color: "#fbc02d", mr: 1 }} />
+                      <Typography variant="body1" sx={{ color: "#111" }}>
+                        Total Premium:{" "}
+                        <b>₹{stat.totalPremium.toLocaleString("en-IN")}</b>
+                      </Typography>
                     </Box>
                   </CardContent>
                 </Card>
@@ -568,92 +917,213 @@ function Commission() {
             ))}
           </Grid>
           {/* Bar Chart */}
-          <Box sx={{ mb: 4, background: 'rgba(255,255,255,0.9)', borderRadius: 4, p: 3, boxShadow: 4 }}>
-            <Bar data={barChartData} options={{...barChartOptions, plugins: { ...barChartOptions.plugins, title: { ...barChartOptions.plugins.title, color: '#111' } }, scales: { x: { ...barChartOptions.scales.x, ticks: { color: '#111', font: { weight: 'bold' } } }, y: { ...barChartOptions.scales.y, ticks: { color: '#111' } } } }} height={80} />
+          <Box
+            sx={{
+              mb: 4,
+              background: "rgba(255,255,255,0.9)",
+              borderRadius: 4,
+              p: 3,
+              boxShadow: 4,
+            }}
+          >
+            <Bar
+              data={barChartData}
+              options={{
+                ...barChartOptions,
+                plugins: {
+                  ...barChartOptions.plugins,
+                  title: { ...barChartOptions.plugins.title, color: "#111" },
+                },
+                scales: {
+                  x: {
+                    ...barChartOptions.scales.x,
+                    ticks: { color: "#111", font: { weight: "bold" } },
+                  },
+                  y: { ...barChartOptions.scales.y, ticks: { color: "#111" } },
+                },
+              }}
+              height={80}
+            />
           </Box>
-          <Divider sx={{ mb: 4, borderColor: '#333', borderWidth: 2 }} />
+          <Divider sx={{ mb: 4, borderColor: "#333", borderWidth: 2 }} />
           {/* Company Cards */}
-          <Typography variant="h6" sx={{ mb: 2, color: '#111', fontWeight: 'bold' }}>Select a Company</Typography>
+          <Typography
+            variant="h6"
+            sx={{ mb: 2, color: "#111", fontWeight: "bold" }}
+          >
+            Select a Company
+          </Typography>
           <Grid container spacing={3}>
             {companies.map((company) => (
               <Grid item xs={12} sm={6} md={4} lg={3} key={company}>
                 <Card
-                    sx={{ 
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s, box-shadow 0.2s',
-                    '&:hover': { transform: 'scale(1.05)', boxShadow: 10 },
-                    background: 'rgba(255,255,255,0.95)',
+                  sx={{
+                    cursor: "pointer",
+                    transition: "transform 0.2s, box-shadow 0.2s",
+                    "&:hover": { transform: "scale(1.05)", boxShadow: 10 },
+                    background: "rgba(255,255,255,0.95)",
                     borderRadius: 4,
                     minHeight: 120,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                     boxShadow: 3,
-                    backdropFilter: 'blur(2px)',
+                    backdropFilter: "blur(2px)",
                   }}
                   onClick={() => handleCompanyCardClick(company)}
                 >
                   <CardContent>
-                    <Typography variant="h5" align="center" sx={{ color: '#111', fontWeight: 'bold' }}>{company}</Typography>
+                    <Typography
+                      variant="h5"
+                      align="center"
+                      sx={{ color: "#111", fontWeight: "bold" }}
+                    >
+                      {company}
+                    </Typography>
                   </CardContent>
                 </Card>
               </Grid>
             ))}
           </Grid>
-          <Dialog open={companyDialogOpen} onClose={handleCloseCompanyDialog} maxWidth="lg" fullWidth
+          <Dialog
+            open={companyDialogOpen}
+            onClose={handleCloseCompanyDialog}
+            maxWidth="lg"
+            fullWidth
             PaperProps={{
               sx: {
-                background: 'rgba(255,255,255,0.97)',
+                background: "rgba(255,255,255,0.97)",
                 boxShadow: 12,
                 borderRadius: 4,
-                backdropFilter: 'blur(6px)',
-              }
+                backdropFilter: "blur(6px)",
+              },
             }}
           >
-            <DialogTitle sx={{ color: '#111', fontWeight: 'bold' }}>{selectedCompany} - Details</DialogTitle>
+            <DialogTitle sx={{ color: "#111", fontWeight: "bold" }}>
+              {selectedCompany} - Details
+            </DialogTitle>
             <DialogContent>
-              <Typography variant="h6" sx={{ mb: 2, color: '#111' }}>Policies for {selectedCompany}</Typography>
-                  <TextField
-                    fullWidth
+              <Typography variant="h6" sx={{ mb: 2, color: "#111" }}>
+                Policies for {selectedCompany}
+              </Typography>
+              <TextField
+                fullWidth
                 placeholder="Search by Policy Number or Insured Name"
                 value={policySearch}
-                onChange={e => { setPolicySearch(e.target.value); setPolicyPage(0); }}
-                sx={{ mb: 2, background: 'rgba(255,255,255,0.7)', borderRadius: 2, color: '#111' }}
-                InputProps={{ style: { color: '#111' } }}
+                onChange={(e) => {
+                  setPolicySearch(e.target.value);
+                  setPolicyPage(0);
+                }}
+                sx={{
+                  mb: 2,
+                  background: "rgba(255,255,255,0.7)",
+                  borderRadius: 2,
+                  color: "#111",
+                }}
+                InputProps={{ style: { color: "#111" } }}
               />
               {filteredCompanyPolicies.length === 0 ? (
-                <Typography sx={{ color: '#111' }}>No policies found for this company.</Typography>
+                <Typography sx={{ color: "#111" }}>
+                  No policies found for this company.
+                </Typography>
               ) : (
                 <>
-                  <TableContainer component={Paper} sx={{ mt: 2, boxShadow: 3, borderRadius: 3, background: 'rgba(245,250,255,0.95)' }}>
+                  <TableContainer
+                    component={Paper}
+                    sx={{
+                      mt: 2,
+                      boxShadow: 3,
+                      borderRadius: 3,
+                      background: "rgba(245,250,255,0.95)",
+                    }}
+                  >
                     <Table>
-                      <TableHead sx={{ background: 'linear-gradient(90deg, #e3e3e3 0%, #fff 100%)' }}>
+                      <TableHead
+                        sx={{
+                          background:
+                            "linear-gradient(90deg, #e3e3e3 0%, #fff 100%)",
+                        }}
+                      >
                         <TableRow>
-                          <TableCell sx={{ fontWeight: 'bold', color: '#111' }}>Policy Number</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold', color: '#111' }}>Insured Name</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold', color: '#111' }}>Policy Type</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold', color: '#111' }}>Premium</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold', color: '#111' }}>Total Premium</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold', color: '#111' }}>Effective Commission (%)</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold', color: '#111' }}>Total Commission</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold', color: '#111' }}>TP (%)</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold', color: '#111' }}>OD (%)</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold', color: '#111' }}>Add-on (%)</TableCell>
+                          <TableCell sx={{ fontWeight: "bold", color: "#111" }}>
+                            Policy Number
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: "bold", color: "#111" }}>
+                            Insured Name
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: "bold", color: "#111" }}>
+                            Policy Type
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: "bold", color: "#111" }}>
+                            Premium
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: "bold", color: "#111" }}>
+                            Total Premium
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: "bold", color: "#111" }}>
+                            Effective Commission (%)
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: "bold", color: "#111" }}>
+                            Total Commission
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: "bold", color: "#111" }}>
+                            TP (%)
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: "bold", color: "#111" }}>
+                            OD (%)
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: "bold", color: "#111" }}>
+                            Add-on (%)
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {paginatedPolicies.map((policy) => (
-                          <TableRow key={policy.id} sx={{ '&:hover': { background: '#e3e3e3' } }}>
-                            <TableCell sx={{ color: '#111' }}>{policy.policyNumber}</TableCell>
-                            <TableCell sx={{ color: '#111' }}>{policy.insuredName}</TableCell>
-                            <TableCell sx={{ color: '#111' }}>{policy.type}</TableCell>
-                            <TableCell sx={{ color: '#111' }}>₹{policy.premium || policy.totalPremium || '-'}</TableCell>
-                            <TableCell sx={{ color: '#111' }}>₹{policy.totalPremium || policy.premium || '-'}</TableCell>
-                            <TableCell sx={{ color: '#111' }}>{policy.effectiveCommissionPercentage || policy.effectiveCommission || '-'}</TableCell>
-                            <TableCell sx={{ color: '#111' }}>₹{policy.totalCommissionAmount || policy.commissionAmount || '-'}</TableCell>
-                            <TableCell sx={{ color: '#111' }}>{policy.tpCommissionPercentage || policy.tpCommission || '-'}</TableCell>
-                            <TableCell sx={{ color: '#111' }}>{policy.odCommissionPercentage || policy.odCommission || '-'}</TableCell>
-                            <TableCell sx={{ color: '#111' }}>{policy.addonCommissionPercentage || policy.addonCommission || '-'}</TableCell>
+                          <TableRow
+                            key={policy.id}
+                            sx={{ "&:hover": { background: "#e3e3e3" } }}
+                          >
+                            <TableCell sx={{ color: "#111" }}>
+                              {policy.policyNumber}
+                            </TableCell>
+                            <TableCell sx={{ color: "#111" }}>
+                              {policy.insuredName}
+                            </TableCell>
+                            <TableCell sx={{ color: "#111" }}>
+                              {policy.type}
+                            </TableCell>
+                            <TableCell sx={{ color: "#111" }}>
+                              ₹{policy.premium || policy.totalPremium || "-"}
+                            </TableCell>
+                            <TableCell sx={{ color: "#111" }}>
+                              ₹{policy.totalPremium || policy.premium || "-"}
+                            </TableCell>
+                            <TableCell sx={{ color: "#111" }}>
+                              {policy.effectiveCommissionPercentage ||
+                                policy.effectiveCommission ||
+                                "-"}
+                            </TableCell>
+                            <TableCell sx={{ color: "#111" }}>
+                              ₹
+                              {policy.totalCommissionAmount ||
+                                policy.commissionAmount ||
+                                "-"}
+                            </TableCell>
+                            <TableCell sx={{ color: "#111" }}>
+                              {policy.tpCommissionPercentage ||
+                                policy.tpCommission ||
+                                "-"}
+                            </TableCell>
+                            <TableCell sx={{ color: "#111" }}>
+                              {policy.odCommissionPercentage ||
+                                policy.odCommission ||
+                                "-"}
+                            </TableCell>
+                            <TableCell sx={{ color: "#111" }}>
+                              {policy.addonCommissionPercentage ||
+                                policy.addonCommission ||
+                                "-"}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -665,15 +1135,20 @@ function Commission() {
                     page={policyPage}
                     onPageChange={(e, newPage) => setPolicyPage(newPage)}
                     rowsPerPage={policyRowsPerPage}
-                    onRowsPerPageChange={e => { setPolicyRowsPerPage(parseInt(e.target.value, 10)); setPolicyPage(0); }}
+                    onRowsPerPageChange={(e) => {
+                      setPolicyRowsPerPage(parseInt(e.target.value, 10));
+                      setPolicyPage(0);
+                    }}
                     rowsPerPageOptions={[5, 10, 25, 50]}
-                    sx={{ color: '#111' }}
+                    sx={{ color: "#111" }}
                   />
                 </>
               )}
             </DialogContent>
             <DialogActions>
-              <Button onClick={handleCloseCompanyDialog} sx={{ color: '#111' }}>Close</Button>
+              <Button onClick={handleCloseCompanyDialog} sx={{ color: "#111" }}>
+                Close
+              </Button>
             </DialogActions>
           </Dialog>
         </>
@@ -683,4 +1158,3 @@ function Commission() {
 }
 
 export default Commission;
-

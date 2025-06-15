@@ -18,7 +18,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField
+  TextField,
+  CircularProgress,
+  Backdrop
 } from '@mui/material';
 import { API_URL } from '../../config/config';
 import axios from 'axios';
@@ -38,22 +40,34 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
     description: '',
     dueDate: '',
   });
+  const [statusLoadingId, setStatusLoadingId] = useState(null); // Track which task is updating
+  const [deletingTaskId, setDeletingTaskId] = useState(null); // Track which task is being deleted
+  const [creating, setCreating] = useState(false);
+  const TASKS_PAGE_SIZE = 10;
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
-    fetchTasks();
+    setTasks([]);
+    setPage(1);
+    setHasMore(true);
+    fetchTasks(1, true);
   }, [employeeId]);
 
-  const fetchTasks = async () => {
+  const fetchTasks = async (pageToLoad = page, reset = false) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/tasks/employee/${employeeId}`, {
+      console.log('Fetching tasks for employeeId:', employeeId, 'page:', pageToLoad);
+      const response = await axios.get(`${API_URL}/tasks/employee/${employeeId}?page=${pageToLoad}&limit=${TASKS_PAGE_SIZE}`, {
         headers: authHeader()
       });
-
+      console.log('Fetched tasks response:', response.data);
       if (response.data && Array.isArray(response.data.tasks)) {
-        setTasks(response.data.tasks);
+        setTasks(prev => reset ? response.data.tasks : [...prev, ...response.data.tasks]);
+        setHasMore(response.data.tasks.length === TASKS_PAGE_SIZE);
       } else {
         setTasks([]);
+        setHasMore(false);
       }
     } catch (error) {
       console.error('Error fetching tasks:', error);
@@ -63,53 +77,73 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
         severity: 'error'
       });
       setTasks([]);
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleLoadMore = () => {
+    if (!loading && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchTasks(nextPage);
+    }
+  };
+
+  // Listen for scroll to bottom of table container
+  const tableContainerRef = React.useRef();
+  useEffect(() => {
+    const handleScroll = () => {
+      const el = tableContainerRef.current;
+      if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 50 && hasMore && !loading) {
+        handleLoadMore();
+      }
+    };
+    const el = tableContainerRef.current;
+    if (el) el.addEventListener('scroll', handleScroll);
+    return () => { if (el) el.removeEventListener('scroll', handleScroll); };
+  }, [hasMore, loading, page]);
+
   const handleDelete = async (taskId) => {
+    setDeletingTaskId(taskId);
     try {
       await axios.delete(`${API_URL}/tasks/${taskId}`, {
         headers: authHeader()
       });
       setTasks(tasks.filter(task => task.id !== taskId));
-      // Notify parent component to update task count
-      if (onTaskUpdate) {
-        onTaskUpdate();
-      }
+      if (statusLoadingId === taskId) setStatusLoadingId(null); // Clear status loading if deleted
+      if (onTaskUpdate) onTaskUpdate();
       setSnackbar({
         open: true,
         message: 'Task deleted successfully',
         severity: 'success'
       });
     } catch (error) {
-      console.error('Error deleting task:', error);
       setSnackbar({
         open: true,
         message: 'Error deleting task',
         severity: 'error'
       });
+    } finally {
+      setDeletingTaskId(null);
     }
   };
 
   const handleStatusChange = async (taskId, newStatus) => {
+    setStatusLoadingId(taskId);
     try {
-      await axios.put(`${API_URL}/tasks/${taskId}`, {
+      await axios.patch(`${API_URL}/tasks/${taskId}/status`, {
         status: newStatus
       }, {
         headers: authHeader()
       });
-      
       setTasks(tasks.map(task => 
         task.id === taskId ? { ...task, status: newStatus } : task
       ));
-      
-      // Notify parent component to update task count
       if (onTaskUpdate) {
         onTaskUpdate();
       }
-      
       setSnackbar({
         open: true,
         message: 'Task status updated successfully',
@@ -122,6 +156,8 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
         message: 'Error updating task status',
         severity: 'error'
       });
+    } finally {
+      setStatusLoadingId(null);
     }
   };
 
@@ -130,7 +166,7 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
     switch (status?.toLowerCase()) {
       case 'completed':
         return '#4caf50'; // Green
-      case 'in progress':
+      case 'live':
         return '#2196f3'; // Blue
       case 'pending':
         return '#ff9800'; // Orange
@@ -146,7 +182,9 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
     setNewTask(prev => ({ ...prev, [name]: value }));
   };
   const handleCreateTask = async () => {
+    setCreating(true);
     try {
+      console.log('Creating task for employeeId:', employeeId, 'with data:', newTask);
       await axios.post(`${API_URL}/tasks/create`, {
         employeeId,
         employeeName,
@@ -161,7 +199,7 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
       });
       setOpenDialog(false);
       setNewTask({ taskType: '', description: '', dueDate: '' });
-      fetchTasks();
+      await fetchTasks(); // Await to ensure tasks are refreshed before UI update
       if (onTaskUpdate) onTaskUpdate();
     } catch (error) {
       setSnackbar({
@@ -169,6 +207,8 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
         message: 'Error creating task',
         severity: 'error'
       });
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -181,10 +221,19 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
         Create Task
       </Button>
       
-      <TableContainer component={Paper} sx={{ 
+      {/* Loading overlay for the whole table */}
+      <Backdrop open={loading || creating} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 2 }}>
+        <CircularProgress color="inherit" />
+        <Typography variant="h6" sx={{ mt: 2, ml: 2 }}>
+          {creating ? 'Creating task...' : 'Loading tasks...'}
+        </Typography>
+      </Backdrop>
+
+      <TableContainer component={Paper} ref={tableContainerRef} sx={{ 
         borderRadius: 3,
         boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.1)',
-        overflow: 'hidden'
+        overflow: 'auto',
+        maxHeight: 500
       }}>
         <Table>
           <TableHead>
@@ -198,11 +247,7 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center">Loading tasks...</TableCell>
-              </TableRow>
-            ) : tasks.length === 0 ? (
+            {(!loading && tasks.length === 0) ? (
               <TableRow>
                 <TableCell colSpan={6} align="center">No tasks assigned</TableCell>
               </TableRow>
@@ -212,20 +257,26 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
                   <TableCell>{task.taskType}</TableCell>
                   <TableCell>{task.description}</TableCell>
                   <TableCell>
-                    {task.leadId && (
-                      <Box sx={{ 
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        bgcolor: '#f5f5f5',
-                        px: 1,
-                        py: 0.5,
-                        borderRadius: 1
-                      }}>
-                        <Typography variant="body2">
-                          Lead: {task.leadName || 'N/A'}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      {/* Show Lead info if present */}
+                      {task.lead && (
+                        <Typography variant="body2" sx={{ color: '#1976d2', fontWeight: 600, letterSpacing: 0.2 }}>
+                          Lead: {task.lead.leadName}
                         </Typography>
-                      </Box>
-                    )}
+                      )}
+                      {/* Show Policy info if present */}
+                      {task.policy && (
+                        <Typography variant="body2" sx={{ color: '#0C47A0', fontWeight: 600, letterSpacing: 0.2 }}>
+                          Policy: {task.policy.policyNumber}
+                        </Typography>
+                      )}
+                      {/* Fallback if neither is present */}
+                      {(!task.lead && !task.policy) && (
+                        <Typography variant="body2" color="text.secondary">
+                          N/A
+                        </Typography>
+                      )}
+                    </Box>
                   </TableCell>
                   <TableCell>{new Date(task.dueDate).toLocaleDateString()}</TableCell>
                   <TableCell>
@@ -249,8 +300,10 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
                         onClick={() => handleStatusChange(task.id, 'In Progress')}
                         size="small"
                         sx={{ mr: 1 }}
+                        disabled={statusLoadingId === task.id || deletingTaskId === task.id}
+                        startIcon={statusLoadingId === task.id ? <CircularProgress size={16} color="inherit" /> : null}
                       >
-                        Start
+                        {statusLoadingId === task.id ? 'Starting...' : 'Start'}
                       </Button>
                     )}
                     {task.status === 'In Progress' && (
@@ -259,20 +312,33 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
                         onClick={() => handleStatusChange(task.id, 'Completed')}
                         size="small"
                         sx={{ mr: 1 }}
+                        disabled={statusLoadingId === task.id || deletingTaskId === task.id}
+                        startIcon={statusLoadingId === task.id ? <CircularProgress size={16} color="inherit" /> : null}
                       >
-                        Complete
+                        {statusLoadingId === task.id ? 'Completing...' : 'Complete'}
                       </Button>
                     )}
                     <Button
                       color="error"
                       onClick={() => handleDelete(task.id)}
                       size="small"
+                      disabled={statusLoadingId === task.id || deletingTaskId === task.id}
+                      startIcon={deletingTaskId === task.id ? <CircularProgress size={16} color="inherit" /> : null}
                     >
                       Delete
                     </Button>
                   </TableCell>
                 </TableRow>
               ))
+            )}
+            {/* Lazy loading spinner row */}
+            {hasMore && !loading && tasks.length > 0 && (
+              <TableRow>
+                <TableCell colSpan={6} align="center">
+                  <CircularProgress size={28} color="primary" />
+                  <Typography variant="body2" sx={{ ml: 1, display: 'inline-block' }}>Loading more tasks...</Typography>
+                </TableCell>
+              </TableRow>
             )}
           </TableBody>
         </Table>
@@ -313,7 +379,9 @@ const MyTasks = ({ employeeId, employeeName, onTaskUpdate }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleCreateTask} variant="contained" color="primary">Create</Button>
+          <Button onClick={handleCreateTask} variant="contained" color="primary" disabled={creating} startIcon={creating ? <CircularProgress size={18} color="inherit" /> : null}>
+            {creating ? 'Creating...' : 'Create'}
+          </Button>
         </DialogActions>
       </Dialog>
 

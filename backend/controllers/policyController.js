@@ -3,6 +3,7 @@ const Leads = require('../models/LeadsModel');
 const { Op } = require('sequelize');
 const { sendEmail } = require('../utils/emailService');
 const Commission = require('../models/Commission');
+const { sequelize } = require('../config/dbConn'); // <-- Import sequelize for transaction
 
 // Get all policies with optional filtering
 exports.getAllPolicies = async (req, res) => {
@@ -61,34 +62,86 @@ exports.getPolicyById = async (req, res) => {
 
 // Create a new policy
 exports.createPolicy = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
     const policyData = req.body;
     console.log(policyData);
 
     // Check if policy number already exists
-    const existingPolicy = await Policy.findOne({ where: { policyNumber: policyData.policyNumber } });
+    const existingPolicy = await Policy.findOne({ where: { policyNumber: policyData.policyNumber }, transaction: t });
     if (existingPolicy) {
+      await t.rollback();
       return res.status(400).json({ message: 'Policy number already exists' });
     }
+
+    // Process pre-existing conditions if present
+    if (policyData.preExistingConditions) {
+      // If it's a string, split by comma and trim each condition
+      if (typeof policyData.preExistingConditions === 'string') {
+        policyData.preExistingConditions = policyData.preExistingConditions
+          .split(',')
+          .map(condition => condition.trim())
+          .filter(Boolean);
+      }
+    }
+
+    // --- PHYSICAL POLICY NUMBER LOGIC ---
+    // Use startDate for month/year, fallback to today if not provided
+    const startDate = policyData.startDate ? new Date(policyData.startDate) : new Date();
+    const month = startDate.getMonth() + 1; // JS months are 0-based
+    const year = startDate.getFullYear(); // full year for clarity
+    const yearStr = year.toString();
+    const monthStr = month.toString();
+
+    // Find all policies for this month/year
+    const firstOfMonth = new Date(year, month - 1, 1, 0, 0, 0, 0);
+    const lastOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
+    const policiesThisMonth = await Policy.findAll({
+      where: {
+        startDate: { [Op.between]: [firstOfMonth, lastOfMonth] },
+        physical_policy_number: { [Op.ne]: null },
+      },
+      attributes: ['physical_policy_number'],
+      order: [['createdAt', 'ASC']],
+      transaction: t,
+    });
+    let maxNumber = 0;
+    for (const p of policiesThisMonth) {
+      if (p.physical_policy_number) {
+        const match = p.physical_policy_number.match(/^(\d+)_\d+_\d+$/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > maxNumber) maxNumber = num;
+        }
+      }
+    }
+    const nextNumber = maxNumber + 1;
+    const physicalPolicyNumber = `${nextNumber}_${monthStr}_${yearStr}`;
+    policyData.physical_policy_number = physicalPolicyNumber;
+    // --- END PHYSICAL POLICY NUMBER LOGIC ---
 
     // If leadId is provided, you can update the lead's status here if you have a Lead model in SQL
     // (Not implemented here)
 
-    const policy = await Policy.create(policyData);
+    const policy = await Policy.create(policyData, { transaction: t });
 
     // Upsert commission for this company and policy type
     if (policy.company && policy.type && policy.effectiveCommissionPercentage) {
       const [commission, created] = await Commission.findOrCreate({
         where: { company: policy.company, policyType: policy.type },
-        defaults: { effectiveCommission: policy.effectiveCommissionPercentage }
+        defaults: { effectiveCommission: policy.effectiveCommissionPercentage },
+        transaction: t,
       });
       if (!created) {
-        await commission.update({ effectiveCommission: policy.effectiveCommissionPercentage });
+        await commission.update({ effectiveCommission: policy.effectiveCommissionPercentage }, { transaction: t });
       }
     }
 
+    await t.commit();
+
     // Send email notification
     try {
+      console.log(policy.email);
       await sendEmail(policy.email, 'policyCreated', policy);
     } catch (emailError) {
       console.error('Failed to send email notification:', emailError);
@@ -97,6 +150,7 @@ exports.createPolicy = async (req, res) => {
 
     res.status(201).json(policy);
   } catch (error) {
+    await t.rollback();
     console.log(error);
     res.status(500).json({ message: error.message });
   }
@@ -105,8 +159,21 @@ exports.createPolicy = async (req, res) => {
 // Update a policy
 exports.updatePolicy = async (req, res) => {
   try {
+    const policyData = { ...req.body };
+
+    // Process pre-existing conditions if present
+    if (policyData.preExistingConditions) {
+      // If it's a string, split by comma and trim each condition
+      if (typeof policyData.preExistingConditions === 'string') {
+        policyData.preExistingConditions = policyData.preExistingConditions
+          .split(',')
+          .map(condition => condition.trim())
+          .filter(Boolean);
+      }
+    }
+
     const [updatedRows] = await Policy.update(
-      { ...req.body },
+      policyData,
       {
         where: { id: req.params.id },
         individualHooks: true

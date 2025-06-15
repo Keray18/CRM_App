@@ -64,6 +64,13 @@ const Policy = sequelize.define(
       defaultValue: "Live Policy",
     },
 
+    // Physical Policy Number
+    physical_policy_number: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'Physical policy number in the format number_month_year',
+    },
+
     // Vehicle Specific Fields
     vehicleType: DataTypes.STRING,
     vehicleNumber: DataTypes.STRING,
@@ -85,16 +92,6 @@ const Policy = sequelize.define(
     familyMembers: {
       type: DataTypes.JSON,
       defaultValue: [],
-      // Will store array of objects with member details:
-      // [{
-      //   name: string,
-      //   relation: string,
-      //   dateOfBirth: date,
-      //   height: float,
-      //   weight: float,
-      //   bloodGroup: string,
-      //   preExisting: string
-      // }]
     },
     numberOfFamilyMembers: {
       type: DataTypes.INTEGER,
@@ -124,6 +121,7 @@ const Policy = sequelize.define(
     odCommissionPercentage: DataTypes.FLOAT,
     tpCommissionPercentage: DataTypes.FLOAT,
     addonCommissionPercentage: DataTypes.FLOAT,
+    commissionPercentage: DataTypes.FLOAT,
     commissionAmount: DataTypes.FLOAT,
     totalCommissionAmount: DataTypes.FLOAT,
     effectiveCommissionPercentage: DataTypes.FLOAT,

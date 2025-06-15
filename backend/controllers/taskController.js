@@ -1,12 +1,18 @@
 const Task = require('../models/TaskModel.js');
 const { sequelize } = require('../config/dbConn.js');
+const Policy = require('../models/Policy');
+const Leads = require('../models/LeadsModel');
 
 const taskController = {
     // Get all tasks
     async getAllTasks(req, res) {
         try {
             const tasks = await Task.findAll({
-                order: [['assignedDate', 'DESC']]
+                order: [['assignedDate', 'DESC']],
+                include: [
+                  { model: Policy, as: 'policy', attributes: ['id', 'policyNumber', 'insuredName'] },
+                  { model: Leads, as: 'lead', attributes: ['id', 'leadName'] }
+                ]
             });
 
             res.status(200).json({
@@ -166,7 +172,11 @@ const taskController = {
         try {
             const tasks = await Task.findAll({
                 where: { employeeId },
-                order: [['assignedDate', 'DESC']]
+                order: [['assignedDate', 'DESC']],
+                include: [
+                  { model: Policy, as: 'policy', attributes: ['id', 'policyNumber', 'insuredName'] },
+                  { model: Leads, as: 'lead', attributes: ['id', 'leadName'] }
+                ]
             });
 
             res.status(200).json({

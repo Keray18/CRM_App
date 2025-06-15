@@ -10,7 +10,7 @@ const leadsController = {
         const transaction = await sequelize.transaction();
         
         try {
-            const { leadName, leadPhone, leadEmail, leadPolicyType, leadCreateDate, remarks } = req.body;
+            const { leadName, leadPhone, leadEmail, leadPolicyType, leadCreateDate, remarks, address } = req.body;
             
             const existingLead = await Leads.findOne({
                 where: { leadEmail },
@@ -38,7 +38,8 @@ const leadsController = {
                 leadEmail,
                 leadPolicyType,
                 leadCreateDate: leadCreateDate || new Date(),
-                remarks
+                remarks,
+                address
             }, { transaction });
             
             // Handle document upload if present

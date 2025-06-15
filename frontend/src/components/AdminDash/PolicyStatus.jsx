@@ -90,6 +90,8 @@ import { API_URL } from "../../config/config";
 import { createCustomer } from "../../services/customerService";
 import authHeader from "../../services/authHeader";
 import Documents from "./Documents";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
+import { saveAs } from "file-saver";
 
 const VisuallyHiddenInput = styled("input")({
   clip: "rect(0 0 0 0)",
@@ -142,6 +144,9 @@ const PolicyStatus = ({ addCustomer }) => {
   const [localLeads, setLocalLeads] = useState([]);
   const [allLeadsForSearch, setAllLeadsForSearch] = useState([]); // State to hold all leads for search
   const [insuranceCompanies, setInsuranceCompanies] = useState([]);
+  // Add new filter states here
+  const [physicalPolicyNo, setPhysicalPolicyNo] = useState("");
+  const [endDateFilter, setEndDateFilter] = useState("");
 
   // ...existing imports...
   // ...existing code...
@@ -268,6 +273,7 @@ const PolicyStatus = ({ addCustomer }) => {
     totalCommissionAmount: "",
     effectiveCommissionPercentage: "",
     netPremium: "",
+    preExisting: "", // <-- Add this line
   });
 
   // Add useEffect to update policy type when insurance type changes
@@ -548,37 +554,45 @@ const PolicyStatus = ({ addCustomer }) => {
           "fuelType",
         ].includes(field)
       ) {
-        const basicPremium =
-          parseFloat(field === "basicPremium" ? value : updated.basicPremium) ||
-          0;
-        const tpPremium =
-          parseFloat(field === "tpPremium" ? value : updated.tpPremium) || 0;
-        const addonPremium =
-          parseFloat(field === "addonPremium" ? value : updated.addonPremium) ||
-          0;
-        const cngAmount =
-          parseFloat(field === "cngAmount" ? value : updated.cngAmount) || 0;
-        const ncbDiscount =
-          parseFloat(field === "ncbDiscount" ? value : updated.ncbDiscount) ||
-          0;
+        const basicPremium = parseFloat(field === "basicPremium" ? value : updated.basicPremium) || 0;
+        const tpPremium = parseFloat(field === "tpPremium" ? value : updated.tpPremium) || 0;
+        const addonPremium = parseFloat(field === "addonPremium" ? value : updated.addonPremium) || 0;
+        const ncbDiscount = parseFloat(field === "ncbDiscount" ? value : updated.ncbDiscount) || 0;
+        const cngAmount = parseFloat(field === "cngAmount" ? value : updated.cngAmount) || 0;
+        let odPremium = parseFloat(updated.odPremium) || 0;
 
-        // OD Premium calculation for CNG/Petrol
-        let odPremium =
-          parseFloat(field === "odPremium" ? value : updated.odPremium) || 0;
-        if (updated.fuelType === "CNG" || updated.fuelType === "Petrol") {
+        // OD Premium calculation for CNG/LPG vehicles
+        if (updated.fuelType === "CNG" || updated.fuelType === "LPG") {
           odPremium = basicPremium + cngAmount - ncbDiscount;
         }
 
-        // Net premium is sum of all premiums
-        const netPremium = basicPremium + odPremium + tpPremium + addonPremium;
+        // Net premium = basic (minus ncb) + tp + addon
+        const netPremium = basicPremium - ncbDiscount + tpPremium + addonPremium;
         // GST is 18% of net premium
         const gstAmount = netPremium * 0.18;
-        // Total premium is net premium + GST
+        // Total premium = net premium + GST
         const totalPremium = netPremium + gstAmount;
 
         return {
           ...updated,
           odPremium: odPremium.toFixed(2),
+          netPremium: netPremium.toFixed(2),
+          gst: gstAmount.toFixed(2),
+          totalPremium: totalPremium.toFixed(2),
+        };
+      }
+
+      // Health, travel, and others GST and premium calculation
+      if (
+        (insuranceType === "health" || insuranceType === "travel" || insuranceType === "others") &&
+        field === "sumInsured"
+      ) {
+        const sumInsured = parseFloat(value) || 0;
+        const gstAmount = sumInsured * 0.18;
+        const netPremium = sumInsured + gstAmount;
+        const totalPremium = netPremium; // or netPremium if that's the final amount
+        return {
+          ...updated,
           netPremium: netPremium.toFixed(2),
           gst: gstAmount.toFixed(2),
           totalPremium: totalPremium.toFixed(2),
@@ -679,90 +693,108 @@ const PolicyStatus = ({ addCustomer }) => {
     if (!newPolicy.email?.trim()) newErrors.email = "Email is required";
     if (!newPolicy.company?.trim())
       newErrors.company = "Insurance Company is required";
-    // if (!newPolicy.startDate)
-    //   newErrors.startDate = "Start Date is required";
+    if (!newPolicy.startDate) newErrors.startDate = "Start Date is required";
     if (!newPolicy.endDate) newErrors.endDate = "End Date is required";
 
-    // Health specific validations
+    // Vehicle-specific validations
+    if (insuranceType === "vehicle") {
+      if (!newPolicy.vehicleType?.trim())
+        newErrors.vehicleType = "Vehicle Type is required";
+      if (!newPolicy.vehicleNumber?.trim())
+        newErrors.vehicleNumber = "Vehicle Number is required";
+      if (!newPolicy.make?.trim())
+        newErrors.make = "Make is required";
+      if (!newPolicy.model?.trim())
+        newErrors.model = "Model is required";
+      if (!newPolicy.year?.trim())
+        newErrors.year = "Manufacturing Year is required";
+      if (!newPolicy.basicPremium || isNaN(Number(newPolicy.basicPremium)) || Number(newPolicy.basicPremium) <= 0)
+        newErrors.basicPremium = "Basic Premium is required and must be greater than 0";
+      if (!newPolicy.odPremium || isNaN(Number(newPolicy.odPremium)) || Number(newPolicy.odPremium) < 0)
+        newErrors.odPremium = "OD Premium is required (0 or more)";
+      if (!newPolicy.tpPremium || isNaN(Number(newPolicy.tpPremium)) || Number(newPolicy.tpPremium) < 0)
+        newErrors.tpPremium = "TP Premium is required (0 or more)";
+      if (newPolicy.ncbDiscount === undefined || isNaN(Number(newPolicy.ncbDiscount)) || Number(newPolicy.ncbDiscount) < 0)
+        newErrors.ncbDiscount = "NCB Discount is required (0 or more)";
+      if (newPolicy.addonPremium === undefined || isNaN(Number(newPolicy.addonPremium)) || Number(newPolicy.addonPremium) < 0)
+        newErrors.addonPremium = "Add-on Premium is required (0 or more)";
+      if (newPolicy.gst === undefined || isNaN(Number(newPolicy.gst)) || Number(newPolicy.gst) < 0)
+        newErrors.gst = "GST is required (0 or more)";
+      if (newPolicy.totalPremium === undefined || isNaN(Number(newPolicy.totalPremium)) || Number(newPolicy.totalPremium) <= 0)
+        newErrors.totalPremium = "Total Premium is required and must be greater than 0";
+      if (newPolicy.netPremium === undefined || isNaN(Number(newPolicy.netPremium)) || Number(newPolicy.netPremium) <= 0)
+        newErrors.netPremium = "Net Premium is required and must be greater than 0";
+      if (!newPolicy.paymentMode?.trim())
+        newErrors.paymentMode = "Payment Mode is required";
+      if (!newPolicy.commissionType?.trim())
+        newErrors.commissionType = "Commission Type is required";
+      if (newPolicy.odCommissionPercentage === undefined || isNaN(Number(newPolicy.odCommissionPercentage)) || Number(newPolicy.odCommissionPercentage) < 0)
+        newErrors.odCommissionPercentage = "OD Commission % is required (0 or more)";
+      if (newPolicy.tpCommissionPercentage === undefined || isNaN(Number(newPolicy.tpCommissionPercentage)) || Number(newPolicy.tpCommissionPercentage) < 0)
+        newErrors.tpCommissionPercentage = "TP Commission % is required (0 or more)";
+      if (newPolicy.addonCommissionPercentage === undefined || isNaN(Number(newPolicy.addonCommissionPercentage)) || Number(newPolicy.addonCommissionPercentage) < 0)
+        newErrors.addonCommissionPercentage = "Add-on Commission % is required (0 or more)";
+    }
+
+    // Health-specific validations
     if (insuranceType === "health") {
       if (!newPolicy.healthPlan?.trim())
         newErrors.healthPlan = "Health Plan is required";
-      if (
-        !newPolicy.sumInsured ||
-        isNaN(Number(newPolicy.sumInsured)) ||
-        Number(newPolicy.sumInsured) <= 0
-      )
-        newErrors.sumInsured =
-          "Sum Insured is required and must be greater than 0";
-      if (
-        !newPolicy.commissionPercentage ||
-        isNaN(Number(newPolicy.commissionPercentage)) ||
-        Number(newPolicy.commissionPercentage) <= 0
-      )
-        newErrors.commissionPercentage =
-          "Commission Percentage is required and must be greater than 0";
+      if (!newPolicy.sumInsured || isNaN(Number(newPolicy.sumInsured)) || Number(newPolicy.sumInsured) <= 0)
+        newErrors.sumInsured = "Sum Insured is required and must be greater than 0";
+      if (!newPolicy.commissionPercentage || isNaN(Number(newPolicy.commissionPercentage)) || Number(newPolicy.commissionPercentage) <= 0)
+        newErrors.commissionPercentage = "Commission Percentage is required and must be greater than 0";
       if (!newPolicy.dateOfBirth?.trim())
         newErrors.dateOfBirth = "Date of Birth is required";
-      if (
-        !newPolicy.height ||
-        isNaN(Number(newPolicy.height)) ||
-        Number(newPolicy.height) <= 0
-      )
+      if (!newPolicy.height || isNaN(Number(newPolicy.height)) || Number(newPolicy.height) <= 0)
         newErrors.height = "Height is required and must be greater than 0";
-      if (
-        !newPolicy.weight ||
-        isNaN(Number(newPolicy.weight)) ||
-        Number(newPolicy.weight) <= 0
-      )
+      if (!newPolicy.weight || isNaN(Number(newPolicy.weight)) || Number(newPolicy.weight) <= 0)
         newErrors.weight = "Weight is required and must be greater than 0";
       if (!newPolicy.bloodGroup?.trim())
         newErrors.bloodGroup = "Blood Group is required";
-
-      // Only validate family members if it's a family plan
       if (newPolicy.healthPlan?.includes("Family")) {
-        if (
-          !newPolicy.numberOfFamilyMembers ||
-          Number(newPolicy.numberOfFamilyMembers) <= 0
-        )
-          newErrors.numberOfFamilyMembers =
-            "Number of family members is required";
+        if (!newPolicy.numberOfFamilyMembers || Number(newPolicy.numberOfFamilyMembers) <= 0)
+          newErrors.numberOfFamilyMembers = "Number of family members is required";
         if (familyMembers.length < Number(newPolicy.numberOfFamilyMembers))
           newErrors.familyMembers = "Please add all family members";
       }
     }
 
-    // Others specific validations
+    // Travel-specific validations
+    if (insuranceType === "travel") {
+      if (!newPolicy.travelType?.trim())
+        newErrors.travelType = "Travel Type is required";
+      if (!newPolicy.sumInsured || isNaN(Number(newPolicy.sumInsured)) || Number(newPolicy.sumInsured) <= 0)
+        newErrors.sumInsured = "Sum Insured is required and must be greater than 0";
+      if (!newPolicy.destination?.trim())
+        newErrors.destination = "Destination is required";
+      if (!newPolicy.tripDuration || isNaN(Number(newPolicy.tripDuration)) || Number(newPolicy.tripDuration) <= 0)
+        newErrors.tripDuration = "Trip Duration is required and must be greater than 0";
+      if (!newPolicy.passportNumber?.trim())
+        newErrors.passportNumber = "Passport Number is required";
+      if (!newPolicy.commissionPercentage || isNaN(Number(newPolicy.commissionPercentage)) || Number(newPolicy.commissionPercentage) <= 0)
+        newErrors.commissionPercentage = "Commission Percentage is required and must be greater than 0";
+    }
+
+    // Others-specific validations
     if (insuranceType === "others") {
       if (!newPolicy.type?.trim()) newErrors.type = "Policy Type is required";
-      // if (!newPolicy.policyCategory?.trim())
-      //   newErrors.policyCategory = "Policy Category is required";
-      if (
-        !newPolicy.sumInsured ||
-        isNaN(Number(newPolicy.sumInsured)) ||
-        Number(newPolicy.sumInsured) <= 0
-      )
-        newErrors.sumInsured =
-          "Sum Insured is required and must be greater than 0";
-      // if (!newPolicy.premium || isNaN(Number(newPolicy.premium)) || Number(newPolicy.premium) <= 0)
-      //   newErrors.premium = "Premium is required and must be greater than 0";
-      if (
-        !newPolicy.commissionPercentage ||
-        isNaN(Number(newPolicy.commissionPercentage)) ||
-        Number(newPolicy.commissionPercentage) <= 0
-      )
-        newErrors.commissionPercentage =
-          "Commission Percentage is required and must be greater than 0";
+      // if (!newPolicy.policyCategory?.trim()) newErrors.policyCategory = "Policy Category is required";
+      if (!newPolicy.sumInsured || isNaN(Number(newPolicy.sumInsured)) || Number(newPolicy.sumInsured) <= 0)
+        newErrors.sumInsured = "Sum Insured is required and must be greater than 0";
+      if (!newPolicy.commissionPercentage || isNaN(Number(newPolicy.commissionPercentage)) || Number(newPolicy.commissionPercentage) <= 0)
+        newErrors.commissionPercentage = "Commission Percentage is required and must be greater than 0";
     }
 
     // Document validation for all types
-    if (!uploadedFiles || uploadedFiles.length === 0) {
-      newErrors.documents = "At least one document is required";
-      setSnackbar({
-        open: true,
-        message: "Please upload required documents",
-        severity: "error",
-      });
-    }
+    // if (!uploadedFiles || uploadedFiles.length === 0) {
+    //   newErrors.documents = "At least one document is required";
+    //   setSnackbar({
+    //     open: true,
+    //     message: "Please upload required documents",
+    //     severity: "error",
+    //   });
+    // }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -784,6 +816,7 @@ const PolicyStatus = ({ addCustomer }) => {
       console.log("Insurance type:", insuranceType);
       console.log("Base type:", baseType);
 
+      // Build the policyToAdd object with all relevant fields for vehicle policies
       const policyToAdd = {
         policyNumber: newPolicy.policyNumber,
         insuredName: newPolicy.insuredName,
@@ -800,34 +833,60 @@ const PolicyStatus = ({ addCustomer }) => {
           type: file.type,
           uploadDate: new Date(),
         })),
-        // Basic fields for all types
-        sumInsured: Number(newPolicy.sumInsured) || 0,
-        premium: Number(newPolicy.premium) || 0,
+        // Vehicle details
+        vehicleType: newPolicy.vehicleType || "",
+        vehicleNumber: newPolicy.vehicleNumber || "",
+        make: newPolicy.make || "",
+        model: newPolicy.model || "",
+        year: newPolicy.year || "",
+        // Premium and commission fields
+        basicPremium: Number(newPolicy.basicPremium) || 0,
+        odPremium: Number(newPolicy.odPremium) || 0,
+        tpPremium: Number(newPolicy.tpPremium) || 0,
+        ncbDiscount: Number(newPolicy.ncbDiscount) || 0,
+        addonPremium: Number(newPolicy.addonPremium) || 0,
+        gst: Number(newPolicy.gst) || 0,
+        totalPremium: Number(newPolicy.totalPremium) || 0,
+        netPremium: Number(newPolicy.netPremium) || 0,
+        paymentMode: newPolicy.paymentMode || "",
+        paymentReference: newPolicy.paymentReference || "",
+        commissionType: newPolicy.commissionType || "",
+        odCommissionPercentage: Number(newPolicy.odCommissionPercentage) || 0,
+        tpCommissionPercentage: Number(newPolicy.tpCommissionPercentage) || 0,
+        addonCommissionPercentage: Number(newPolicy.addonCommissionPercentage) || 0,
         commissionPercentage: Number(newPolicy.commissionPercentage) || 0,
-        commissionAmount:
-          (Number(newPolicy.premium) * Number(newPolicy.commissionPercentage)) /
-          100,
+        commissionAmount: Number(newPolicy.commissionAmount) || 0,
+        totalCommissionAmount: Number(newPolicy.totalCommissionAmount) || 0,
+        effectiveCommissionPercentage: Number(newPolicy.effectiveCommissionPercentage) || 0,
+        sumInsured: newPolicy.sumInsured ? Number(newPolicy.sumInsured) : null,
       };
 
-      // Add health specific fields
+      // Add health-specific fields if needed
       if (insuranceType === "health") {
         Object.assign(policyToAdd, {
           healthPlan: newPolicy.healthPlan,
           height: Number(newPolicy.height) || 0,
           weight: Number(newPolicy.weight) || 0,
           bloodGroup: newPolicy.bloodGroup,
-          preExisting: newPolicy.preExisting,
           dateOfBirth: newPolicy.dateOfBirth,
-          familyMembers: newPolicy.healthPlan?.includes("Family")
-            ? familyMembers
-            : [],
-          numberOfFamilyMembers: newPolicy.healthPlan?.includes("Family")
-            ? Number(newPolicy.numberOfFamilyMembers)
-            : 0,
+          familyMembers: newPolicy.healthPlan?.includes("Family") ? familyMembers : [],
+          numberOfFamilyMembers: newPolicy.healthPlan?.includes("Family") ? Number(newPolicy.numberOfFamilyMembers) : 0,
+          preExistingConditions: newPolicy.preExisting ? newPolicy.preExisting.split(',').map(s => s.trim()).filter(Boolean) : [],
+          referredBy: newPolicy.referredBy || "",
         });
       }
 
-      // Add others specific fields
+      // Add travel-specific fields if needed
+      if (insuranceType === "travel") {
+        Object.assign(policyToAdd, {
+          travelType: newPolicy.travelType,
+          destination: newPolicy.destination,
+          tripDuration: Number(newPolicy.tripDuration) || 0,
+          passportNumber: newPolicy.passportNumber,
+        });
+      }
+
+      // Add others-specific fields if needed
       if (insuranceType === "others") {
         Object.assign(policyToAdd, {
           policyCategory: newPolicy.policyCategory,
@@ -986,12 +1045,23 @@ const PolicyStatus = ({ addCustomer }) => {
           policy.business,
           policy.status,
         ];
-
-        return searchFields.some((field) =>
+        if (!searchFields.some((field) =>
           field?.toString().toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        )) {
+          return false;
+        }
       }
-
+      // Apply physical policy number filter
+      if (physicalPolicyNo && (!policy.physical_policy_number || !policy.physical_policy_number.toLowerCase().includes(physicalPolicyNo.toLowerCase()))) {
+        return false;
+      }
+      // Apply end date (month/year) filter
+      if (endDateFilter) {
+        // endDateFilter is in format 'YYYY-MM', policy.endDate may be 'YYYY-MM-DD'
+        if (!policy.endDate || !policy.endDate.startsWith(endDateFilter)) {
+          return false;
+        }
+      }
       return true;
     });
   };
@@ -1030,12 +1100,17 @@ const PolicyStatus = ({ addCustomer }) => {
     setSelectedPolicy(policy);
     setViewModalOpen(true);
     handleMenuClose();
+    console.log('Selected Policy for View:', policy);
   };
 
   // Handle Edit
   const handleEdit = (policy) => {
     setSelectedPolicy(policy);
-    setNewPolicy(policy); // Set form data with selected policy
+    setNewPolicy({
+      ...policy,
+      preExisting: Array.isArray(policy.preExistingConditions) ? policy.preExistingConditions.join(', ') : '',
+      referredBy: policy.referredBy || '',
+    });
     setEditModalOpen(true);
     handleMenuClose();
   };
@@ -1052,12 +1127,10 @@ const PolicyStatus = ({ addCustomer }) => {
     try {
       setLoading(true);
       await deletePolicy(selectedPolicy.id);
-
-      // Instead of just updating local state, refetch all policies
-      await fetchPolicies();
-
+      await fetchPolicies(); // Refresh list
       setDeleteDialogOpen(false);
       setSelectedPolicy(null);
+      setEditModalOpen(false); // Close edit modal if open
       setSnackbar({
         open: true,
         message: "Policy deleted successfully",
@@ -1081,47 +1154,27 @@ const PolicyStatus = ({ addCustomer }) => {
       const updatedPolicy = await updatePolicy(selectedPolicy.id, {
         ...newPolicy,
         sumInsured: newPolicy.sumInsured ? Number(newPolicy.sumInsured) : null,
-        tripDuration: newPolicy.tripDuration
-          ? Number(newPolicy.tripDuration)
-          : null,
+        tripDuration: newPolicy.tripDuration ? Number(newPolicy.tripDuration) : null,
         height: newPolicy.height ? Number(newPolicy.height) : null,
         weight: newPolicy.weight ? Number(newPolicy.weight) : null,
         year: newPolicy.year ? Number(newPolicy.year) : null,
-        basicPremium: newPolicy.basicPremium
-          ? Number(newPolicy.basicPremium)
-          : null,
+        basicPremium: newPolicy.basicPremium ? Number(newPolicy.basicPremium) : null,
         odPremium: newPolicy.odPremium ? Number(newPolicy.odPremium) : null,
         tpPremium: newPolicy.tpPremium ? Number(newPolicy.tpPremium) : null,
-        ncbDiscount: newPolicy.ncbDiscount
-          ? Number(newPolicy.ncbDiscount)
-          : null,
-        addonPremium: newPolicy.addonPremium
-          ? Number(newPolicy.addonPremium)
-          : null,
+        ncbDiscount: newPolicy.ncbDiscount ? Number(newPolicy.ncbDiscount) : null,
+        addonPremium: newPolicy.addonPremium ? Number(newPolicy.addonPremium) : null,
         gst: newPolicy.gst ? Number(newPolicy.gst) : null,
-        totalPremium: newPolicy.totalPremium
-          ? Number(newPolicy.totalPremium)
-          : null,
+        totalPremium: newPolicy.totalPremium ? Number(newPolicy.totalPremium) : null,
         netPremium: newPolicy.netPremium ? Number(newPolicy.netPremium) : null,
-        odCommissionPercentage: newPolicy.odCommissionPercentage
-          ? Number(newPolicy.odCommissionPercentage)
-          : null,
-        tpCommissionPercentage: newPolicy.tpCommissionPercentage
-          ? Number(newPolicy.tpCommissionPercentage)
-          : null,
-        addonCommissionPercentage: newPolicy.addonCommissionPercentage
-          ? Number(newPolicy.addonCommissionPercentage)
-          : null,
-        commissionAmount: newPolicy.commissionAmount
-          ? Number(newPolicy.commissionAmount)
-          : null,
-        totalCommissionAmount: newPolicy.totalCommissionAmount
-          ? Number(newPolicy.totalCommissionAmount)
-          : null,
-        effectiveCommissionPercentage: newPolicy.effectiveCommissionPercentage
-          ? Number(newPolicy.effectiveCommissionPercentage)
-          : null,
+        odCommissionPercentage: newPolicy.odCommissionPercentage ? Number(newPolicy.odCommissionPercentage) : null,
+        tpCommissionPercentage: newPolicy.tpCommissionPercentage ? Number(newPolicy.tpCommissionPercentage) : null,
+        addonCommissionPercentage: newPolicy.addonCommissionPercentage ? Number(newPolicy.addonCommissionPercentage) : null,
+        commissionAmount: newPolicy.commissionAmount ? Number(newPolicy.commissionAmount) : null,
+        totalCommissionAmount: newPolicy.totalCommissionAmount ? Number(newPolicy.totalCommissionAmount) : null,
+        effectiveCommissionPercentage: newPolicy.effectiveCommissionPercentage ? Number(newPolicy.effectiveCommissionPercentage) : null,
         age: newPolicy.age ? Number(newPolicy.age) : null,
+        preExistingConditions: newPolicy.preExisting ? newPolicy.preExisting.split(',').map(s => s.trim()).filter(Boolean) : [],
+        referredBy: newPolicy.referredBy || "",
       });
       setPolicies((prevPolicies) =>
         prevPolicies.map((policy) =>
@@ -1203,14 +1256,7 @@ const PolicyStatus = ({ addCustomer }) => {
   const handleSendReminder = async (policy) => {
     try {
       setSendingReminder(true);
-      console.log("Attempting to send reminder for policy:", {
-        id: policy.id,
-        policyNumber: policy.policyNumber,
-        email: policy.email,
-      });
-
       await sendRenewalReminder(policy.id);
-
       setSnackbar({
         open: true,
         message: "Renewal reminder sent successfully",
@@ -1286,32 +1332,100 @@ const PolicyStatus = ({ addCustomer }) => {
     }
   };
 
-  // Add useEffect to fetch pre-existing conditions from masterdata
-  useEffect(() => {
-    const fetchPreExistingOptions = async () => {
-      try {
-        const response = await axios.get(
-          `${API_URL}/masterdata/type/Pre-existing Condition`,
-          { headers: authHeader() }
-        );
-        let options = response.data.map((item) => item.name);
-        if (!options.includes("None")) {
-          options = ["None", ...options];
-        } else {
-          // Move 'None' to the front if it exists
-          options = ["None", ...options.filter((opt) => opt !== "None")];
-        }
-        setPreExistingOptions(options);
-      } catch (error) {
-        setSnackbar({
-          open: true,
-          message: "Error fetching pre-existing conditions",
-          severity: "error",
-        });
-      }
-    };
-    fetchPreExistingOptions();
-  }, []);
+  // Add this function inside PolicyStatus component:
+  const handleDownloadPolicyDocx = (policy) => {
+    if (!policy) return;
+    const doc = new Document({
+      sections: [
+        {
+          properties: {},
+          children: [
+            new Paragraph({
+              text: "Policy Details",
+              heading: HeadingLevel.TITLE,
+              spacing: { after: 300 },
+            }),
+            new Paragraph({
+              text: `Policy Number: ${policy.policyNumber || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Physical Policy Number: ${policy.physical_policy_number || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Insured Name: ${policy.insuredName || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Mobile: ${policy.mobile || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Email: ${policy.email || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Company: ${policy.company || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Business: ${policy.business || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Type: ${policy.type || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Start Date: ${policy.startDate || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `End Date: ${policy.endDate || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Premium: ${policy.premium || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Commission Percentage: ${policy.commissionPercentage || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Status: ${policy.status || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Policy Category: ${policy.policyCategory || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Sum Insured: ${policy.sumInsured || "N/A"}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: `Other Details: ${JSON.stringify(policy, null, 2)}`,
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: "---",
+              spacing: { after: 100 },
+            }),
+            new Paragraph({
+              text: "Generated by CRM App",
+              spacing: { before: 300 },
+              alignment: "right",
+            }),
+          ],
+        },
+      ],
+    });
+    Packer.toBlob(doc).then((blob) => {
+      saveAs(blob, `Policy_${policy.policyNumber || "Details"}.docx`);
+    });
+  };
 
   return (
     <Box sx={{ p: 3 }}>
@@ -1369,7 +1483,7 @@ const PolicyStatus = ({ addCustomer }) => {
           />
         </Tabs>
       </Box>
-      <Typography>abshdbaj</Typography>
+    
 
       {/* Search and Filter Section */}
       <Box
@@ -1402,8 +1516,61 @@ const PolicyStatus = ({ addCustomer }) => {
               <MenuItem value="January">January</MenuItem>
               <MenuItem value="February">February</MenuItem>
               <MenuItem value="March">March</MenuItem>
+              <MenuItem value="April">April</MenuItem>
+              <MenuItem value="May">May</MenuItem>
+              <MenuItem value="June">June</MenuItem>
+              <MenuItem value="July">July</MenuItem>
+              <MenuItem value="August">August</MenuItem>
+              <MenuItem value="September">September</MenuItem>
+              <MenuItem value="October">October</MenuItem>
+              <MenuItem value="November">November</MenuItem>
+              <MenuItem value="December">December</MenuItem>
             </Select>
           </FormControl>
+
+          {/* New: Physical Policy Number Filter */}
+          <TextField
+            placeholder="Physical Policy No."
+            variant="outlined"
+            size="small"
+            value={physicalPolicyNo || ''}
+            onChange={e => setPhysicalPolicyNo(e.target.value)}
+            sx={{
+              backgroundColor: "white",
+              borderRadius: 1,
+              minWidth: 180,
+              "& .MuiOutlinedInput-root": {
+                height: "40px",
+                color: "#000000",
+              },
+            }}
+          />
+
+          {/* New: End Date (Month/Year) Filter */}
+          <TextField
+            label="End Date"
+            type="month"
+            size="small"
+            value={endDateFilter || ''}
+            onChange={e => setEndDateFilter(e.target.value)}
+            sx={{
+              backgroundColor: "white",
+              borderRadius: 1,
+              minWidth: 180,
+              "& .MuiOutlinedInput-root": {
+                height: "40px",
+                color: "#000000",
+              },
+              "& .MuiInputLabel-root": {
+                color: "#1976d2",
+                fontWeight: 500,
+                zIndex: 2,
+                background: "white",
+                px: 0.5,
+              },
+            }}
+            InputLabelProps={{ shrink: true }}
+          />
 
           <TextField
             placeholder="Search Policy..."
@@ -1469,6 +1636,9 @@ const PolicyStatus = ({ addCustomer }) => {
                 Policy Number
               </TableCell>
               <TableCell sx={{ color: "#000000", fontWeight: "bold" }}>
+                Physical Policy Number
+              </TableCell>
+              <TableCell sx={{ color: "#000000", fontWeight: "bold" }}>
                 Insured Name
               </TableCell>
               <TableCell sx={{ color: "#000000", fontWeight: "bold" }}>
@@ -1497,6 +1667,9 @@ const PolicyStatus = ({ addCustomer }) => {
               >
                 <TableCell sx={{ color: "#000000" }}>
                   {policy.policyNumber}
+                </TableCell>
+                <TableCell sx={{ color: "#000000" }}>
+                  {policy.physical_policy_number || "N/A"}
                 </TableCell>
                 <TableCell sx={{ color: "#000000" }}>
                   {policy.insuredName}
@@ -1604,7 +1777,7 @@ const PolicyStatus = ({ addCustomer }) => {
                             },
                           }}
                         >
-                          <EmailIcon />
+                          {sendingReminder ? <CircularProgress size={20} color="inherit" /> : <EmailIcon />}
                         </IconButton>
                       </Tooltip>
                     )}
@@ -1619,6 +1792,20 @@ const PolicyStatus = ({ addCustomer }) => {
                         </IconButton>
                       </Tooltip>
                     )}
+                    <Tooltip title="Download Policy">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDownloadPolicyDocx(policy)}
+                        sx={{
+                          color: "#1976d2",
+                          "&:hover": {
+                            backgroundColor: "rgba(25, 118, 210, 0.08)",
+                          },
+                        }}
+                      >
+                        <DownloadIcon />
+                      </IconButton>
+                    </Tooltip>
                   </Box>
                 </TableCell>
               </TableRow>
@@ -1915,7 +2102,7 @@ const PolicyStatus = ({ addCustomer }) => {
                   </Typography>
 
                   {/* Document Upload Section */}
-                  <Box
+                  {/* <Box
                     sx={{
                       p: 1.5,
                       border: "1px solid #e0e0e0",
@@ -2064,7 +2251,7 @@ const PolicyStatus = ({ addCustomer }) => {
                         </Button>
 
                         {/* Display Uploaded Files */}
-                        <Box
+                        {/* <Box
                           sx={{
                             display: "flex",
                             alignItems: "center",
@@ -2126,7 +2313,7 @@ const PolicyStatus = ({ addCustomer }) => {
                         {errors.documents}
                       </Typography>
                     )}
-                  </Box>
+                  // </Box> */} 
 
                   <Grid container spacing={3}>
                     {/* Basic Information Fields */}
@@ -2995,7 +3182,7 @@ const PolicyStatus = ({ addCustomer }) => {
                       justifyContent: "space-between",
                     }}
                   >
-                    <Box
+                  <Box
                       sx={{
                         display: "flex",
                         alignItems: "center",
@@ -3587,22 +3774,7 @@ const PolicyStatus = ({ addCustomer }) => {
                         )}
                       </>
                     )}
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Sum Insured"
-                        value={newPolicy.sumInsured}
-                        onChange={handleNewPolicyChange("sumInsured")}
-                        type="number"
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">₹</InputAdornment>
-                          ),
-                        }}
-                        error={!!errors.sumInsured}
-                        helperText={errors.sumInsured}
-                      />
-                    </Grid>
+                    
                     <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
@@ -3710,72 +3882,41 @@ const PolicyStatus = ({ addCustomer }) => {
                       </FormControl>
                     </Grid>
                     <Grid item xs={12}>
-                      <FormControl fullWidth error={!!errors.preExisting}>
-                        <InputLabel>Pre-existing Conditions</InputLabel>
-                        <Select
-                          multiple
-                          value={
-                            Array.isArray(newPolicy.preExisting)
-                              ? newPolicy.preExisting
-                              : newPolicy.preExisting
-                              ? [newPolicy.preExisting]
-                              : []
-                          }
-                          onChange={(e) => {
-                            setNewPolicy((prev) => ({
-                              ...prev,
-                              preExisting: e.target.value,
-                            }));
-                            if (errors.preExisting) {
-                              setErrors((prev) => ({
-                                ...prev,
-                                preExisting: undefined,
-                              }));
-                            }
-                          }}
-                          label="Pre-existing Conditions"
-                          renderValue={(selected) => (
-                            <Box
-                              sx={{
-                                display: "flex",
-                                flexWrap: "wrap",
-                                gap: 0.5,
-                              }}
-                            >
-                              {selected.map((value) => (
-                                <Chip key={value} label={value} size="small" />
-                              ))}
-                            </Box>
-                          )}
-                          MenuProps={{
-                            PaperProps: {
-                              style: {
-                                maxHeight: 200,
-                                width: 220,
-                              },
-                            },
-                          }}
-                          sx={{ minWidth: 120, maxWidth: 220 }}
-                        >
-                          {preExistingOptions.map((option) => (
-                            <MenuItem key={option} value={option}>
-                              <Checkbox
-                                checked={
-                                  Array.isArray(newPolicy.preExisting)
-                                    ? newPolicy.preExisting.indexOf(option) > -1
-                                    : false
-                                }
-                              />
-                              <ListItemText primary={option} />
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {errors.preExisting && (
-                          <FormHelperText error>
-                            {errors.preExisting}
-                          </FormHelperText>
-                        )}
-                      </FormControl>
+                      <TextField
+                        fullWidth
+                        label="Pre-existing Conditions"
+                        value={newPolicy.preExisting || ""}
+                        onChange={handleNewPolicyChange("preExisting")}
+                        multiline
+                        rows={2}
+                        placeholder="Enter pre-existing conditions separated by commas"
+                        error={!!errors.preExisting}
+                        helperText={errors.preExisting || "Enter conditions separated by commas"}
+                        sx={{
+                          "& .MuiInputLabel-root": { color: "#ffffff" },
+                          "& .MuiOutlinedInput-root": { color: "#ffffff" },
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Net Premium"
+                        value={newPolicy.netPremium || "0.00"}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">₹</InputAdornment>
+                          ),
+                          readOnly: true,
+                        }}
+                        sx={{
+                          "& .MuiInputLabel-root": { color: "#ffffff" },
+                          "& .MuiOutlinedInput-root": {
+                            color: "#ffffff",
+                            backgroundColor: "rgba(255, 255, 255, 0.1)",
+                          },
+                        }}
+                      />
                     </Grid>
                   </Grid>
                 </Box>
@@ -4817,6 +4958,9 @@ const PolicyStatus = ({ addCustomer }) => {
                 </Grid>
               </Box>
             )}
+            <Typography variant="body2">
+              * Please create a lead first before creating a policy.So that document can be uploaded.
+            </Typography>
             <Documents />
             {isSubmitting && <LinearProgress sx={{ mt: 2 }} />}
             <Box
@@ -4953,6 +5097,14 @@ const PolicyStatus = ({ addCustomer }) => {
                         </Typography>
                         <Typography variant="body1" sx={{ mt: 0.5 }}>
                           {selectedPolicy.policyNumber}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Physical Policy Number
+                        </Typography>
+                        <Typography variant="body1" sx={{ mt: 0.5 }}>
+                          {selectedPolicy.physical_policy_number || "N/A"}
                         </Typography>
                       </Box>
                       <Box sx={{ mb: 2 }}>
@@ -5339,6 +5491,7 @@ const PolicyStatus = ({ addCustomer }) => {
                           >
                             Sum Insured
                           </Typography>
+                          {console.log("[DEBUG] Raw sumInsured value:", selectedPolicy.sumInsured)}
                           <Typography variant="body1" sx={{ mt: 0.5 }}>
                             {selectedPolicy.sumInsured
                               ? `₹${selectedPolicy.sumInsured}`
@@ -5355,7 +5508,7 @@ const PolicyStatus = ({ addCustomer }) => {
                             Age
                           </Typography>
                           <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {selectedPolicy.age || "N/A"}
+                            {selectedPolicy.dateOfBirth ? new Date().getFullYear() - new Date(selectedPolicy.dateOfBirth).getFullYear() : "N/A"}
                           </Typography>
                         </Box>
                         <Box sx={{ mb: 2 }}>
@@ -5366,9 +5519,9 @@ const PolicyStatus = ({ addCustomer }) => {
                             Pre-existing Conditions
                           </Typography>
                           <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {Array.isArray(selectedPolicy.preExistingConditions)
+                            {Array.isArray(selectedPolicy.preExistingConditions) && selectedPolicy.preExistingConditions.length > 0
                               ? selectedPolicy.preExistingConditions.join(", ")
-                              : selectedPolicy.preExisting || "N/A"}
+                              : "N/A"}
                           </Typography>
                         </Box>
                       </Grid>
@@ -5390,8 +5543,11 @@ const PolicyStatus = ({ addCustomer }) => {
                           >
                             Commission Percentage
                           </Typography>
+                          {console.log("[Health] Selected Policy Commission Percentage:", selectedPolicy.commissionPercentage)}
                           <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {selectedPolicy.commissionPercentage || "N/A"}
+                            {selectedPolicy.commissionPercentage !== undefined && selectedPolicy.commissionPercentage !== null && selectedPolicy.commissionPercentage !== ""
+                              ? selectedPolicy.commissionPercentage
+                              : "N/A"}
                           </Typography>
                         </Box>
                         <Box sx={{ mb: 2 }}>
@@ -5480,8 +5636,11 @@ const PolicyStatus = ({ addCustomer }) => {
                           >
                             Commission Percentage
                           </Typography>
+                          {console.log("[Travel] Selected Policy Commission Percentage:", selectedPolicy.commissionPercentage)}
                           <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {selectedPolicy.commissionPercentage || "N/A"}
+                            {selectedPolicy.commissionPercentage !== undefined && selectedPolicy.commissionPercentage !== null && selectedPolicy.commissionPercentage !== ""
+                              ? selectedPolicy.commissionPercentage
+                              : "N/A"}
                           </Typography>
                         </Box>
                         <Box sx={{ mb: 2 }}>
@@ -5688,6 +5847,26 @@ const PolicyStatus = ({ addCustomer }) => {
               Update Policy
             </Button>
           </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+            <Button
+              color="error"
+              variant="outlined"
+              onClick={() => setDeleteDialogOpen(true)}
+              disabled={loading}
+            >
+              {loading ? 'Deleting...' : 'Delete Policy'}
+            </Button>
+            <Button
+              color="primary"
+              variant="outlined"
+              onClick={() => handleSendReminder(selectedPolicy)}
+              disabled={sendingReminder}
+              sx={{ ml: 2 }}
+            >
+              {sendingReminder ? <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} /> : null}
+              Send Reminder
+            </Button>
+          </Box>
         </Box>
       </Modal>
 
@@ -5706,8 +5885,9 @@ const PolicyStatus = ({ addCustomer }) => {
             onClick={handleConfirmDelete}
             color="error"
             variant="contained"
+            disabled={loading} // Disable while deleting
           >
-            Delete
+            {loading ? 'Deleting...' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -5928,6 +6108,16 @@ const PolicyStatus = ({ addCustomer }) => {
           )}
         </Box>
       </Modal>
+
+      {/* Add a loading spinner overlay to the Policy Status section */}
+      {loading && (
+        <Backdrop open={true} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 3 }}>
+          <CircularProgress color="inherit" />
+          <Typography variant="h6" sx={{ mt: 2, ml: 2 }}>
+            Loading policies...
+          </Typography>
+        </Backdrop>
+      )}
     </Box>
   );
 };
