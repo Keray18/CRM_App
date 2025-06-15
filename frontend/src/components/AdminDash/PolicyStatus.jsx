@@ -4893,6 +4893,47 @@ const PolicyStatus = ({ addCustomer }) => {
               <CloseIcon />
             </IconButton>
           </Box>
+          // ...inside the View Details Modal, after your existing details...
+{selectedPolicy && (
+  <Box sx={{ mt: 4 }}>
+    <Typography variant="subtitle1" sx={{ mb: 2, color: "primary.main", fontWeight: "bold" }}>
+      All Policy Data (Raw)
+    </Typography>
+    <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+      <Table size="small">
+        <TableBody>
+          {Object.entries(selectedPolicy).map(([key, value]) => (
+            <TableRow key={key}>
+              <TableCell sx={{ fontWeight: "bold", color: "#1976d2" }}>
+                {key}
+              </TableCell>
+              <TableCell>
+                {Array.isArray(value)
+                  ? value.length === 0
+                    ? "-"
+                    : (
+                        <Box component="ul" sx={{ pl: 2, mb: 0 }}>
+                          {value.map((item, idx) => (
+                            <li key={idx}>
+                              {typeof item === "object"
+                                ? JSON.stringify(item)
+                                : String(item)}
+                            </li>
+                          ))}
+                        </Box>
+                      )
+                  : typeof value === "object" && value !== null
+                  ? JSON.stringify(value)
+                  : String(value ?? "-")}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </Box>
+)}
+<br />
           {selectedPolicy && (
             <>
               <Grid container spacing={3}>
